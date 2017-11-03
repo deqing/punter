@@ -17,10 +17,12 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions
 import time
 import requests
-import sys, traceback
+import sys
+import traceback
+import logging
 
 
 is_refetch = True
@@ -41,6 +43,13 @@ class Match:
     def __lt__(self, other):
         return self.home_team < other.home_team
 
+    @staticmethod
+    def color_print(msg, foreground="black", background="white"):
+        fground = foreground.upper()
+        bground = background.upper()
+        style = getattr(Fore, fground) + getattr(Back, bground)
+        print(style + msg + Style.RESET_ALL)
+
     def display(self):
         msg = '{}\t{}({})({})({})\t{}({})({})({})\t{}({})({})({})\t- {} vs {}\t{}'.format(
             round(self.profit, 2),
@@ -49,7 +58,7 @@ class Match:
             self.odds[2], self.agents[2], self.perts[2], self.earns[2],
             self.home_team, self.away_team, self.time)
         if float(self.profit) > 99.5:
-            color_print(msg, background='yellow')
+            self.color_print(msg, background='yellow')
         else:
             print(msg)
 
@@ -81,46 +90,15 @@ class Match:
                     self.earns[2] = round((100-i-j)*float(self.odds[2]) - 100, 2)
 
 
-def color_print(msg, foreground="black", background="white"):
-    fground = foreground.upper()
-    bground = background.upper()
-    style = getattr(Fore, fground) + getattr(Back, bground)
-    print(style + msg + Style.RESET_ALL)
-
-
-def main():
-    driver = None
-    use_chrome = True
-    if is_get_data:
-        if use_chrome:
-            chrome_options = Options()
-            chrome_options.add_argument("--headless")
-            driver = webdriver.Chrome(chrome_options=chrome_options)
-            driver.implicitly_wait(10)
-            wait = WebDriverWait(driver, 10)
-        else:
-            driver = webdriver.PhantomJS()
-
-    pickles_a = []
-    pickles_liga = []
-
-    def merge_matches():
-        def get_id(team_name, ids):
-            converted_name = ''.join(team_name.lower().split())
-            if 'tico' in converted_name:
-                converted_name = 'atlmadrid'
-            elif 'lacoru' in converted_name:
-                converted_name = 'deportivo'
-
-            for name in ids:
-                if name in converted_name:
-                    return name
-            raise ValueError('{}[{}] is not found in the league map!'.format(team_name, converted_name))
+class Matches:
+    def __init__(self, pickles_a, pickles_liga):
+        self.pickles_a = pickles_a
+        self.pickles_liga = pickles_liga
 
         # Keyword --> Display Name
-        # Keyword is a string that can be found in all websites after lowercase + whitespace removing
-        # need to be 1:1 as it will be used by home+away as matches key
-        a_league = {
+        # Keyword: a string with lowercase + whitespace removing
+        # The map need to be 1:1 as it will be used by home+away as matches key
+        self.a_league_map = {
             'adelaide': 'Adelaide Utd',
             'brisbane': 'Brisbane Roar',
             'central': 'Central Coast',
@@ -132,8 +110,7 @@ def main():
             'wellington': 'Wellington Phoenix',
             'westernsydney': 'Western Sydney',
         }
-        a_league_ids = list(a_league.keys())
-        la_liga = {
+        self.la_liga_map = {
             'bilbao': 'Athletic Bilbao',
             'atlmadrid': 'Atletico Madrid',
             'alav': 'Alaves',
@@ -155,23 +132,53 @@ def main():
             'valencia': 'Valencia',
             'villarreal': 'Villarreal CF'
         }
+        self.a_league_keys = list(self.a_league_map.keys())
+        self.la_liga_keys = list(self.la_liga_map.keys())
 
-        la_liga_ids = list(la_liga.keys())
+    @staticmethod
+    def get_id(team_name, keys, league_name):
+        converted_name = ''.join(team_name.lower().split())
+        if 'tico' in converted_name:
+            converted_name = 'atlmadrid'
+        elif 'lacoru' in converted_name:
+            converted_name = 'deportivo'
 
-        for pickles, ids, league_map in ((pickles_a, a_league_ids, a_league),
-                                         (pickles_liga, la_liga_ids, la_liga)):
+        for name in keys:
+            if name in converted_name:
+                return name
+        raise ValueError('{}[{}] is not found in the map of {}!'.format(
+            team_name, converted_name, league_name))
+
+    def print_each_match(self):
+        for pickles in self.pickles_a, self.pickles_liga:
+            print('-'*80)
+            for p_name in pickles:
+                with open(p_name, 'rb') as pkl:
+                    pickle_matches = pickle.load(pkl)
+                    for pm in pickle_matches:
+                        print('{} {}\t{}\t{} {} {}'.format(
+                            pm.home_team, pm.away_team,
+                            pm.agents[0],
+                            pm.odds[0], pm.odds[1], pm.odds[2]
+                        ))
+
+    def merge_and_print(self):
+        for pickles, keys, league_map, league_name in \
+                ((self.pickles_a, self.a_league_keys, self.a_league_map, 'Australia League'),
+                 (self.pickles_liga, self.la_liga_keys, self.la_liga_map, 'Spanish La Liga')):
             matches = {}  # 用hometeam和awayteam加起来做索引的map
             for p_name in pickles:
                 with open(p_name, 'rb') as pkl:
                     pickle_matches = pickle.load(pkl)
                     for pm in pickle_matches:
-                        key = get_id(pm.home_team, ids) + get_id(pm.away_team, ids)
+                        key = self.get_id(pm.home_team, keys, league_name) + \
+                              self.get_id(pm.away_team, keys, league_name)
                         if key not in matches.keys():
                             m = Match()
                             m.__dict__.update(pm.__dict__)
                             m.odds = list(m.odds)
-                            m.home_team = league_map[get_id(pm.home_team, ids)]
-                            m.away_team = league_map[get_id(pm.away_team, ids)]
+                            m.home_team = league_map[self.get_id(pm.home_team, keys, league_name)]
+                            m.away_team = league_map[self.get_id(pm.away_team, keys, league_name)]
                             matches[key] = m
                         else:
                             m = matches[key]
@@ -184,6 +191,20 @@ def main():
             for m in sorted(matches.values()):
                 m.calculate_best_shot()
                 m.display()
+
+
+def main():
+    driver = None
+    use_chrome = True
+    if is_get_data:
+        if use_chrome:
+            chrome_options = Options()
+            chrome_options.add_argument("--headless")
+            driver = webdriver.Chrome(chrome_options=chrome_options)
+            driver.implicitly_wait(10)
+            wait = WebDriverWait(driver, 10)
+        else:
+            driver = webdriver.PhantomJS()
 
     def save_to(obj, filename):
         with open(filename, 'wb') as pkl:
@@ -198,19 +219,11 @@ def main():
         return m.group(1) if m else ''
 
     def get_blocks(css_string):
-        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_string)))
+        wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))
         blocks = driver.find_elements_by_css_selector(css_string)
-        return blocks  #TODO
-        blocks = []
-        for _ in range(10):
-            blocks = driver.find_elements_by_css_selector(css_string)
-            if len(blocks) is not 0:
-                break
-            time.sleep(1)
-            print('... retrying to get blocks')
         return blocks
 
-    def fetch(website):
+    def fetch_and_save_to_pickle(website):
         if is_get_data:
             for league in 'a', 'liga':
                 if website['enable_'+league]:
@@ -225,7 +238,7 @@ def main():
                             website['fetch'](matches)
                         save_to(matches, pkl_name)
                     except Exception as e:
-                        print('Exception:', e)
+                        logging.exception(e)
                         _, _, eb = sys.exc_info()
                         traceback.print_tb(eb)
                         save_to([], pkl_name)
@@ -256,23 +269,24 @@ def main():
             m.agents = ['Betstar'] * 3
             matches.append(m)
 
-    def fetch_centre(matches):
-        blocks = get_blocks('td.brdSports')
-        for b in blocks:
-            m = Match()
-            for _ in range(10):
-                try:
-                    teams = b.find_elements_by_css_selector('div.sport-event')
-                    odds = b.find_elements_by_css_selector('div.clear')
-                    m.home_team, m.away_team = teams[0].text, teams[2].text
-                    for i in range(3):
-                        m.odds[i] = odds[i].text
-                        m.agents[i] = 'Centre'
-                    break
-                except Exception:
-                    print('... retrying centrebet')
-                    time.sleep(1)
-            matches.append(m)
+    # def fetch_centre(matches):
+    #     blocks = get_blocks('td.brdSports')
+    #     for b in blocks:
+    #         m = Match()
+    #         for _ in range(10):
+    #             try:
+    #                 teams = b.find_elements_by_css_selector('div.sport-event')
+    #                 odds = b.find_elements_by_css_selector('div.clear')
+    #                 m.home_team, m.away_team = teams[0].text, teams[2].text
+    #                 for i in range(3):
+    #                     m.odds[i] = odds[i].text
+    #                     m.agents[i] = 'Centre'
+    #                 break
+    #             except Exception as e:
+    #                 logging.exception(e)
+    #                 print('... retrying centrebet')
+    #                 time.sleep(1)
+    #         matches.append(m)
 
     def fetch_crown(matches):
         blocks = []
@@ -356,14 +370,16 @@ def main():
                 continue
 
             if status is not None and '<span class="price-val' in line:
-                status = 'in win span' if status == 'wait win' else 'in draw span' if status == 'wait draw' else 'in lose span'
+                status = 'in win span' if status == 'wait win' else 'in draw span' \
+                    if status == 'wait draw' else 'in lose span'
                 continue
 
     def fetch_tab(matches):
         blocks = driver.find_elements_by_css_selector('div.template-item.ng-scope')
         for block in blocks:
             m = Match()
-            m.home_team, m.away_team = block.find_element_by_css_selector('span.match-name-text.ng-binding').text.split(' v ')
+            m.home_team, m.away_team = block.find_element_by_css_selector(
+                'span.match-name-text.ng-binding').text.split(' v ')
             odds = block.find_elements_by_css_selector('div.animate-odd.ng-binding.ng-scope')
             for i in range(3):
                 m.odds[i] = odds[i].text
@@ -385,7 +401,8 @@ def main():
                     m.odds[1] = odds[2].text
                     m.odds[2] = odds[1].text
                     break
-                except Exception:
+                except Exception as e:
+                    logging.exception(e)
                     print('... retrying topbetta')
                     time.sleep(1)
             m.agents = ['Betta '] * 3
@@ -435,8 +452,8 @@ def main():
         'name': 'bet365',
         'enable_a': is_refetch,
         'enable_liga': is_refetch,
-        'a_url': 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-27119403-2-18-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1',
-        'liga_url': 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33977144-2-8-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1',
+        'a_url': 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-27119403-2-18-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1',  # noqa
+        'liga_url': 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33977144-2-8-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1',  # noqa
         'fetch': fetch_bet365,
         'use_request': False,
     }
@@ -445,21 +462,21 @@ def main():
         'name': 'betstar',
         'enable_a': is_refetch,
         'enable_liga': is_refetch,
-        'a_url': 'https://www.betstar.com.au/sports/soccer/39922191-football-australia-australian-a-league/',
-        'liga_url': 'https://www.betstar.com.au/sports/soccer/40963090-football-spain-spanish-la-liga/',
+        'a_url': 'https://www.betstar.com.au/sports/soccer/39922191-football-australia-australian-a-league/',  # noqa
+        'liga_url': 'https://www.betstar.com.au/sports/soccer/40963090-football-spain-spanish-la-liga/',  # noqa
         'fetch': fetch_betstar,
         'use_request': False,
     }
 
-    centrebet = {
-        'name': 'centrebet',
-        'enable_a': is_refetch,
-        'enable_liga': is_refetch,
-        'a_url': 'http://centrebet.com/#Sports/67166422',
-        'liga_url': 'http://centrebet.com/#Sports/15806291',
-        'fetch': fetch_centre,
-        'use_request': False,
-    }
+    # centrebet = {  Odds are the same as William Hill
+    #     'name': 'centrebet',
+    #     'enable_a': is_refetch,
+    #     'enable_liga': is_refetch,
+    #     'a_url': 'http://centrebet.com/#Sports/67166422',
+    #     'liga_url': 'http://centrebet.com/#Sports/15806291',
+    #     'fetch': fetch_centre,
+    #     'use_request': False,
+    # }
 
     crownbet = {
         'name': 'crownbet',
@@ -475,8 +492,8 @@ def main():
         'name': 'ladbrokes',
         'enable_a': is_refetch,
         'enable_liga': is_refetch,
-        'a_url': 'https://www.ladbrokes.com.au/sports/soccer/39445848-football-australia-australian-a-league/?utm_source=%2Fsports%2Fsoccer%2F35326546-australian-a-league-2017-2018%2F35326546-australian-a-league-2017-2018%2F&utm_medium=sport+banner&utm_campaign=a+league+round+4',
-        'liga_url': 'https://www.ladbrokes.com.au/sports/soccer/40962944-football-spain-spanish-la-liga/',
+        'a_url': 'https://www.ladbrokes.com.au/sports/soccer/39445848-football-australia-australian-a-league/?utm_source=%2Fsports%2Fsoccer%2F35326546-australian-a-league-2017-2018%2F35326546-australian-a-league-2017-2018%2F&utm_medium=sport+banner&utm_campaign=a+league+round+4',  # noqa
+        'liga_url': 'https://www.ladbrokes.com.au/sports/soccer/40962944-football-spain-spanish-la-liga/',  # noqa
         'fetch': fetch_ladbrokes,
         'use_request': False,
     }
@@ -495,7 +512,7 @@ def main():
         'name': 'sportsbet',
         'enable_a': is_refetch,
         'enable_liga': is_refetch,
-        'a_url': 'https://www.sportsbet.com.au/betting/soccer/australia/australian-a-league/ev_type_markets.html',
+        'a_url': 'https://www.sportsbet.com.au/betting/soccer/australia/australian-a-league/ev_type_markets.html',  # noqa
         'liga_url': 'https://www.sportsbet.com.au/betting/soccer/spain/spanish-la-liga',
         'fetch': fetch_sports,
         'use_request': True,
@@ -506,7 +523,7 @@ def main():
         'enable_a': is_refetch,
         'enable_liga': is_refetch,
         'a_url': 'https://www.tab.com.au/sports/betting/Soccer/competitions/A%20League',
-        'liga_url': 'https://www.tab.com.au/sports/betting/Soccer/competitions/Spanish%20Primera%20Division',
+        'liga_url': 'https://www.tab.com.au/sports/betting/Soccer/competitions/Spanish%20Primera%20Division',  # noqa
         'fetch': fetch_tab,
         'use_request': False,
     }
@@ -515,8 +532,8 @@ def main():
         'name': 'topbetta',
         'enable_a': is_refetch,
         'enable_liga': is_refetch,
-        'a_url': 'https://www.topbetta.com.au/sports/football/hyundai-a-league-regular-season-151825',
-        'liga_url': 'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-11-151365',
+        'a_url': 'https://www.topbetta.com.au/sports/football/hyundai-a-league-regular-season-151825',  # noqa
+        'liga_url': 'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-11-151365',  # noqa
         'fetch': fetch_topbetta,
         'use_request': False,
     }
@@ -546,33 +563,36 @@ def main():
         'enable_a': is_refetch,
         'enable_liga': is_refetch,
         'a_url': 'https://www.williamhill.com.au/sports/soccer/australia/a-league-matches',
-        'liga_url': 'https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',
+        'liga_url': 'https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
         'fetch': fetch_william,
         'use_request': False,
     }
 
     websites = (
-            bet365,
-            betstar,
-            centrebet,
-            crownbet,
-            ladbrokes,
-            palmerbet,
-            sportsbet,
-            tab,
-            topbetta,
-            ubet,
-            unibet,
-            williamhill,
+        bet365,
+        betstar,
+        # centrebet,
+        crownbet,
+        ladbrokes,
+        palmerbet,
+        sportsbet,
+        tab,
+        topbetta,
+        ubet,
+        unibet,
+        williamhill,
     )
 
-    pickles_a = ['a_'+w['name']+'.pkl' for w in websites]
-    pickles_liga = ['liga_'+w['name']+'.pkl' for w in websites]
+    ms = Matches(
+        pickles_a=['a_'+w['name']+'.pkl' for w in websites],
+        pickles_liga=['liga_'+w['name']+'.pkl' for w in websites])
 
-    for w in websites: fetch(w)
+    for w in websites:
+        fetch_and_save_to_pickle(w)
+        pass
 
-    #print_matches()  TODO
-    merge_matches()
+    ms.merge_and_print()
+    # ms.print_each_match()
 
     if driver is not None:
         driver.quit()
