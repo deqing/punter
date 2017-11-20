@@ -1,7 +1,7 @@
 """
 TODO
 add madbookie eng and la liga
-add https://www.classicbet.com.au/Sport/Soccer/Australian_A-League/Matches
+check bluebet
 add neds.com.au
 
     base_url = 'https://www.odds.com.au/'
@@ -14,9 +14,8 @@ add neds.com.au
 """
 
 import re
-import datetime
 import pickle
-from colorama import init, Fore, Back, Style
+from colorama import Fore, Back, Style
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
@@ -30,13 +29,7 @@ import traceback
 import logging
 from tempfile import gettempdir
 import os
-
-
-is_get_a = False
-is_get_arg = False
-is_get_liga = False
-is_get_eng = False
-is_get_data = True
+from docopt import docopt
 
 
 class Match:
@@ -200,7 +193,7 @@ class Matches:
                 with open(os.path.join(gettempdir(), p_name), 'rb') as pkl:
                     pickle_matches = pickle.load(pkl)
                     for pm in pickle_matches:
-                        print('{} {}\t{}\t{} {} {}'.format(
+                        print('{} {}\t{}\t[{}] [{}] [{}]'.format(
                             pm.home_team, pm.away_team,
                             pm.agents[0],
                             pm.odds[0], pm.odds[1], pm.odds[2]
@@ -212,7 +205,7 @@ class Matches:
                  (self.pickles_arg, self.arg_keys, self.arg_map, 'Argentina Superliga'),
                  (self.pickles_eng, self.eng_keys, self.eng_map, 'English Premier League'),
                  (self.pickles_liga, self.la_liga_keys, self.la_liga_map, 'Spanish La Liga'),):
-            matches = {}  # 用hometeam和awayteam加起来做索引的map
+            matches = {}  # hometeam and awayteam = map's key
             for p_name in pickles:
                 with open(os.path.join(gettempdir(), p_name), 'rb') as pkl:
                     pickle_matches = pickle.load(pkl)
@@ -233,13 +226,35 @@ class Matches:
                                     m.odds[i] = pm.odds[i]
                                     m.agents[i] = pm.agents[i]
 
-            print('--- From', len(pickles), 'pickles -----')
-            for m in sorted(matches.values()):
+            matches = sorted(matches.values())
+            if len(matches) is not 0:
+                print('--- From', len(pickles), 'pickles -----')
+            for m in matches:
                 m.calculate_best_shot()
                 m.display()
 
 
 def main():
+    """Punter command-line interface.
+
+    Usage:
+      punter.py <websites> [options]
+
+    Options:
+      --all         Get all leagues
+      --a           Get A-league
+      --arg         Get Argentina league
+      --eng         Get EPL
+      --liga        Get La Liga
+      --print-only  Don't get latest odds, just print out based on saved odds
+    """
+    args = docopt(str(main.__doc__))
+    is_get_data = not args['--print-only']
+    is_get_a = args['--a']
+    is_get_arg = args['--arg']
+    is_get_eng = args['--eng']
+    is_get_liga = args['--liga']
+
     driver = None
     use_chrome = True
     if is_get_data:
@@ -267,7 +282,7 @@ def main():
 
     def get_blocks(css_string):
         try:
-            wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))
+            wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))  # noqa
         except TimeoutException:
             print('[{}] not found'.format(css_string))
             return []
@@ -275,24 +290,23 @@ def main():
         return blocks
 
     def fetch_and_save_to_pickle(website):
-        if is_get_data:
-            for league in 'a', 'arg', 'eng', 'liga':
-                if website['enable_'+league]:
-                    pkl_name = league + '_' + website['name'] + '.pkl'
-                    matches = []
-                    try:
-                        if website['use_request']:
-                            website['fetch'](matches, website[league+'_url'])
-                        else:
-                            driver.get(website[league+'_url'])
-                            time.sleep(2)
-                            website['fetch'](matches)
-                        save_to(matches, pkl_name)
-                    except Exception as e:
-                        logging.exception(e)
-                        _, _, eb = sys.exc_info()
-                        traceback.print_tb(eb)
-                        save_to([], pkl_name)
+        for league in 'a', 'arg', 'eng', 'liga':
+            if website['enable_'+league]:
+                pkl_name = league + '_' + website['name'] + '.pkl'
+                matches = []
+                try:
+                    if website['use_request']:
+                        website['fetch'](matches, website[league+'_url'])
+                    else:
+                        driver.get(website[league+'_url'])
+                        time.sleep(2)
+                        website['fetch'](matches)
+                    save_to(matches, pkl_name)
+                except Exception as e:
+                    logging.exception(e)
+                    _, _, eb = sys.exc_info()
+                    traceback.print_tb(eb)
+                    save_to([], pkl_name)
 
     def fetch_bet365(matches):
         blocks = get_blocks('div.podEventRow')
@@ -307,8 +321,7 @@ def main():
             matches.append(match)
 
     def fetch_betstar(matches):
-        blocks = driver.find_elements_by_css_selector(
-            'table.bettype-group.listings.odds.sports.match.soccer')
+        blocks = get_blocks('table.bettype-group.listings.odds.sports.match.soccer')
         for b in blocks:
             info = b.find_elements_by_css_selector('tr.row')
             if len(info) < 3:
@@ -323,8 +336,8 @@ def main():
     def fetch_crown(matches):
         blocks = []
         for _ in range(10):
-            blocks = driver.find_elements_by_css_selector('div.container-fluid')
-            if blocks[0].tag_name == 'div':
+            blocks = get_blocks('div.container-fluid')
+            if len(blocks) is not 0 and blocks[0].tag_name == 'div':
                 break
             time.sleep(1)
 
@@ -339,8 +352,7 @@ def main():
             matches.append(m)
 
     def fetch_ladbrokes(matches):
-        blocks = driver.find_elements_by_css_selector(
-            'table.bettype-group.listings.odds.sports.match.soccer')
+        blocks = get_blocks('table.bettype-group.listings.odds.sports.match.soccer')
         for b in blocks:
             if 'Footy Freaks' in b.text:
                 continue
@@ -350,6 +362,19 @@ def main():
             m.away_team, m.odds[2] = info[1].text.split('\n')
             m.odds[1] = info[2].text.split('\n')[1]
             m.agents = ['ladbrok'] * 3
+            matches.append(m)
+
+    def fetch_luxbet(matches):
+        blocks = get_blocks('tr.asian_display_row')
+        for b in blocks:
+            m = Match()
+            teams = b.find_elements_by_css_selector('div.bcg_asian_selection_name')
+            m.home_team, m.away_team = teams[0].text, teams[2].text
+            odds = b.find_element_by_css_selector('td.asian_market_cell.market_type_template_12')
+            m.odds[0], m.odds[1], m.odds[2] = odds.text.split('\n')
+            for i in range(3):
+                m.odds[i] = m.odds[i].strip()
+            m.agents = ['luxbet'] * 3
             matches.append(m)
 
     def fetch_madbookie(matches):
@@ -431,7 +456,7 @@ def main():
                 continue
 
     def fetch_tab(matches):
-        blocks = driver.find_elements_by_css_selector('div.template-item.ng-scope')
+        blocks = get_blocks('div.template-item.ng-scope')
         for block in blocks:
             m = Match()
             m.home_team, m.away_team = block.find_element_by_css_selector(
@@ -457,7 +482,7 @@ def main():
             matches.append(m)
 
     def fetch_ubet(matches):
-        blocks = driver.find_elements_by_css_selector('div.ubet-sub-events-summary')
+        blocks = get_blocks('div.ubet-sub-events-summary')
         for b in blocks:
             odds = b.find_elements_by_css_selector('div.ubet-offer-win-only')
             match = Match()
@@ -486,7 +511,7 @@ def main():
 
     def fetch_william(matches):
         if 'rimera' in driver.current_url and \
-           'rimera' not in driver.find_elements_by_css_selector('div.Collapse_root_3H1.FilterList_menu_3g7')[0].text:
+           'rimera' not in driver.find_elements_by_css_selector('div.Collapse_root_3H1.FilterList_menu_3g7')[0].text:  # noqa
             return  # La Liga is removed
         blocks = driver.find_elements_by_css_selector('div.EventBlock_root_1Pn')
         for b in blocks:
@@ -550,6 +575,19 @@ def main():
         'eng_url': 'https://www.ladbrokes.com.au/sports/soccer/41388947-football-england-premier-league/',  # noqa
         'fetch': fetch_ladbrokes,
         'use_request': False,
+    }
+
+    luxbet = {
+        'name': 'luxbet',
+        'enable_a': is_get_a,
+        'enable_arg': is_get_arg,
+        'enable_liga': is_get_liga,
+        'enable_eng': is_get_eng,
+        'a_url': 'https://www.luxbet.com/?cPath=596&event_id=ALL',
+        'liga_url': 'https://www.luxbet.com/?cPath=931&event_id=ALL',
+        'eng_url': 'https://www.luxbet.com/?cPath=616&event_id=ALL',
+        'fetch': fetch_luxbet,
+        'use_request': False
     }
 
     madbookie = {
@@ -656,30 +694,38 @@ def main():
         'use_request': False,
     }
 
-    websites = (
-        bet365,
-        betstar,
-        crownbet,
-        ladbrokes,
-        madbookie,
-        palmerbet,
-        sportsbet,
-        tab,
-        topbetta,
-        ubet,
-        unibet,
-        williamhill,
-    )
+    website_map = {
+        'bet365': bet365,
+        'betstar': betstar,
+        'crownbet': crownbet,
+        'ladbrokes': ladbrokes,
+        'luxbet': luxbet,
+        'madbookie': madbookie,
+        'palmerbet': palmerbet,
+        'sportsbet': sportsbet,
+        'tab': tab,
+        'topbetta': topbetta,
+        'ubet': ubet,
+        'unibet': unibet,
+        'williamhill': williamhill,
+    }
 
-    ms = Matches(
-        pickles_a=['a_'+w['name']+'.pkl' for w in websites],
-        pickles_arg=[],#'arg_'+w['name']+'.pkl' for w in websites],
-        pickles_eng=['eng_'+w['name']+'.pkl' for w in websites],
-        pickles_liga=['liga_'+w['name']+'.pkl' for w in websites],
-    )
+    websites = []
+    for site in args['<websites>'].split(','):
+        websites.append(website_map[site])
 
-    for w in websites:
-        fetch_and_save_to_pickle(w)
+    def set_pickles(league_prefix):
+        return [league_prefix+'_' + w['name'] + '.pkl' for w in websites] \
+                if args['--all'] or args['--'+league_prefix] else []
+    pickles_a = set_pickles('a')
+    pickles_arg = set_pickles('arg')
+    pickles_eng = set_pickles('eng')
+    pickles_liga = set_pickles('liga')
+    ms = Matches(pickles_a, pickles_arg, pickles_eng, pickles_liga)
+
+    if is_get_data:
+        for w in websites:
+            fetch_and_save_to_pickle(w)
 
     ms.merge_and_print()
     #ms.print_each_match()
