@@ -1,5 +1,5 @@
-US_SAFE="bet365,betstar,ladbrokes,madbookie,palmerbet,sportsbet,tab,topbetta,ubet,unibet,williamhill"
-AU_ONLY="luxbet,crownbet"
+US_SAFE="bet365,betstar,ladbrokes,madbookie,palmerbet,topbetta,ubet,unibet"
+AU_ONLY="crownbet,luxbet,sportsbet,tab,williamhill"
 
 python3 punter.py $US_SAFE --a
 sudo systemctl start tunnelbear@oz

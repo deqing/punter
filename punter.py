@@ -1,8 +1,14 @@
 """
 TODO
+add --all to run.sh
+add same odds
+
 add madbookie eng and la liga
 check bluebet
 add neds.com.au
+
+add send email after run
+add every hour
 
     base_url = 'https://www.odds.com.au/'
     url_spain = base_url + 'soccer/spanish-la-liga/'
@@ -248,6 +254,10 @@ def main():
       --liga          Get La Liga
       --print-only    Don't get latest odds, just print out based on saved odds
       --recalculate   Don't get latest odds, just print out based on saved all odds
+
+    Example:
+      punter.py luxbet,crownbet --a
+      punter.py all --eng
     """
     args = docopt(str(main.__doc__))
     is_get_data = not args['--print-only'] and not args['--recalculate']
@@ -712,7 +722,7 @@ def main():
     }
 
     websites = []
-    if args['--recalculate']:
+    if args['--recalculate'] or args['<websites>'] == 'all':
         websites = list(website_map.values())
     else:
         for site in args['<websites>'].split(','):
