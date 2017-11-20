@@ -1,7 +1,7 @@
 """
 TODO
-add --all to run.sh
-add same odds
+add get au-only on demand
+add same odds to display
 
 add madbookie eng and la liga
 check bluebet
