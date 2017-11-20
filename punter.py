@@ -241,15 +241,16 @@ def main():
       punter.py <websites> [options]
 
     Options:
-      --all         Get all leagues
-      --a           Get A-league
-      --arg         Get Argentina league
-      --eng         Get EPL
-      --liga        Get La Liga
-      --print-only  Don't get latest odds, just print out based on saved odds
+      --all           Get all leagues
+      --a             Get A-league
+      --arg           Get Argentina league
+      --eng           Get EPL
+      --liga          Get La Liga
+      --print-only    Don't get latest odds, just print out based on saved odds
+      --recalculate   Don't get latest odds, just print out based on saved all odds
     """
     args = docopt(str(main.__doc__))
-    is_get_data = not args['--print-only']
+    is_get_data = not args['--print-only'] and not args['--recalculate']
     is_get_a = args['--a']
     is_get_arg = args['--arg']
     is_get_eng = args['--eng']
@@ -711,8 +712,11 @@ def main():
     }
 
     websites = []
-    for site in args['<websites>'].split(','):
-        websites.append(website_map[site])
+    if args['--recalculate']:
+        websites = list(website_map.values())
+    else:
+        for site in args['<websites>'].split(','):
+            websites.append(website_map[site])
 
     def set_pickles(league_prefix):
         return [league_prefix+'_' + w['name'] + '.pkl' for w in websites] \
