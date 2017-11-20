@@ -3,6 +3,8 @@ TODO
 add get au-only on demand
 add same odds to display
 
+if it's --all, should be --a --eng and --liga
+add --get-only to avoid merge and print out
 add madbookie eng and la liga
 check bluebet
 add neds.com.au
@@ -732,7 +734,7 @@ def main():
         return [league_prefix+'_' + w['name'] + '.pkl' for w in websites] \
                 if args['--all'] or args['--'+league_prefix] else []
     pickles_a = set_pickles('a')
-    pickles_arg = set_pickles('arg')
+    pickles_arg = []  #TODO set_pickles('arg')
     pickles_eng = set_pickles('eng')
     pickles_liga = set_pickles('liga')
     ms = Matches(pickles_a, pickles_arg, pickles_eng, pickles_liga)
