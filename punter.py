@@ -1,8 +1,5 @@
 """
 TODO
-add get au-only on demand
-add same odds to display
-
 if it's --all, should be --a --eng and --liga
 add --get-only to avoid merge and print out
 add madbookie eng and la liga
@@ -50,6 +47,8 @@ class Match:
         self.agents = ['', '', '']
         self.perts = ['', '', '']
         self.earns = ['', '', '']
+        self.other_agents = [[], [], []]
+        self.has_other_agents = False
 
     def __lt__(self, other):
         return self.home_team < other.home_team
@@ -62,12 +61,15 @@ class Match:
         print(style + msg + Style.RESET_ALL)
 
     def display(self):
-        msg = '{}\t{}({})({})({})\t{}({})({})({})\t{}({})({})({})\t- {} vs {}\t{}'.format(
+        msg = '{}\t{}({})({})({})\t{}({})({})({})\t{}({})({})({})\t- {} vs {}'.format(
             round(self.profit, 2),
             self.odds[0], self.agents[0], self.perts[0], self.earns[0],
             self.odds[1], self.agents[1], self.perts[1], self.earns[1],
             self.odds[2], self.agents[2], self.perts[2], self.earns[2],
-            self.home_team, self.away_team, self.time)
+            self.home_team, self.away_team)  # , self.time)
+        if self.has_other_agents:
+            msg += '\t(' + '|'.join([','.join(x) for x in self.other_agents]) + ')'
+
         if float(self.profit) > 99.5:
             self.color_print(msg, background='yellow')
         else:
@@ -233,6 +235,9 @@ class Matches:
                                 if pm.odds[i] > m.odds[i]:
                                     m.odds[i] = pm.odds[i]
                                     m.agents[i] = pm.agents[i]
+                                elif pm.odds[i] == m.odds[i]:
+                                    m.has_other_agents = True
+                                    m.other_agents[i].append(pm.agents[i].strip())
 
             matches = sorted(matches.values())
             if len(matches) is not 0:
