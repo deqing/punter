@@ -7,6 +7,7 @@ HOME: do betstar
 add send email after run
 add every hour
 
+if mailgun works, apply another account with google partner
 check bluebet
 add neds.com.au (not easy to get by css)
 
@@ -36,6 +37,8 @@ import logging
 from tempfile import gettempdir
 import os
 from docopt import docopt
+import smtplib
+from email.mime.text import MIMEText
 
 
 class WriteToHtmlFile:
@@ -335,16 +338,17 @@ def main():
       punter.py <websites> [options]
 
     Options:
-      --all           Get all leagues
-      --a             Get A-league
-      --arg           Get Argentina league
-      --eng           Get EPL
-      --ita           Get Italy league
-      --liga          Get La Liga
-      --get-only      Don't merge and print matches
-      --print-only    Don't get latest odds, just print out based on saved odds
-      --recalculate   Don't get latest odds, just print out based on saved all odds
-      --send-email    Send email of the output
+      --all               Get all leagues
+      --a                 Get A-league
+      --arg               Get Argentina league
+      --eng               Get EPL
+      --ita               Get Italy league
+      --liga              Get La Liga
+      --get-only          Don't merge and print matches
+      --print-only        Don't get latest odds, just print out based on saved odds
+      --recalculate       Don't get latest odds, just print out based on saved all odds
+      --send-email-api    Send email by MailGun's restful api
+      --send-email-smtp   Send email by SMTP (e.g. from GCE)
 
     Example:
       punter.py luxbet,crownbet --a
@@ -379,7 +383,7 @@ def main():
             else:
                 print(filename, 'saved.')
 
-    def send_email():
+    def send_email_by_restful_api():
         with open('api.key', 'r') as apifile:
             apikey = apifile.read()
             with open('output.html', 'r') as file:
@@ -390,6 +394,22 @@ def main():
                           "to": "Deqing Huang <khingblue@gmail.com>",
                           "subject": "GCE",
                           'html': file.read()})
+
+    def send_email_by_smtp():
+        with open('login.name', 'r') as login_name_file, \
+                open('login.pwd', 'r') as login_pwd_file, \
+                open('output.html', 'r') as file:
+            msg = MIMEText(file.read())
+            msg['Subject'] = "GCE"
+            msg['From'] = "Mailgun Sandbox <postmaster@sandbox2923860546b04b2cbbc985925f26535f.mailgun.org>"  # noqa
+            msg['To'] = "Deqing Huang <khingblue@gmail.com>"
+
+            login_name = login_name_file.read()
+            login_pwd = login_pwd_file.read()
+            s = smtplib.SMTP('smtp.mailgun.org', 2525)
+            s.login(login_name, login_pwd)
+            s.sendmail(msg['From'], msg['To'], msg.as_string())
+            s.quit()
 
     def extract(line, regx):
         m = re.search(regx, line)
@@ -888,8 +908,10 @@ def main():
         driver.quit()
 
     html_file.close()
-    if args['--send-email']:
-        send_email()
+    if args['--send-email-api']:
+        send_email_by_restful_api()
+    if args['--send-email-smtp']:
+        send_email_by_smtp()
 
 
 if __name__ == "__main__":
