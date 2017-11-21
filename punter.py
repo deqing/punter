@@ -1,6 +1,5 @@
 """
 TODO
-add italy
 add germany
 add france
 HOME: do betstar
@@ -39,6 +38,26 @@ import os
 from docopt import docopt
 
 
+class WriteToHtmlFile:
+    def __init__(self):
+        self.file = open('output.html', 'w')
+        self.file.write('<html>\n')
+
+    def write_line(self, line):
+        self.file.write('<div style=\'font-family: "Courier New", Courier, monospace\'>' + line + '</div>\n')  # noqa
+
+    def write_highlight_line(self, line):
+        self.file.write('<div style=\'font-family: "Courier New", Courier, monospace; background-color:yellow;\'>' + line + '</div>\n')  # noqa
+
+    def close(self):
+        self.write_highlight_line('just for test')
+        self.file.write('</html>')
+        self.file.close()
+
+
+html_file = WriteToHtmlFile()
+
+
 class Match:
     def __init__(self):
         self.profit = 0
@@ -74,8 +93,10 @@ class Match:
 
         if float(self.profit) > 99.5:
             self.color_print(msg, background='yellow')
+            html_file.write_highlight_line(msg)
         else:
             print(msg)
+            html_file.write_line(msg)
 
     def calculate_best_shot(self):
         if '' in self.odds:
@@ -324,6 +345,7 @@ def main():
       --get-only      Don't merge and print matches
       --print-only    Don't get latest odds, just print out based on saved odds
       --recalculate   Don't get latest odds, just print out based on saved all odds
+      --send-email    Send email of the output
 
     Example:
       punter.py luxbet,crownbet --a
@@ -357,6 +379,18 @@ def main():
                 print('WARNING:', filename, 'will be truncated.')
             else:
                 print(filename, 'saved.')
+
+    def send_email():
+        with open('api.key', 'r') as apifile:
+            apikey = apifile.read()
+            with open('output.html', 'r') as file:
+                requests.post(
+                    "https://api.mailgun.net/v3/sandbox2923860546b04b2cbbc985925f26535f.mailgun.org/messages",  # noqa
+                    auth=("api", apikey),
+                    data={"from": "Mailgun Sandbox <postmaster@sandbox2923860546b04b2cbbc985925f26535f.mailgun.org>",  # noqa
+                          "to": "Deqing Huang <khingblue@gmail.com>",
+                          "subject": "GCE",
+                          'html': file.read()})
 
     def extract(line, regx):
         m = re.search(regx, line)
@@ -853,6 +887,10 @@ def main():
 
     if driver is not None:
         driver.quit()
+
+    html_file.close()
+    if args['--send-email']:
+        send_email()
 
 
 if __name__ == "__main__":
