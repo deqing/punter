@@ -50,7 +50,6 @@ class WriteToHtmlFile:
         self.file.write('<div style=\'font-family: "Courier New", Courier, monospace; background-color:yellow;\'>' + line + '</div>\n')  # noqa
 
     def close(self):
-        self.write_highlight_line('just for test')
         self.file.write('</html>')
         self.file.close()
 
