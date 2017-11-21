@@ -1,13 +1,15 @@
 """
 TODO
-if it's --all, should be --a --eng and --liga
-add --get-only to avoid merge and print out
-add madbookie eng and la liga
-check bluebet
-add neds.com.au
+add italy
+add germany
+add france
+HOME: do betstar
 
 add send email after run
 add every hour
+
+check bluebet
+add neds.com.au (not easy to get by css)
 
     base_url = 'https://www.odds.com.au/'
     url_spain = base_url + 'soccer/spanish-la-liga/'
@@ -104,10 +106,17 @@ class Match:
 
 
 class Matches:
-    def __init__(self, pickles_a, pickles_arg, pickles_eng, pickles_liga):
+    def __init__(self,
+                 pickles_a,
+                 pickles_arg,
+                 pickles_eng,
+                 pickles_ita,
+                 pickles_liga,
+                 ):
         self.pickles_a = pickles_a
         self.pickles_arg = pickles_arg
         self.pickles_eng = pickles_eng
+        self.pickles_ita = pickles_ita
         self.pickles_liga = pickles_liga
 
         # Keyword --> Display Name
@@ -126,28 +135,34 @@ class Matches:
             'westernsydney': 'Western Sydney',
         }
         self.arg_map = {
-        }
-        self.la_liga_map = {
-            'bilbao': 'Athletic Bilbao',
-            'atlmadrid': 'Atletico Madrid',
-            'alav': 'Alaves',
-            'barcelona': 'Barcelona',
-            'celta': 'Celta Vigo',
-            'deportivo': 'Deportivo La Coruna',
-            'eibar': 'Eibar',
-            'espanyol': 'Espanyol',
-            'getafe': 'Getafe',
-            'girona': 'Girona',
-            'palmas': 'Las Palmas',
-            'legan': 'Leganes',
-            'levante': 'Levante',
-            'laga': 'Malaga',
-            'betis': 'Real Betis',
-            'realmadrid': 'Real Madrid',
-            'realsoc': 'Real Sociedad',
-            'sevilla': 'Sevilla',
-            'valencia': 'Valencia',
-            'villarreal': 'Villarreal CF'
+            'argentinos': 'Argentinos Jrs',
+            'arsenal': 'Arsenal de Sarandi',
+            'tucuman': 'Atletico Tucuman',
+            'banfield': 'Banfield',
+            'belgrano': 'Belgrano',
+            'boca': 'Boca Juniors',
+            'independ': 'CA Independiente',
+            'corodoba': 'CA Talleres de Cordoba',
+            'tigre': 'CA Tigre',
+            'chacarita': 'Chacarita Juniors',
+            'colon': 'Colon',
+            'justicia': 'Defensa Justicia',
+            'estudiantes': 'Estudiantes',
+            'gimnasia': 'Gimnasia LP',
+            'godoy': 'Godoy Cruz',
+            'huracan': 'Huracan',
+            'lanus': 'Lanus',
+            'newell': 'Newell',
+            'blanca': 'Olimpo Blanca',
+            'patronato': 'Patronato Parana',
+            'racing': 'Racing Club',
+            'riverplate': 'River Plate',
+            'rosario': 'Rosario Central',
+            'lorenzo': 'San Lorenzo',
+            'sanmartin': 'San Martin de San Juan',
+            'temperley': 'Temperley',
+            'santa': 'Union Santa',
+            'sarsfield': 'Velez Sarsfield'
         }
         self.eng_map = {
             'arsenal': 'Arsenal',
@@ -171,9 +186,54 @@ class Matches:
             'westbrom': 'West Brom',
             'westham': 'West Ham',
         }
+        self.ita_map = {
+            'atalanta': 'Atalanta BC',
+            'benevento': 'Benevento',
+            'bologna': 'Bologna',
+            'cagliari': 'Cagliari',
+            'chievo': 'Chievo',
+            'crotone': 'Crotone',
+            'fiorentina': 'Fiorentina',
+            'genoa': 'Genoa',
+            'inter': 'FC Internazionale',
+            'juventus': 'Juventus',
+            'lazio': 'Lazio',
+            'milan': 'AC Milan',
+            'napoli': 'Napoli',
+            'roma': 'AS Roma',
+            'sampdoria': 'Sampdoria',
+            'sassuolo': 'Sassuolo',
+            'spal': 'SPAL',
+            'torino': 'Torino',
+            'udinese': 'Udinese',
+            'verona': 'Hellas Verona FC',
+        }
+        self.la_liga_map = {
+            'bilbao': 'Athletic Bilbao',
+            'atlmadrid': 'Atletico Madrid',
+            'alav': 'Alaves',
+            'barcelona': 'Barcelona',
+            'celta': 'Celta Vigo',
+            'deportivo': 'Deportivo La Coruna',
+            'eibar': 'Eibar',
+            'espanyol': 'Espanyol',
+            'getafe': 'Getafe',
+            'girona': 'Girona',
+            'palmas': 'Las Palmas',
+            'legan': 'Leganes',
+            'levante': 'Levante',
+            'laga': 'Malaga',
+            'betis': 'Real Betis',
+            'realmadrid': 'Real Madrid',
+            'realsoc': 'Real Sociedad',
+            'sevilla': 'Sevilla',
+            'valencia': 'Valencia',
+            'villarreal': 'Villarreal CF'
+        }
         self.a_league_keys = list(self.a_league_map.keys())
         self.arg_keys = list(self.arg_map.keys())
         self.eng_keys = list(self.eng_map.keys())
+        self.ita_keys = list(self.ita_map.keys())
         self.la_liga_keys = list(self.la_liga_map.keys())
 
     @staticmethod
@@ -214,6 +274,7 @@ class Matches:
                 ((self.pickles_a, self.a_league_keys, self.a_league_map, 'Australia League'),
                  (self.pickles_arg, self.arg_keys, self.arg_map, 'Argentina Superliga'),
                  (self.pickles_eng, self.eng_keys, self.eng_map, 'English Premier League'),
+                 (self.pickles_ita, self.ita_keys, self.ita_map, 'Italian Serie A'),
                  (self.pickles_liga, self.la_liga_keys, self.la_liga_map, 'Spanish La Liga'),):
             matches = {}  # hometeam and awayteam = map's key
             for p_name in pickles:
@@ -258,7 +319,9 @@ def main():
       --a             Get A-league
       --arg           Get Argentina league
       --eng           Get EPL
+      --ita           Get Italy league
       --liga          Get La Liga
+      --get-only      Don't merge and print matches
       --print-only    Don't get latest odds, just print out based on saved odds
       --recalculate   Don't get latest odds, just print out based on saved all odds
 
@@ -271,6 +334,7 @@ def main():
     is_get_a = args['--a']
     is_get_arg = args['--arg']
     is_get_eng = args['--eng']
+    is_get_ita = args['--ita']
     is_get_liga = args['--liga']
 
     driver = None
@@ -308,7 +372,7 @@ def main():
         return blocks
 
     def fetch_and_save_to_pickle(website):
-        for league in 'a', 'arg', 'eng', 'liga':
+        for league in 'a', 'arg', 'eng', 'ita', 'liga':
             if website['enable_'+league]:
                 pkl_name = league + '_' + website['name'] + '.pkl'
                 matches = []
@@ -547,10 +611,12 @@ def main():
         'enable_a': is_get_a,
         'enable_arg': is_get_arg,
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
         'enable_liga': is_get_liga,
         'a_url': 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-27119403-2-18-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1',  # noqa
         'arg_url': 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-34240206-2-12-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1',  # noqa
         'eng_url': 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33577327-2-1-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1',  # noqa
+        'ita_url': 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-34031004-2-6-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1',  # noqa
         'liga_url': 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33977144-2-8-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1',  # noqa
         'fetch': fetch_bet365,
         'use_request': False,
@@ -559,8 +625,9 @@ def main():
     betstar = {  # bookmarker uses same odds
         'name': 'betstar',
         'enable_a': is_get_a,
-        'enable_arg': is_get_arg,
+        'enable_arg': False,  # is_get_arg,
         'enable_eng': is_get_eng,
+        'enable_ita': False,  # not yet
         'enable_liga': is_get_liga,
         'a_url': 'https://www.betstar.com.au/sports/soccer/39922191-football-australia-australian-a-league/',  # noqa
         'eng_url': 'https://www.betstar.com.au/sports/soccer/41388947-football-england-premier-league/',  # noqa
@@ -573,11 +640,14 @@ def main():
         'name': 'crownbet',
         'enable_a': is_get_a,
         'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://crownbet.com.au/sports-betting/soccer/australia/a-league-matches',
-        'liga_url': 'https://crownbet.com.au/sports-betting/soccer/spain/spanish-la-liga-matches/',
+        'arg_url': 'https://crownbet.com.au/sports-betting/soccer/americas/argentina-primera-division-matches',  # noqa
         'eng_url': 'https://crownbet.com.au/sports-betting/soccer/united-kingdom/english-premier-league-matches',  # noqa
+        'ita_url': 'https://crownbet.com.au/sports-betting/soccer/italy/italian-serie-a-matches/',
+        'liga_url': 'https://crownbet.com.au/sports-betting/soccer/spain/spanish-la-liga-matches/',
         'fetch': fetch_crown,
         'use_request': False,
     }
@@ -586,11 +656,14 @@ def main():
         'name': 'ladbrokes',
         'enable_a': is_get_a,
         'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://www.ladbrokes.com.au/sports/soccer/39445848-football-australia-australian-a-league/?utm_source=%2Fsports%2Fsoccer%2F35326546-australian-a-league-2017-2018%2F35326546-australian-a-league-2017-2018%2F&utm_medium=sport+banner&utm_campaign=a+league+round+4',  # noqa
-        'liga_url': 'https://www.ladbrokes.com.au/sports/soccer/40962944-football-spain-spanish-la-liga/',  # noqa
+        'arg_url': 'https://www.ladbrokes.com.au/sports/soccer/43008934-football-argentina-argentinian-primera-division/',  # noqa
         'eng_url': 'https://www.ladbrokes.com.au/sports/soccer/41388947-football-england-premier-league/',  # noqa
+        'ita_url': 'https://www.ladbrokes.com.au/sports/soccer/42212441-football-italy-italian-serie-a/',   # noqa
+        'liga_url': 'https://www.ladbrokes.com.au/sports/soccer/40962944-football-spain-spanish-la-liga/',  # noqa
         'fetch': fetch_ladbrokes,
         'use_request': False,
     }
@@ -599,11 +672,14 @@ def main():
         'name': 'luxbet',
         'enable_a': is_get_a,
         'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://www.luxbet.com/?cPath=596&event_id=ALL',
-        'liga_url': 'https://www.luxbet.com/?cPath=931&event_id=ALL',
+        'arg_url': 'https://www.luxbet.com/?cPath=6278&event_id=ALL',
         'eng_url': 'https://www.luxbet.com/?cPath=616&event_id=ALL',
+        'ita_url': 'https://www.luxbet.com/?cPath=1172&event_id=ALL',
+        'liga_url': 'https://www.luxbet.com/?cPath=931&event_id=ALL',
         'fetch': fetch_luxbet,
         'use_request': False
     }
@@ -612,11 +688,14 @@ def main():
         'name': 'madbookie',
         'enable_a': is_get_a,
         'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://www.madbookie.com.au/Sport/Soccer/Australian_A-League/Matches',
-        'liga_url': 'https://www.madbookie.com.au/Sport/Soccer/Spanish_La_Liga/Matches',
+        'arg_url': 'https://www.madbookie.com.au/Sport/Soccer/Argentinian_Primera_Division/Matches',
         'eng_url': 'https://www.madbookie.com.au/Sport/Soccer/English_Premier_League/Matches',
+        'ita_url': 'https://www.madbookie.com.au/Sport/Soccer/Italian_Serie_A/Matches',
+        'liga_url': 'https://www.madbookie.com.au/Sport/Soccer/Spanish_La_Liga/Matches',
         'fetch': fetch_madbookie,
         'use_request': False,
     }
@@ -625,11 +704,14 @@ def main():
         'name': 'palmerbet',
         'enable_a': is_get_a,
         'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://www.palmerbet.com/sports/soccer/australia-a_league',
-        'liga_url': 'https://www.palmerbet.com/sports/soccer/spain-primera-division',
+        'arg_url': 'https://www.palmerbet.com/sports/soccer/argentina-primera-división',
         'eng_url': 'https://www.palmerbet.com/sports/soccer/england-premier-league',
+        'ita_url': 'https://www.palmerbet.com/sports/soccer/italy-serie-a',
+        'liga_url': 'https://www.palmerbet.com/sports/soccer/spain-primera-division',
         'fetch': fetch_palmerbet,
         'use_request': False,
     }
@@ -638,11 +720,14 @@ def main():
         'name': 'sportsbet',
         'enable_a': is_get_a,
         'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://www.sportsbet.com.au/betting/soccer/australia/australian-a-league/ev_type_markets.html',  # noqa
-        'liga_url': 'https://www.sportsbet.com.au/betting/soccer/spain/spanish-la-liga',
+        'arg_url': 'https://www.sportsbet.com.au/betting/soccer/americas/argentinian-primera-division',  # noqa
         'eng_url': 'https://www.sportsbet.com.au/betting/soccer/united-kingdom/english-premier-league',  # noqa
+        'ita_url': 'https://www.sportsbet.com.au/betting/soccer/italy/italian-serie-a',
+        'liga_url': 'https://www.sportsbet.com.au/betting/soccer/spain/spanish-la-liga',
         'fetch': fetch_sports,
         'use_request': True,
     }
@@ -650,12 +735,14 @@ def main():
     tab = {
         'name': 'tab',
         'enable_a': is_get_a,
-        'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
+        'enable_arg': False,  # none
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://www.tab.com.au/sports/betting/Soccer/competitions/A%20League',
-        'liga_url': 'https://www.tab.com.au/sports/betting/Soccer/competitions/Spanish%20Primera%20Division',  # noqa
         'eng_url': 'https://www.tab.com.au/sports/betting/Soccer/competitions/English%20Premier%20League',  # noqa
+        'ita_url': 'https://www.tab.com.au/sports/betting/Soccer/competitions/Italian%20Serie%20A',
+        'liga_url': 'https://www.tab.com.au/sports/betting/Soccer/competitions/Spanish%20Primera%20Division',  # noqa
         'fetch': fetch_tab,
         'use_request': False,
     }
@@ -663,12 +750,14 @@ def main():
     topbetta = {
         'name': 'topbetta',
         'enable_a': is_get_a,
-        'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
+        'enable_arg': False,  # none
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://www.topbetta.com.au/sports/football/hyundai-a-league-regular-season-151825',  # noqa
-        'liga_url': 'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-season-151365',  # noqa
         'eng_url': 'https://www.topbetta.com.au/sports/football/england-premier-league-season-146759',  # noqa
+        'ita_url': 'https://www.topbetta.com.au/sports/football/serie-a-tim-round-14-153149',
+        'liga_url': 'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-season-151365',  # noqa
         'fetch': fetch_topbetta,
         'use_request': False,
     }
@@ -677,11 +766,14 @@ def main():
         'name': 'ubet',
         'enable_a': is_get_a,
         'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://ubet.com/sports/soccer/australia-a-league/a-league-matches',
-        'liga_url': 'https://ubet.com/sports/soccer/spain-la-liga',
+        'arg_url': 'https://ubet.com/sports/soccer/argentina-primera-division/arg-primera-matches',
         'eng_url': 'https://ubet.com/sports/soccer/england-premier-league/premier-league-matches',
+        'ita_url': 'https://ubet.com/sports/soccer/italy-serie-a',
+        'liga_url': 'https://ubet.com/sports/soccer/spain-la-liga',
         'fetch': fetch_ubet,
         'use_request': False,
     }
@@ -689,12 +781,13 @@ def main():
     unibet = {
         'name': 'unibet',
         'enable_a': is_get_a,
-        'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
+        'enable_arg': False,  # none
         'enable_eng': is_get_eng,
+        'enable_ita': False,  # none
+        'enable_liga': is_get_liga,
         'a_url': 'https://www.unibet.com.au/betting#filter/football/australia/a-league',
-        'liga_url': 'https://www.unibet.com.au/betting#filter/football/spain/laliga',
         'eng_url': 'https://www.unibet.com.au/betting#filter/football/england/premier_league',
+        'liga_url': 'https://www.unibet.com.au/betting#filter/football/spain/laliga',
         'fetch': fetch_unibet,
         'use_request': False,
     }
@@ -703,11 +796,14 @@ def main():
         'name': 'williamhill',
         'enable_a': is_get_a,
         'enable_arg': is_get_arg,
-        'enable_liga': is_get_liga,
         'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
         'a_url': 'https://www.williamhill.com.au/sports/soccer/australia/a-league-matches',
-        'liga_url': 'https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
+        'arg_url': 'https://www.williamhill.com.au/sports/soccer/americas/argentine-primera-division-matches',  # noqa
         'eng_url': 'https://www.williamhill.com.au/sports/soccer/british-irish/english-premier-league-matches',  # noqa
+        'ita_url': 'https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches',  # noqa
+        'liga_url': 'https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
         'fetch': fetch_william,
         'use_request': False,
     }
@@ -736,19 +832,23 @@ def main():
             websites.append(website_map[site])
 
     def set_pickles(league_prefix):
-        return [league_prefix+'_' + w['name'] + '.pkl' for w in websites] \
-                if args['--all'] or args['--'+league_prefix] else []
+        return [league_prefix+'_' + w['name'] + '.pkl'
+                for w in websites if w['enable_'+league_prefix]] \
+            if args['--'+league_prefix] else []
     pickles_a = set_pickles('a')
-    pickles_arg = []  #TODO set_pickles('arg')
+    pickles_arg = set_pickles('arg')
     pickles_eng = set_pickles('eng')
+    pickles_ita = set_pickles('ita')
     pickles_liga = set_pickles('liga')
-    ms = Matches(pickles_a, pickles_arg, pickles_eng, pickles_liga)
+    ms = Matches(pickles_a, pickles_arg, pickles_eng, pickles_ita, pickles_liga)
 
     if is_get_data:
         for w in websites:
             fetch_and_save_to_pickle(w)
 
-    ms.merge_and_print()
+    if not args['--get-only']:
+        ms.merge_and_print()
+
     #ms.print_each_match()
 
     if driver is not None:
