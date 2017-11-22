@@ -1,21 +1,14 @@
 """
 TODO
+gce starts every
+
 add germany
 add france
 HOME: do betstar
 
-add every hour
 
 check bluebet
 add neds.com.au (not easy to get by css)
-
-    base_url = 'https://www.odds.com.au/'
-    url_spain = base_url + 'soccer/spanish-la-liga/'
-    url_italy = base_url + 'soccer/italian-serie-a/'
-    url_germany = base_url + 'soccer/bundesliga/'
-    url_aus = base_url + 'soccer/a-league/'
-    url_eng = base_url + 'soccer/english-premier-league/'
-
 """
 
 import re
