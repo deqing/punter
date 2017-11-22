@@ -4,10 +4,8 @@ add germany
 add france
 HOME: do betstar
 
-add send email after run
 add every hour
 
-if mailgun works, apply another account with google partner
 check bluebet
 add neds.com.au (not easy to get by css)
 
@@ -48,10 +46,15 @@ class WriteToHtmlFile:
         self.title = ''
 
     def write_line(self, line):
-        self.file.write('<div style=\'font-family: "Courier New", Courier, monospace\'>' + line + '</div>\n')  # noqa
+        self.file.write(line + '\n')
+
+    def write_line_in_table(self, line):
+        #self.file.write('<div style=\'font-family: "Courier New", Courier, monospace\'>' + line + '</div>\n')  # noqa
+        self.file.write('<tr><td>' + line.replace('\t', '</td><td>') + '</td></tr>\n')  # noqa
 
     def write_highlight_line(self, line):
-        self.file.write('<div style=\'font-family: "Courier New", Courier, monospace; background-color:yellow;\'>' + line + '</div>\n')  # noqa
+        #self.file.write('<div style=\'font-family: "Courier New", Courier, monospace; background-color:yellow;\'>' + line + '</div>\n')  # noqa
+        self.file.write('<tr><td><div style=\'background-color:yellow;\'>' + line.replace('\t', '</td><td>') + '</div></td></tr>\n')  # noqa
         self.title += line.split()[0] + ' '
 
     def close(self):
@@ -105,7 +108,7 @@ class Match:
             html_file.write_highlight_line(msg)
         else:
             print(msg)
-            html_file.write_line(msg)
+            html_file.write_line_in_table(msg)
 
     def calculate_best_shot(self):
         if '' in self.odds:
@@ -300,42 +303,55 @@ class Matches:
                         ))
 
     def merge_and_print(self):
+        empty_count = 0
         for pickles, keys, league_map, league_name in \
                 ((self.pickles_a, self.a_league_keys, self.a_league_map, 'Australia League'),
                  (self.pickles_arg, self.arg_keys, self.arg_map, 'Argentina Superliga'),
                  (self.pickles_eng, self.eng_keys, self.eng_map, 'English Premier League'),
                  (self.pickles_ita, self.ita_keys, self.ita_map, 'Italian Serie A'),
                  (self.pickles_liga, self.la_liga_keys, self.la_liga_map, 'Spanish La Liga'),):
+            empty_names = ''
             matches = {}  # hometeam and awayteam = map's key
             for p_name in pickles:
                 with open(os.path.join(gettempdir(), p_name), 'rb') as pkl:
                     pickle_matches = pickle.load(pkl)
-                    for pm in pickle_matches:
-                        key = self.get_id(pm.home_team, keys, league_name) + \
-                              self.get_id(pm.away_team, keys, league_name)
-                        if key not in matches.keys():
-                            m = Match()
-                            m.__dict__.update(pm.__dict__)
-                            m.odds = list(m.odds)
-                            m.home_team = league_map[self.get_id(pm.home_team, keys, league_name)]
-                            m.away_team = league_map[self.get_id(pm.away_team, keys, league_name)]
-                            matches[key] = m
-                        else:
-                            m = matches[key]
-                            for i in range(3):
-                                if pm.odds[i] > m.odds[i]:
-                                    m.odds[i] = pm.odds[i]
-                                    m.agents[i] = pm.agents[i]
-                                elif pm.odds[i] == m.odds[i]:
-                                    m.has_other_agents = True
-                                    m.other_agents[i].append(pm.agents[i].strip())
-
+                    if len(pickle_matches) is 0:
+                        empty_names += p_name.split('_')[1].split('.')[0] + ' '
+                        empty_count += 1
+                    else:
+                        for pm in pickle_matches:
+                            key = self.get_id(pm.home_team, keys, league_name) + \
+                                  self.get_id(pm.away_team, keys, league_name)
+                            if key not in matches.keys():
+                                m = Match()
+                                m.__dict__.update(pm.__dict__)
+                                m.odds = list(m.odds)
+                                m.home_team = league_map[self.get_id(pm.home_team, keys, league_name)]
+                                m.away_team = league_map[self.get_id(pm.away_team, keys, league_name)]
+                                matches[key] = m
+                            else:
+                                m = matches[key]
+                                for i in range(3):
+                                    if pm.odds[i] > m.odds[i]:
+                                        m.odds[i] = pm.odds[i]
+                                        m.agents[i] = pm.agents[i]
+                                    elif pm.odds[i] == m.odds[i]:
+                                        m.has_other_agents = True
+                                        m.other_agents[i].append(pm.agents[i].strip())
             matches = sorted(matches.values())
             if len(matches) is not 0:
-                print('--- From', len(pickles), 'pickles -----')
-            for m in matches:
-                m.calculate_best_shot()
-                m.display()
+                output = '--- {} ---'.format(league_name)
+                empty_str = '({} pickles, empty: [{}])'.format(len(pickles), empty_names.rstrip())
+                print(output + empty_str)
+                html_file.write_line('<b>' + output + '</b>' + empty_str)
+                html_file.write_line('<table>')
+                for m in matches:
+                    m.calculate_best_shot()
+                    m.display()
+                html_file.write_line('</table>')
+
+        with open('output_empty_pickles.txt', 'w') as empty_count_file:
+            empty_count_file.write('({} empty pickles)'.format(empty_count))
 
 
 def main():
@@ -391,16 +407,19 @@ def main():
                 print(filename, 'saved.')
 
     def send_email_by_restful_api():
-        with open('api.key', 'r') as apifile:
-            apikey = apifile.read()
-            with open('output.html', 'r') as file:
-                requests.post(
-                    "https://api.mailgun.net/v3/sandbox2923860546b04b2cbbc985925f26535f.mailgun.org/messages",  # noqa
-                    auth=("api", apikey),
-                    data={"from": "Mailgun Sandbox <postmaster@sandbox2923860546b04b2cbbc985925f26535f.mailgun.org>",  # noqa
-                          "to": "Deqing Huang <khingblue@gmail.com>",
-                          "subject": "GCE",
-                          'html': file.read()})
+        with open('api.key', 'r') as apifile, \
+                open('output.html', 'r') as file, \
+                open('output_title.txt', 'r') as title_file, \
+                open('output_empty_pickles.txt', 'r') as empty_pickles_file:
+            api_key = apifile.read()
+            requests.post(
+                "https://api.mailgun.net/v3/sandbox2923860546b04b2cbbc985925f26535f.mailgun.org/messages",  # noqa
+                auth=("api", api_key),
+                data={
+                    "from": "Mailgun Sandbox <postmaster@sandbox2923860546b04b2cbbc985925f26535f.mailgun.org>",  # noqa
+                    "to": "Deqing Huang <khingblue@gmail.com>",
+                    "subject": title_file.read() + ' ' + empty_pickles_file.read(),
+                    'html': file.read()})
 
     def send_email_by_smtp():
         with open('login.name', 'r') as login_name_file, \
