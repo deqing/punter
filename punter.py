@@ -45,16 +45,23 @@ class WriteToHtmlFile:
     def __init__(self):
         self.file = open('output.html', 'w')
         self.file.write('<html>\n')
+        self.title = ''
 
     def write_line(self, line):
         self.file.write('<div style=\'font-family: "Courier New", Courier, monospace\'>' + line + '</div>\n')  # noqa
 
     def write_highlight_line(self, line):
         self.file.write('<div style=\'font-family: "Courier New", Courier, monospace; background-color:yellow;\'>' + line + '</div>\n')  # noqa
+        self.title += line.split()[0] + ' '
 
     def close(self):
         self.file.write('</html>')
         self.file.close()
+        with open('output_title.txt', 'w') as title_file:
+            if len(self.title) is 0:
+                title_file.write('None')
+            else:
+                title_file.write('!'*self.title.count(' ') + ' - ' + self.title)
 
 
 html_file = WriteToHtmlFile()
@@ -348,7 +355,7 @@ def main():
       --print-only        Don't get latest odds, just print out based on saved odds
       --recalculate       Don't get latest odds, just print out based on saved all odds
       --send-email-api    Send email by MailGun's restful api
-      --send-email-smtp   Send email by SMTP (e.g. from GCE)
+      --send-email-smtp   Send email by SMTP (note: not working in GCE)
 
     Example:
       punter.py luxbet,crownbet --a
