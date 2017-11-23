@@ -1,5 +1,15 @@
 """
 TODO
+send email if has >100 on PC
+stop 15min and do again - when use Telstra Air
+odds-api.py
+    a-league odds
+    go though all odds to see which is highest
+    more accounts?
+
+AU ONLY all failed
+    crownbet: local yes, but not in GCE (they say it's robot)
+
 gce starts every
 
 add germany
@@ -42,11 +52,9 @@ class WriteToHtmlFile:
         self.file.write(line + '\n')
 
     def write_line_in_table(self, line):
-        #self.file.write('<div style=\'font-family: "Courier New", Courier, monospace\'>' + line + '</div>\n')  # noqa
         self.file.write('<tr><td>' + line.replace('\t', '</td><td>') + '</td></tr>\n')  # noqa
 
     def write_highlight_line(self, line):
-        #self.file.write('<div style=\'font-family: "Courier New", Courier, monospace; background-color:yellow;\'>' + line + '</div>\n')  # noqa
         self.file.write('<tr><td><div style=\'background-color:yellow;\'>' + line.replace('\t', '</td><td>') + '</div></td></tr>\n')  # noqa
         self.title += line.split()[0] + ' '
 
@@ -279,8 +287,9 @@ class Matches:
         for name in keys:
             if name in converted_name:
                 return name
-        raise ValueError('{}[{}] is not found in the map of {}!'.format(
+        print('WARNING: {}[{}] is not found in the map of {}!'.format(
             team_name, converted_name, league_name))
+        return None
 
     def print_each_match(self):
         for pickles in self.pickles_a, self.pickles_arg, self.pickles_eng, self.pickles_liga:
@@ -313,8 +322,11 @@ class Matches:
                         empty_count += 1
                     else:
                         for pm in pickle_matches:
-                            key = self.get_id(pm.home_team, keys, league_name) + \
-                                  self.get_id(pm.away_team, keys, league_name)
+                            id1 = self.get_id(pm.home_team, keys, league_name)
+                            id2 = self.get_id(pm.away_team, keys, league_name)
+                            if id1 is None or id2 is None:
+                                continue
+                            key = id1 + id2
                             if key not in matches.keys():
                                 m = Match()
                                 m.__dict__.update(pm.__dict__)
@@ -365,6 +377,7 @@ def main():
       --recalculate       Don't get latest odds, just print out based on saved all odds
       --send-email-api    Send email by MailGun's restful api
       --send-email-smtp   Send email by SMTP (note: not working in GCE)
+      --send-email-when-found    Send email by api when returns bigger than 100
 
     Example:
       punter.py luxbet,crownbet --a
@@ -404,15 +417,17 @@ def main():
                 open('output.html', 'r') as file, \
                 open('output_title.txt', 'r') as title_file, \
                 open('output_empty_pickles.txt', 'r') as empty_pickles_file:
-            api_key = apifile.read()
+            api_key = apifile.read().rstrip()
+            title = title_file.read() + ' ' + empty_pickles_file.read()
+            content = file.read()
             requests.post(
                 "https://api.mailgun.net/v3/sandbox2923860546b04b2cbbc985925f26535f.mailgun.org/messages",  # noqa
                 auth=("api", api_key),
                 data={
                     "from": "Mailgun Sandbox <postmaster@sandbox2923860546b04b2cbbc985925f26535f.mailgun.org>",  # noqa
                     "to": "Deqing Huang <khingblue@gmail.com>",
-                    "subject": title_file.read() + ' ' + empty_pickles_file.read(),
-                    'html': file.read()})
+                    "subject": title,
+                    'html': content})
 
     def send_email_by_smtp():
         with open('login.name', 'r') as login_name_file, \
@@ -931,6 +946,10 @@ def main():
         send_email_by_restful_api()
     if args['--send-email-smtp']:
         send_email_by_smtp()
+    if args['--send-email-when-found']:
+        with open('output_title.txt', 'r') as title_file:
+            if title_file.read() != 'None':
+                send_email_by_restful_api()
 
 
 if __name__ == "__main__":
