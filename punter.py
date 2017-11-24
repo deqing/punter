@@ -1,21 +1,16 @@
 """
 TODO
-send email if has >100 on PC
-stop 15min and do again - when use Telstra Air
+try out pinnacle
+install pinnacle on gce
+write links to html
+
 odds-api.py
     a-league odds
     go though all odds to see which is highest
     more accounts?
 
-AU ONLY all failed
-    crownbet: local yes, but not in GCE (they say it's robot)
-
-gce starts every
-
 add germany
 add france
-HOME: do betstar
-
 
 check bluebet
 add neds.com.au (not easy to get by css)
@@ -40,6 +35,7 @@ import os
 from docopt import docopt
 import smtplib
 from email.mime.text import MIMEText
+from pinnacle.apiclient import APIClient
 
 
 class WriteToHtmlFile:
@@ -69,6 +65,8 @@ class WriteToHtmlFile:
 
 
 html_file = WriteToHtmlFile()
+with open('pinnacle.pwd', 'r') as pwd_file:
+    pinnacle_pwd = pwd_file.read().rstrip()
 
 
 class Match:
@@ -125,18 +123,22 @@ class Match:
 
         for i in range(100):
             for j in range(100 - i):
-                profit = min_pay(float(self.odds[0]),
-                                 float(self.odds[1]),
-                                 float(self.odds[2]),
-                                 i, j, 100 - i - j)
-                if profit > self.profit:
-                    self.profit = profit
-                    self.perts[0] = i
-                    self.perts[1] = j
-                    self.perts[2] = 100 - i - j
-                    self.earns[0] = round(i*float(self.odds[0]) - 100, 2)
-                    self.earns[1] = round(j*float(self.odds[1]) - 100, 2)
-                    self.earns[2] = round((100-i-j)*float(self.odds[2]) - 100, 2)
+                try:
+                    profit = min_pay(float(self.odds[0]),
+                                     float(self.odds[1]),
+                                     float(self.odds[2]),
+                                     i, j, 100 - i - j)
+                    if profit > self.profit:
+                        self.profit = profit
+                        self.perts[0] = i
+                        self.perts[1] = j
+                        self.perts[2] = 100 - i - j
+                        self.earns[0] = round(i*float(self.odds[0]) - 100, 2)
+                        self.earns[1] = round(j*float(self.odds[1]) - 100, 2)
+                        self.earns[2] = round((100-i-j)*float(self.odds[2]) - 100, 2)
+                except ValueError as e:
+                    print('WARNING: calculate_best_shot() has exception: ' + str(e))
+                    continue
 
 
 class Matches:
@@ -273,16 +275,18 @@ class Matches:
     @staticmethod
     def get_id(team_name, keys, league_name):
         converted_name = ''.join(team_name.lower().split())
-        if 'tico' in converted_name:
-            converted_name = 'atlmadrid'
-        elif 'lacoru' in converted_name:
-            converted_name = 'deportivo'
-        elif 'mancity' == converted_name:
-            converted_name = 'manchestercity'
-        elif 'manutd' == converted_name or 'manunited' == converted_name:
-            converted_name = 'manchesterunited'
-        elif 'cpalace' == converted_name:
-            converted_name = 'crystal'
+        if league_name == 'Spanish La Liga':
+            if 'tico' in converted_name:
+                converted_name = 'atlmadrid'
+            elif 'lacoru' in converted_name:
+                converted_name = 'deportivo'
+        elif league_name == 'English Premier League':
+            if 'mancity' == converted_name:
+                converted_name = 'manchestercity'
+            elif 'manutd' == converted_name or 'manunited' == converted_name:
+                converted_name = 'manchesterunited'
+            elif 'cpalace' == converted_name:
+                converted_name = 'crystal'
 
         for name in keys:
             if name in converted_name:
@@ -326,13 +330,19 @@ class Matches:
                             id2 = self.get_id(pm.away_team, keys, league_name)
                             if id1 is None or id2 is None:
                                 continue
+
+                            # Convert text to float
+                            pm.odds = list(pm.odds)
+                            for i in range(3):
+                                pm.odds[i] = float(pm.odds[i])
+
                             key = id1 + id2
                             if key not in matches.keys():
                                 m = Match()
                                 m.__dict__.update(pm.__dict__)
                                 m.odds = list(m.odds)
-                                m.home_team = league_map[self.get_id(pm.home_team, keys, league_name)]
-                                m.away_team = league_map[self.get_id(pm.away_team, keys, league_name)]
+                                m.home_team = league_map[self.get_id(pm.home_team, keys, league_name)]  # noqa
+                                m.away_team = league_map[self.get_id(pm.away_team, keys, league_name)]  # noqa
                                 matches[key] = m
                             else:
                                 m = matches[key]
@@ -415,10 +425,10 @@ def main():
     def send_email_by_restful_api():
         with open('api.key', 'r') as apifile, \
                 open('output.html', 'r') as file, \
-                open('output_title.txt', 'r') as title_file, \
+                open('output_title.txt', 'r') as t_file, \
                 open('output_empty_pickles.txt', 'r') as empty_pickles_file:
             api_key = apifile.read().rstrip()
-            title = title_file.read() + ' ' + empty_pickles_file.read()
+            title = t_file.read() + ' ' + empty_pickles_file.read()
             content = file.read()
             requests.post(
                 "https://api.mailgun.net/v3/sandbox2923860546b04b2cbbc985925f26535f.mailgun.org/messages",  # noqa
@@ -464,7 +474,9 @@ def main():
                 pkl_name = league + '_' + website['name'] + '.pkl'
                 matches = []
                 try:
-                    if website['use_request']:
+                    if website['name'] == 'pinnacle':
+                        website['fetch'](matches, league)
+                    elif website['use_request']:
                         website['fetch'](matches, website[league+'_url'])
                     else:
                         driver.get(website[league+'_url'])
@@ -579,6 +591,30 @@ def main():
             show_all = show_all[1:]
             m.agents = ['Palmer '] * 3
             matches.append(m)
+
+    def fetch_pinnacle(matches, league):
+        league_map = {'a': 1766, 'arg': 1740, 'eng': 1980, 'ita': 2436, 'liga': 2196}
+
+        api = APIClient('DH1007923', pinnacle_pwd)
+        fixtures = api.market_data.get_fixtures(29, [league_map[league]])
+        odds = api.market_data.get_odds(29, [league_map[league]])
+
+        odds_map = dict()
+        for event in odds['leagues'][0]['events']:
+            odds_map[event['id']] = event
+
+        for event in fixtures['league'][0]['events']:
+            m = Match()
+            if event['liveStatus'] == 2 and event['id'] in odds_map.keys():
+                m.home_team, m.away_team = event['home'], event['away']
+                for period in odds_map[event['id']]['periods']:
+                    if 'moneyline' in period:
+                        m.odds[0] = period['moneyline']['home']
+                        m.odds[1] = period['moneyline']['draw']
+                        m.odds[2] = period['moneyline']['away']
+                        m.agents = ['Pinncle'] * 3
+                        matches.append(m)
+                        break
 
     def fetch_sports(matches, url):
         content = requests.get(url).text.split('\n')
@@ -803,6 +839,16 @@ def main():
         'use_request': False,
     }
 
+    pinnacle = {
+        'name': 'pinnacle',
+        'enable_a': is_get_a,
+        'enable_arg': is_get_arg,
+        'enable_eng': is_get_eng,
+        'enable_ita': is_get_ita,
+        'enable_liga': is_get_liga,
+        'fetch': fetch_pinnacle,
+    }
+
     sportsbet = {
         'name': 'sportsbet',
         'enable_a': is_get_a,
@@ -903,6 +949,7 @@ def main():
         'luxbet': luxbet,
         'madbookie': madbookie,
         'palmerbet': palmerbet,
+        'pinnacle': pinnacle,
         'sportsbet': sportsbet,
         'tab': tab,
         'topbetta': topbetta,
@@ -919,8 +966,8 @@ def main():
             websites.append(website_map[site])
 
     def set_pickles(league_prefix):
-        return [league_prefix+'_' + w['name'] + '.pkl'
-                for w in websites if w['enable_'+league_prefix]] \
+        return [league_prefix+'_' + x['name'] + '.pkl'
+                for x in websites if x['enable_'+league_prefix]] \
             if args['--'+league_prefix] else []
     pickles_a = set_pickles('a')
     pickles_arg = set_pickles('arg')
@@ -936,7 +983,7 @@ def main():
     if not args['--get-only']:
         ms.merge_and_print()
 
-    #ms.print_each_match()
+    # ms.print_each_match()
 
     if driver is not None:
         driver.quit()
