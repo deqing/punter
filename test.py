@@ -3,7 +3,6 @@ from pinnacle.apiclient import APIClient
 with open('pinnacle.pwd', 'r') as pwd_file:
     pwd = pwd_file.read()
 api = APIClient('DH1007923', pwd)
-#api = APIClient('DH1007923', 'dhina9la!')
 leagues = api.reference_data.get_leagues(29)  # 29 is soccer
 
 
