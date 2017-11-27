@@ -48,7 +48,7 @@ import os
 from docopt import docopt
 import smtplib
 from email.mime.text import MIMEText
-from pinnacle.apiclient import APIClient
+#  from pinnacle.apiclient import APIClient  # Not real time
 import signal
 import sys
 
@@ -642,6 +642,26 @@ class Pinnacle(Website):
     def __init__(self, driver, wait):
         super(Pinnacle, self).__init__(driver, wait)
         self.name = 'pinnacle'
+        self.a_url = 'https://www.pinnacle.com/en/odds/match/soccer/australia/australia-a-league'
+        self.arg_url = 'https://www.pinnacle.com/en/odds/match/soccer/argentina/argentina-primera-division'  # noqa
+        self.eng_url = 'https://www.pinnacle.com/en/odds/match/soccer/england/england-premier-league'  # noqa
+        self.ita_url = 'https://www.pinnacle.com/en/odds/match/soccer/italy/italy-serie-a'
+        self.liga_url = 'https://www.pinnacle.com/en/odds/match/soccer/spain/spain-la-liga'
+
+    def fetch(self, matches):
+        blocks = self.get_blocks('tbody.ng-scope')
+        for b in blocks:
+            teams = b.find_elements_by_css_selector('td.game-name.name')
+            odds = b.find_elements_by_css_selector('td.oddTip.game-moneyline')
+            if len(teams) is not 0 and len(odds) is not 0 and odds[0].text is not '':
+                m = Match()
+                m.home_team, m.away_team = teams[0].text, teams[1].text
+                m.odds[0] = odds[0].text
+                m.odds[2] = odds[1].text
+                m.odds[1] = odds[2].text
+                m.agents = ['pinacle'] * 3
+                m.urls = [self.get_href_link()] * 3
+                matches.append(m)
 
 
 class Sportsbet(Website):
@@ -975,7 +995,7 @@ def main():
         'luxbet': luxbet,
         'madbookie': madbookie,
         'palmerbet': palmerbet,
-        #'pinnacle': pinnacle,  TODO
+        'pinnacle': pinnacle,
         'sportsbet': sportsbet,
         'tab': tab,
         'topbetta': topbetta,
