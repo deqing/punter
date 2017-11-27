@@ -52,6 +52,8 @@ from pinnacle.apiclient import APIClient
 import signal
 import sys
 
+HEAD = '<html lang="en">\n'
+
 
 class WriteToHtmlFile:
     def __init__(self):
@@ -59,7 +61,7 @@ class WriteToHtmlFile:
 
     def init(self):
         self.file = open('output.html', 'w')
-        self.file.write('<html lang="en">\n')
+        self.file.write(HEAD)
         self.title = ''
         self.urls = set()
 
@@ -899,7 +901,7 @@ def main():
                 open('output_empty_pickles.txt', 'r') as empty_pickles_file, \
                 open('output_urls.txt', 'r') as urls_file:
             title = t_file.read() + ' ' + empty_pickles_file.read()
-            content = file.read().replace('<html>\n', '<html>\n\n' + urls_file.read() + '\n')
+            content = file.read().replace(HEAD, HEAD+'\n' + urls_file.read() + '\n')
             return title, content
 
     def send_email_by_restful_api():
