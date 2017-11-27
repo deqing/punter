@@ -651,6 +651,8 @@ class Pinnacle(Website):
     def fetch(self, matches):
         blocks = self.get_blocks('tbody.ng-scope')
         for b in blocks:
+            if len(b.text) is 0:
+                continue
             teams = b.find_elements_by_css_selector('td.game-name.name')
             odds = b.find_elements_by_css_selector('td.oddTip.game-moneyline')
             if len(teams) is not 0 and len(odds) is not 0 and odds[0].text is not '':
@@ -983,6 +985,7 @@ def main():
                         time.sleep(2)
                     if hasattr(website, league + '_urls'):
                         setattr(website, league + '_url', url)
+                        print('... will get next url after 10 secs...')
                         time.sleep(10)
                     website.current_league = league
                     website.fetch(matches)
