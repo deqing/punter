@@ -754,10 +754,22 @@ class Topbetta(Website):
         super(Topbetta, self).__init__(driver, wait)
         self.name = 'topbetta'
         self.a_url = 'https://www.topbetta.com.au/sports/football/hyundai-a-league-regular-season-151825'  # noqa
-        # No arg
-        self.eng_url = 'https://www.topbetta.com.au/sports/football/england-premier-league-season-146759'  # noqa
-        self.ita_url = 'https://www.topbetta.com.au/sports/football/serie-a-tim-round-14-153149'
-        self.liga_url = 'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-season-151365'  # noqa
+        # No Argentina
+        self.eng_url = self.ita_url = self.liga_url = ''
+        self.eng_urls = [
+            'https://www.topbetta.com.au/sports/football/england-premier-league-round-14-146763',
+            'https://www.topbetta.com.au/sports/football/england-premier-league-round-15-146765'
+            ]
+        self.ita_urls = [
+            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-14-153149',
+            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-15-153151',
+            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-15-153153',
+            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-16-153155'
+            ]
+        self.liga_urls = [
+            'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-13-151369',  # noqa
+            'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-14-151371',  # noqa
+            ]
 
     def fetch(self, matches):
         blocks = self.get_blocks('div.head-to-head-event')
@@ -959,13 +971,21 @@ def main():
             pkl_name = league + '_' + website.name + '.pkl'
             matches = []
             try:
-                if website.use_request:
-                    website.content = requests.get(getattr(website, league+'_url')).text.split('\n')
-                else:
-                    driver.get(getattr(website, league+'_url'))
-                    time.sleep(2)
-                website.current_league = league
-                website.fetch(matches)
+                urls = [getattr(website, league+'_url')]
+                if hasattr(website, league + '_urls'):  # Currenly only Topbetta has loop
+                    urls = getattr(website, league+'_urls')
+
+                for url in urls:
+                    if website.use_request:
+                        website.content = requests.get(url).text.split('\n')
+                    else:
+                        driver.get(url)
+                        time.sleep(2)
+                    if hasattr(website, league + '_urls'):
+                        setattr(website, league + '_url', url)
+                        time.sleep(10)
+                    website.current_league = league
+                    website.fetch(matches)
                 save_to(matches, pkl_name)
             except Exception as e:
                 logging.exception(e)
