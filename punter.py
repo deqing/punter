@@ -1077,8 +1077,8 @@ def main():
                 driver.quit()
             break
 
-        for minute in range(5):
-            print('Will rescan in {} minute{}...', 5-minute, '' if minute == 1 else 's')
+        for m in range(5):
+            print('Will rescan in {} minute{} ...'.format(5-m, '' if m == 1 else 's'))
             time.sleep(60)
 
 
