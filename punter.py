@@ -668,11 +668,12 @@ class Sportsbet(Website):
     def __init__(self, driver, wait):
         super(Sportsbet, self).__init__(driver, wait)
         self.name = 'sportsbet'
-        self.a_url = 'https://www.sportsbet.com.au/betting/soccer/australia/australian-a-league/ev_type_markets.html'  # noqa
+        self.a_url = 'https://www.sportsbet.com.au/betting/soccer/australia/australian-a-league'
         self.arg_url = 'https://www.sportsbet.com.au/betting/soccer/americas/argentinian-primera-division'  # noqa
         self.eng_url = 'https://www.sportsbet.com.au/betting/soccer/united-kingdom/english-premier-league'  # noqa
         self.ita_url = 'https://www.sportsbet.com.au/betting/soccer/italy/italian-serie-a'
         self.liga_url = 'https://www.sportsbet.com.au/betting/soccer/spain/spanish-la-liga'
+        self.use_request = True
         self.content = []
 
     @staticmethod
@@ -830,11 +831,11 @@ class Williamhill(Website):
     def __init__(self, driver, wait):
         super(Williamhill, self).__init__(driver, wait)
         self.name = 'williamhill'
-        self.a_url = 'https://www.williamhill.com.au/sports/soccer/australia/a-league-matches',
-        self.arg_url = 'https://www.williamhill.com.au/sports/soccer/americas/argentine-primera-division-matches',  # noqa
-        self.eng_url = 'https://www.williamhill.com.au/sports/soccer/british-irish/english-premier-league-matches',  # noqa
-        self.ita_url = 'https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches',  # noqa
-        self.liga_url = 'https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
+        self.a_url = 'https://www.williamhill.com.au/sports/soccer/australia/a-league-matches'
+        self.arg_url = 'https://www.williamhill.com.au/sports/soccer/americas/argentine-primera-division-matches'  # noqa
+        self.eng_url = 'https://www.williamhill.com.au/sports/soccer/british-irish/english-premier-league-matches'  # noqa
+        self.ita_url = 'https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches'
+        self.liga_url = 'https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches'  # noqa
 
     def fetch(self, matches):
         if 'rimera' in self.driver.current_url and \
