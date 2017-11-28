@@ -1,9 +1,6 @@
 """
 TODO
-redo pinnacle (get real time)
-write links to html
-service -> response
-    let aws and google cloud do
+add another two files: cli.py and core.py
 
 -----------
 odds-api.py
@@ -16,18 +13,6 @@ add france
 
 check bluebet
 add neds.com.au (not easy to get by css)
-
-pinnacle:
-a
-https://beta.pinnacle.com/en/Sports/29/Leagues/1766
-arg
-https://beta.pinnacle.com/en/Sports/29/Leagues/1740
-ita
-https://beta.pinnacle.com/en/Sports/29/Leagues/2436
-eng
-https://beta.pinnacle.com/en/Sports/29/Leagues/1980
-liga
-https://beta.pinnacle.com/en/Sports/29/Leagues/2196
 """
 
 import re
@@ -472,7 +457,7 @@ class Bet365(Website):
             m.home_team, m.away_team = names[0].text, names[1].text
             for i in range(3):
                 m.odds[i] = odds[i].text
-            m.agents = ['Bet365'] * 3
+            m.agents = ['Bet365 '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -525,7 +510,7 @@ class Crownbet(Website):
             m = Match()
             m.home_team, m.away_team = values[4], values[8]
             m.odds = values[5], values[7], values[9]
-            m.agents = ['Crown '] * 3
+            m.agents = ['Crown  '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -550,7 +535,7 @@ class Ladbrokes(Website):
             m.home_team, m.odds[0] = info[0].text.split('\n')
             m.away_team, m.odds[2] = info[1].text.split('\n')
             m.odds[1] = info[2].text.split('\n')[1]
-            m.agents = ['ladbrok'] * 3
+            m.agents = ['ladbroke'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -575,7 +560,7 @@ class Luxbet(Website):
             m.odds[0], m.odds[1], m.odds[2] = odds.text.split('\n')
             for i in range(3):
                 m.odds[i] = m.odds[i].strip()
-            m.agents = ['luxbet'] * 3
+            m.agents = ['luxbet '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -605,7 +590,7 @@ class Madbookie(Website):
             m.home_team = ' '.join(home_team_strs)
             m.odds[2] = away_team_strs.pop()
             m.away_team = ' '.join(away_team_strs)
-            m.agents = ['madbook'] * 3
+            m.agents = ['madbook '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -633,7 +618,7 @@ class Palmerbet(Website):
             m.odds = odds[0].text, odds[2].text, odds[1].text
             odds = odds[3:] if len(show_all[0].text) is 0 else odds[5:]
             show_all = show_all[1:]
-            m.agents = ['Palmer '] * 3
+            m.agents = ['palmer '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -716,7 +701,7 @@ class Sportsbet(Website):
             if status == 'in lose span':
                 m.odds[2] = line
                 status = None
-                m.agents = ['Sports'] * 3
+                m.agents = ['sports '] * 3
                 m.urls = [self.get_href_link()] * 3
                 matches.append(m)
                 m = Match()
@@ -746,7 +731,7 @@ class Tab(Website):
             odds = block.find_elements_by_css_selector('div.animate-odd.ng-binding.ng-scope')
             for i in range(3):
                 m.odds[i] = odds[i].text
-            m.agents = ['TAB   '] * 3
+            m.agents = ['TAB    '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -784,7 +769,7 @@ class Topbetta(Website):
             m.odds[0] = odds[0].text
             m.odds[1] = odds[2].text
             m.odds[2] = odds[1].text
-            m.agents = ['Betta '] * 3
+            m.agents = ['TpBetta'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -808,7 +793,7 @@ class Ubet(Website):
             for i in range(3):
                 m.append(odds[i].text.split('\n'))
                 match.odds[i] = m[i][1].replace('LIVE ', '')
-                match.agents[i] = 'UBET  '
+                match.agents[i] = 'UBET   '
                 match.urls[i] = self.get_href_link()
             if 'SUSPENDED' in match.odds[0]:
                 continue
@@ -836,7 +821,7 @@ class Unibet(Website):
             m.home_team, m.away_team = teams[0].text, teams[1].text
             for i in range(3):
                 m.odds[i] = odds[i].text
-            m.agents = ['Unibet'] * 3
+            m.agents = ['Unibet '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -863,7 +848,7 @@ class Williamhill(Website):
             m.home_team, m.away_team = names[0].text, names[2].text
             for i in range(3):
                 m.odds[i] = odds[i].text
-            m.agents = ['Wiliam'] * 3
+            m.agents = ['William'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
