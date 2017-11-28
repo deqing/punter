@@ -1078,7 +1078,7 @@ def main():
             break
 
         for m in range(5):
-            print('Will rescan in {} minute{} ...'.format(5-m, '' if m == 1 else 's'))
+            print('Will rescan in {} minute{} ...'.format(5-m, '' if m == 4 else 's'))
             time.sleep(60)
 
 
