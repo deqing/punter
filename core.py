@@ -32,7 +32,6 @@ from tempfile import gettempdir
 import os
 import smtplib
 from email.mime.text import MIMEText
-import signal
 import sys
 
 HEAD = '<html lang="en">\n'
@@ -868,18 +867,18 @@ class WebWorker:
             self.wait = WebDriverWait(self.driver, 10)
         self.is_get_data = is_get_data
 
-    def run(self
-            , websites
-            , is_get_a=False
-            , is_get_arg=False
-            , is_get_eng=False
-            , is_get_ita=False
-            , is_get_liga=False
-            , is_get_only=False
-            , is_send_email_api=False
-            , is_send_email_smtp=False
-            , is_send_email_when_found=False
-            , is_loop=False
+    def run(self,
+            websites,
+            is_get_a=False,
+            is_get_arg=False,
+            is_get_eng=False,
+            is_get_ita=False,
+            is_get_liga=False,
+            is_get_only=False,
+            is_send_email_api=False,
+            is_send_email_smtp=False,
+            is_send_email_when_found=False,
+            is_loop=False,
             ):
         def save_to(obj, filename):
             file = os.path.join(gettempdir(), filename)
@@ -959,7 +958,8 @@ class WebWorker:
         websites = []
         website_map = {}
         for w in websites_str.split(','):
-            o = globals()[w.title()](self.driver, self.wait)  # e.g. when w is 'tab': o = Tab(driver, wait)
+            # e.g. when w is 'tab': o = Tab(driver, wait)
+            o = globals()[w.title()](self.driver, self.wait)
             websites.append(o)
             website_map[w] = o
 
