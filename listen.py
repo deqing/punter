@@ -23,5 +23,5 @@ def reply():
 
     pkl_name = league + '_' + website + '.pkl'
     with open(os.path.join(gettempdir(), pkl_name), 'rb') as pkl:
-        match = pickle.load(pkl)
-        return jsonify(match=match.serialize())
+        matches = pickle.load(pkl)
+        return jsonify(matches=[m.serialize() for m in matches])

@@ -170,7 +170,7 @@ class Match:
                     continue
 
 
-class Matches:
+class MatchMerger:
     def __init__(self,
                  pickles_a,
                  pickles_arg,
@@ -982,7 +982,7 @@ class WebWorker:
         pickles_eng = set_pickles('eng') if is_get_eng else []
         pickles_ita = set_pickles('ita') if is_get_ita else []
         pickles_liga = set_pickles('liga') if is_get_liga else []
-        ms = Matches(pickles_a, pickles_arg, pickles_eng, pickles_ita, pickles_liga)
+        match_merger = MatchMerger(pickles_a, pickles_arg, pickles_eng, pickles_ita, pickles_liga)
 
         html_file = WriteToHtmlFile()
         while True:
@@ -993,7 +993,7 @@ class WebWorker:
                             fetch_and_save_to_pickle(w, l)
                     if not is_get_only:
                         html_file.init()
-                        ms.merge_and_print(leagues=[l])
+                        match_merger.merge_and_print(leagues=[l])
                         html_file.close()
                         if is_send_email_smtp:
                             send_email_by_smtp()
