@@ -770,11 +770,9 @@ class Topbetta(Website):
         # No Argentina
         self.eng_url = self.ita_url = self.liga_url = ' '
         self.eng_urls = [
-            'https://www.topbetta.com.au/sports/football/england-premier-league-round-14-146763',
-            'https://www.topbetta.com.au/sports/football/england-premier-league-round-15-146765'
+            'https://www.topbetta.com.au/sports/football/england-premier-league-round-15-146765',
             ]
         self.ita_urls = [
-            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-3-151913',
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-15-153151',
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-15-153153',
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-16-153155',
