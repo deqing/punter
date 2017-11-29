@@ -25,3 +25,8 @@ def reply():
     with open(os.path.join(gettempdir(), pkl_name), 'rb') as pkl:
         matches = pickle.load(pkl)
         return jsonify(matches=[m.serialize() for m in matches])
+
+
+@app.route('/please_tell_me_if_you_are_up')
+def ping():
+    return 'yes'

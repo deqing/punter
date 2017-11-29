@@ -41,7 +41,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     args = docopt(str(main.__doc__))
-    worker = WebWorker(is_get_data=not args['--print'])
+    worker = WebWorker(is_get_data=not args['--print'], keep_driver_alive=False)
     worker.run(
         websites=args['<websites>'],
         is_get_a=args['--a'],
