@@ -743,19 +743,19 @@ class Topbetta(Website):
         self.name = 'topbetta'
         self.a_url = 'https://www.topbetta.com.au/sports/football/hyundai-a-league-regular-season-151825'  # noqa
         # No Argentina
-        self.eng_url = self.ita_url = self.liga_url = ''
+        self.eng_url = self.ita_url = self.liga_url = ' '
         self.eng_urls = [
             'https://www.topbetta.com.au/sports/football/england-premier-league-round-14-146763',
             'https://www.topbetta.com.au/sports/football/england-premier-league-round-15-146765'
             ]
         self.ita_urls = [
-            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-14-153149',
+            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-3-151913',
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-15-153151',
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-15-153153',
-            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-16-153155'
+            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-16-153155',
+            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-17-153157',
             ]
         self.liga_urls = [
-            'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-13-151369',  # noqa
             'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-14-151371',  # noqa
             ]
 
@@ -876,7 +876,7 @@ class WebWorker:
             is_send_email_api=False,
             is_send_email_smtp=False,
             is_send_email_when_found=False,
-            is_loop=False,
+            loop_minutes=0,
             ):
         def save_to(obj, filename):
             file = os.path.join(gettempdir(), filename)
@@ -991,11 +991,11 @@ class WebWorker:
                                 if title_file.read() != 'None':
                                     send_email_by_api()
 
-            if not is_loop:
+            if is_get_only or loop_minutes is False:
                 if self.driver:
                     self.driver.quit()
                 break
 
-            for m in range(5):
+            for m in range(loop_minutes):
                 print('Will rescan in {} minute{} ...'.format(5-m, '' if m == 4 else 's'))
                 time.sleep(60)
