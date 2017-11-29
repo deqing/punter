@@ -51,7 +51,7 @@ def main():
         is_send_email_api=args['--send-email-api'],
         is_send_email_smtp=args['--send-email-smtp'],
         is_send_email_when_found=args['--send-email-when-found'],
-        loop_minutes=args['--loop'],
+        loop_minutes=int(args['--loop']),
     )
 
 
