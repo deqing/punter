@@ -997,5 +997,6 @@ class WebWorker:
                 break
 
             for m in range(loop_minutes):
-                print('Will rescan in {} minute{} ...'.format(5-m, '' if m == 4 else 's'))
+                print('Will rescan in {} minute{} ...'.format(
+                    loop_minutes-m, '' if loop_minutes-m == 1 else 's'))
                 time.sleep(60)
