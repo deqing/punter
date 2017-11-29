@@ -142,7 +142,7 @@ class Match:
         if self.has_other_agents:
             msg += '\t(' + '|'.join([','.join(x) for x in self.other_agents]) + ')'
 
-        if float(self.profit) > 99.5:
+        if float(self.profit) > 99.9:
             self.color_print(msg, background='yellow')
             html_file.write_highlight_line(msg, self.urls)
         else:
@@ -1022,7 +1022,7 @@ class WebWorker:
                             fetch_and_save_to_pickle(w, l)
                     if not is_get_only:
                         html_file.init()
-                        match_merger.merge_and_print(leagues=[l])
+                        match_merger.merge_and_print(leagues=[l], html_file=html_file)
                         html_file.close()
                         if is_send_email_smtp:
                             send_email_by_smtp()
