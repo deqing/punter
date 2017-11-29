@@ -7,7 +7,7 @@ from flask import request
 from worker import WebWorker
 
 app = Flask(__name__)
-worker = WebWorker(is_get_data=True)
+worker = WebWorker(is_get_data=True, keep_driver_alive=True)
 
 
 @app.route('/please_tell_me_what_is_the_odds_of_this_website')

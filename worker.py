@@ -100,6 +100,7 @@ class Match:
     def __lt__(self, other):
         return self.home_team < other.home_team
 
+    # To avoid complexity, only supports one website now - no other agents
     def serialize(self):
         return {
             'profit': self.profit,
@@ -109,10 +110,20 @@ class Match:
             'agents': self.agents,
             'perts': self.perts,
             'earns': self.earns,
-            'other_agents': self.other_agents,
             'urls': self.urls,
-            'has_other_agents': self.has_other_agents,
         }
+
+    # To avoid complexity, only supports one website now - no other agents
+    def init_with_json(self, json_):
+        self.profit = json_['profit']
+        self.home_team = json_['home_team']
+        self.away_team = json_['away_team']
+        for i in range(3):
+            self.odds[i] = json_['odds'][i]
+            self.agents[i] = json_['agents'][i]
+            self.perts[i] = json_['perts'][i]
+            self.earns[i] = json_['earns'][i]
+            self.urls[i] = json_['urls'][i]
 
     @staticmethod
     def color_print(msg, foreground="black", background="white"):
@@ -432,6 +443,7 @@ class Website:
         self.liga_url = False
         self.name = ''
         self.current_league = ''
+        self.ask_gce = False
 
     def get_blocks(self, css_string):
         try:
@@ -868,7 +880,7 @@ class Williamhill(Website):
 
 
 class WebWorker:
-    def __init__(self, is_get_data):
+    def __init__(self, is_get_data, keep_driver_alive):
         self.driver, self.wait = False, False
         if is_get_data:
             chrome_options = Options()
@@ -877,6 +889,7 @@ class WebWorker:
             self.driver.implicitly_wait(10)
             self.wait = WebDriverWait(self.driver, 10)
         self.is_get_data = is_get_data
+        self.keep_driver_alive = keep_driver_alive
 
     def run(self,
             websites,
@@ -890,6 +903,7 @@ class WebWorker:
             is_send_email_smtp=False,
             is_send_email_when_found=False,
             loop_minutes=0,
+            ask_gce=None,
             ):
         def save_to(obj, filename):
             file = os.path.join(gettempdir(), filename)
@@ -942,22 +956,32 @@ class WebWorker:
             pkl_name = league + '_' + website.name + '.pkl'
             matches = []
             try:
-                urls = [getattr(website, league + '_url')]
-                if hasattr(website, league + '_urls'):  # Currently only Topbetta has loop
-                    urls = getattr(website, league + '_urls')
+                if website.ask_gce:
+                    matches_json = requests.get(
+                        'http://35.199.154.184:5000/please_tell_me_what_is_the_odds_of_this_website',  # noqa
+                        params={'league': league,
+                                'website': website.name}).json()['matches']
+                    for m_json in matches_json:
+                        match = Match()
+                        match.init_with_json(m_json)
+                        matches.append(match)
+                else:
+                    urls = [getattr(website, league + '_url')]
+                    if hasattr(website, league + '_urls'):  # Currently only Topbetta has loop
+                        urls = getattr(website, league + '_urls')
 
-                for url in urls:
-                    if website.use_request:
-                        website.content = requests.get(url).text.split('\n')
-                    else:
-                        self.driver.get(url)
-                        time.sleep(2)
-                    if hasattr(website, league + '_urls'):
-                        setattr(website, league + '_url', url)
-                        print('... will get next url after 10 secs...')
-                        time.sleep(10)
-                    website.current_league = league
-                    website.fetch(matches)
+                    for url in urls:
+                        if website.use_request:
+                            website.content = requests.get(url).text.split('\n')
+                        else:
+                            self.driver.get(url)
+                            time.sleep(2)
+                        if hasattr(website, league + '_urls'):
+                            setattr(website, league + '_url', url)
+                            print('... will get next url after 10 secs...')
+                            time.sleep(10)
+                        website.current_league = league
+                        website.fetch(matches)
                 save_to(matches, pkl_name)
             except Exception as e:
                 logging.exception(e)
@@ -973,6 +997,10 @@ class WebWorker:
             o = globals()[w.title()](self.driver, self.wait)
             websites.append(o)
             website_map[w] = o
+
+        if ask_gce is not None:
+            for w in ask_gce.split(','):
+                website_map[w].ask_gce = True
 
         def set_pickles(league):
             return [league + '_' + w_.name + '.pkl'
@@ -1005,7 +1033,7 @@ class WebWorker:
                                     send_email_by_api()
 
             if is_get_only or loop_minutes is 0:
-                if self.driver:
+                if self.driver and not self.keep_driver_alive:
                     self.driver.quit()
                 break
 
