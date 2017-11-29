@@ -89,7 +89,6 @@ class Match:
         self.profit = 0
         self.home_team = ''
         self.away_team = ''
-        self.time = ''
         self.odds = ['', '', '']
         self.agents = ['', '', '']
         self.perts = ['', '', '']
@@ -100,6 +99,20 @@ class Match:
 
     def __lt__(self, other):
         return self.home_team < other.home_team
+
+    def serialize(self):
+        return {
+            'profit': self.profit,
+            'home_team': self.home_team,
+            'away_team': self.away_team,
+            'odds': self.odds,
+            'agents': self.agents,
+            'perts': self.perts,
+            'earns': self.earns,
+            'other_agents': self.other_agents,
+            'urls': self.urls,
+            'has_other_agents': self.has_other_agents,
+        }
 
     @staticmethod
     def color_print(msg, foreground="black", background="white"):
@@ -114,7 +127,7 @@ class Match:
             self.odds[0], self.agents[0], self.perts[0], self.earns[0],
             self.odds[1], self.agents[1], self.perts[1], self.earns[1],
             self.odds[2], self.agents[2], self.perts[2], self.earns[2],
-            self.home_team, self.away_team)  # , self.time)
+            self.home_team, self.away_team)
         if self.has_other_agents:
             msg += '\t(' + '|'.join([','.join(x) for x in self.other_agents]) + ')'
 
@@ -991,7 +1004,7 @@ class WebWorker:
                                 if title_file.read() != 'None':
                                     send_email_by_api()
 
-            if is_get_only or loop_minutes is False:
+            if is_get_only or loop_minutes is 0:
                 if self.driver:
                     self.driver.quit()
                 break
