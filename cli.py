@@ -23,7 +23,7 @@ def main():
       --send-email-api    Send email by MailGun's restful api
       --send-email-smtp   Send email by SMTP (note: not working in GCE)
       --send-email-when-found    Send email by api when returns bigger than 99.5
-      --loop              Repeat every x mins
+      --loop=<n>          Repeat every n minutes [default: 0]
 
     Example:
       cli.py luxbet,crownbet --a
