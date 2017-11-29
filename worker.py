@@ -904,6 +904,7 @@ class WebWorker:
             is_send_email_when_found=False,
             loop_minutes=0,
             ask_gce=None,
+            gce_ip=None,
             ):
         def save_to(obj, filename):
             file = os.path.join(gettempdir(), filename)
@@ -958,7 +959,7 @@ class WebWorker:
             try:
                 if website.ask_gce:
                     matches_json = requests.get(
-                        'http://35.199.154.184:5000/please_tell_me_what_is_the_odds_of_this_website',  # noqa
+                        'http://{}:5000/please_tell_me_what_is_the_odds_of_this_website'.format(gce_ip),  # noqa
                         params={'league': league,
                                 'website': website.name}).json()['matches']
                     for m_json in matches_json:

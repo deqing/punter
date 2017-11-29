@@ -25,6 +25,7 @@ def main():
       --send-email-when-found   Send email by api when returns bigger than 99.5
       --loop=<n>                Repeat every n minutes [default: 0]
       --ask-gce=<websites>      Read from GCE for these websites
+      --gce-ip=<ip>             GCE instance IP
 
     Example:
       cli.py luxbet,crownbet --a
@@ -55,6 +56,7 @@ def main():
         is_send_email_when_found=args['--send-email-when-found'],
         loop_minutes=int(args['--loop']),
         ask_gce=args['--ask-gce'],
+        gce_ip=args['--gce-ip'],
     )
 
 
