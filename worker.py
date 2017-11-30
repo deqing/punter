@@ -31,6 +31,7 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 import sys
+from datetime import datetime
 
 HEAD = '<html lang="en">\n'
 
@@ -353,7 +354,7 @@ class MatchMerger:
                             pm.odds[0], pm.odds[1], pm.odds[2]
                         ))
 
-    def merge_and_print(self, leagues=('a', 'arg', 'eng', 'ita', 'liga'), html_file=WriteToHtmlFileDummy()):  # noqa
+    def merge_and_print(self, leagues, html_file):
         def odds_to_float(match):
             # Convert text to float
             match.odds = list(match.odds)
@@ -1013,8 +1014,10 @@ class WebWorker:
 
         html_file = WriteToHtmlFile()
         while True:
+            whole_start_time = datetime.now()
             for l in 'a', 'arg', 'eng', 'ita', 'liga':
                 if eval('is_get_' + l):
+                    league_start_time = datetime.now()
                     for w in websites:
                         if self.is_get_data and getattr(w, l+'_url'):
                             fetch_and_save_to_pickle(w, l)
@@ -1030,6 +1033,8 @@ class WebWorker:
                             with open('output_title.txt', 'r') as title_file:
                                 if title_file.read() != 'None':
                                     send_email_by_api()
+                    print('League [{}] scan time: {}'.format(l, datetime.now()-league_start_time))
+            print('Whole scan time: {}'.format(datetime.now()-whole_start_time))
 
             if is_get_only or loop_minutes is 0:
                 if self.driver and not self.keep_driver_alive:
