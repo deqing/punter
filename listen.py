@@ -30,3 +30,7 @@ def reply():
 @app.route('/please_tell_me_if_you_are_up')
 def ping():
     return 'yes'
+
+
+if __name__ == '__main__':
+    app.run(debug=False, host='0.0.0.0')
