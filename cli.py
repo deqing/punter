@@ -1,8 +1,32 @@
 import signal
 import sys
+import os
+from tempfile import gettempdir
 from docopt import docopt
-
 from worker import WebWorker
+import logging
+from logging.handlers import RotatingFileHandler
+
+
+def log_init():
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # Set up logging to file
+    log_file_name = os.path.join(gettempdir(), 'worker.log')
+    handler = RotatingFileHandler(log_file_name, 'a', 2000, 5)
+    formatter = logging.Formatter(fmt='[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    # Set up logging to console
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    logger.info('Log file: ' + log_file_name)
 
 
 def main():
@@ -32,6 +56,7 @@ def main():
       cli.py all --eng
       cli.py bet365,ubet --eng --ask-gce=bet365 --loop=10
     """
+    log_init()
     worker = False
 
     def signal_handler(_, __):

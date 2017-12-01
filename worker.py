@@ -1,6 +1,16 @@
 """
 TODO
 
+restarting aws:
+https://aws.amazon.com/premiumsupport/knowledge-center/start-stop-lambda-cloudwatch/
+http://boto3.readthedocs.io/en/latest/reference/services/ec2.html?highlight=start_instances#EC2.Client.reboot_instances
+
+add log to file:
+https://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
+
+cronjob (when python able to write to file)
+https://www.taniarascia.com/setting-up-a-basic-cron-job-in-linux/
+
 odds-api.py
     a-league odds
     go though all odds to see which is highest
@@ -25,13 +35,14 @@ from selenium.webdriver.support import expected_conditions
 import time
 import requests
 import traceback
-import logging
 from tempfile import gettempdir
 import os
 import smtplib
 from email.mime.text import MIMEText
 import sys
 from datetime import datetime
+import logging
+
 
 HEAD = '<html lang="en">\n'
 
@@ -97,6 +108,7 @@ class Match:
         self.other_agents = [[], [], []]
         self.urls = ['', '', '']
         self.has_other_agents = False
+        self.logger = logging.getLogger('')
 
     def __lt__(self, other):
         return self.home_team < other.home_team
@@ -126,12 +138,11 @@ class Match:
             self.earns[i] = json_['earns'][i]
             self.urls[i] = json_['urls'][i]
 
-    @staticmethod
-    def color_print(msg, foreground="black", background="white"):
+    def color_print(self, msg, foreground="black", background="white"):
         fground = foreground.upper()
         bground = background.upper()
         style = getattr(Fore, fground) + getattr(Back, bground)
-        print(style + msg + Style.RESET_ALL)
+        self.logger.info(style + msg + Style.RESET_ALL)
 
     def display(self, html_file=WriteToHtmlFileDummy()):
         msg = '{}\t{}({})({})({})\t{}({})({})({})\t{}({})({})({})\t- {} vs {}'.format(
@@ -147,7 +158,7 @@ class Match:
             self.color_print(msg, background='yellow')
             html_file.write_highlight_line(msg, self.urls)
         else:
-            print(msg)
+            self.logger.info(msg)
             html_file.write_line_in_table(msg)
 
     def calculate_best_shot(self):
@@ -178,7 +189,7 @@ class Match:
                         self.earns[1] = round(j*float(self.odds[1]) - 100, 2)
                         self.earns[2] = round((100-i-j)*float(self.odds[2]) - 100, 2)
                 except ValueError as e:
-                    print('WARNING: calculate_best_shot() has exception: ' + str(e))
+                    self.logger.info('WARNING: calculate_best_shot() has exception: ' + str(e))
                     continue
 
 
@@ -195,6 +206,7 @@ class MatchMerger:
         self.pickles_eng = pickles_eng
         self.pickles_ita = pickles_ita
         self.pickles_liga = pickles_liga
+        self.logger = logging.getLogger('')
 
         # Keyword --> Display Name
         # Keyword: a string with lowercase + whitespace removing
@@ -313,8 +325,7 @@ class MatchMerger:
         self.ita_keys = list(self.ita_map.keys())
         self.la_liga_keys = list(self.la_liga_map.keys())
 
-    @staticmethod
-    def get_id(team_name, keys, league_name):
+    def get_id(self, team_name, keys, league_name):
         converted_name = ''.join(team_name.lower().split())
         if league_name == 'Spanish La Liga':
             if 'tico' in converted_name:
@@ -337,18 +348,18 @@ class MatchMerger:
         for name in keys:
             if name in converted_name:
                 return name
-        print('WARNING: {}[{}] is not found in the map of {}!'.format(
+        self.logger.info('WARNING: {}[{}] is not found in the map of {}!'.format(
             team_name, converted_name, league_name))
         return None
 
     def print_each_match(self):
         for pickles in self.pickles_a, self.pickles_arg, self.pickles_eng, self.pickles_liga:
-            print('-'*80)
+            self.logger.info('-'*80)
             for p_name in pickles:
                 with open(os.path.join(gettempdir(), p_name), 'rb') as pkl:
                     pickle_matches = pickle.load(pkl)
                     for pm in pickle_matches:
-                        print('{} {}\t{}\t[{}] [{}] [{}]'.format(
+                        self.logger.info('{} {}\t{}\t[{}] [{}] [{}]'.format(
                             pm.home_team, pm.away_team,
                             pm.agents[0],
                             pm.odds[0], pm.odds[1], pm.odds[2]
@@ -362,7 +373,8 @@ class MatchMerger:
                 try:
                     match.odds[i_] = float(match.odds[i_])
                 except ValueError as e:
-                    print('WARNING when converting [{}]: {}'.format(match.odds[i_], str(e)))
+                    self.logger.info('WARNING when converting [{}]: {}'.format(
+                        match.odds[i_], str(e)))
                     match.odds[i_] = 0
 
         empty_count = 0
@@ -378,7 +390,7 @@ class MatchMerger:
         elif 'liga' in leagues:
             loop.append((self.pickles_liga, self.la_liga_keys, self.la_liga_map, 'Spanish La Liga'))
         else:
-            print('WARNING: unexpected league in merge_and_print params: ' + str(leagues))
+            self.logger.info('WARNING: unexpected league in merge_and_print: ' + str(leagues))
 
         for pickles, keys, league_map, league_name in loop:
             empty_names = ''
@@ -419,7 +431,7 @@ class MatchMerger:
             if len(matches) is not 0:
                 output = '--- {} ---'.format(league_name)
                 empty_str = '({} pickles, empty: [{}])'.format(len(pickles), empty_names.rstrip())
-                print(output + empty_str)
+                self.logger.info(output + empty_str)
 
                 html_file.write_line('<b>' + output + '</b>' + empty_str)
                 html_file.write_line('<table>')
@@ -450,7 +462,8 @@ class Website:
         try:
             self.wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))  # noqa
         except TimeoutException:
-            print('[{}] not found'.format(css_string))
+            logger = logging.getLogger('')
+            logger.info('[{}] not found'.format(css_string))
             return []
         blocks = self.driver.find_elements_by_css_selector(css_string)
         return blocks
@@ -462,7 +475,8 @@ class Website:
         return '<a href="' + getattr(self, self.current_league + '_url') + '">' + self.name + '</a>'
 
     def fetch(self, _):
-        print('WARNING: fetch() should be overridden.')
+        logger = logging.getLogger('')
+        logger.info('WARNING: fetch() should be overridden.')
 
 
 class Bet365(Website):
@@ -712,7 +726,8 @@ class Sportsbet(Website):
                     m.away_team = self.extract(line, team_name_r)
                     status = 'wait lose'
                 elif status != 'wait draw':
-                    print('WARNING: sportsbet has unexpected input')
+                    logger = logging.getLogger('')
+                    logger.info('WARNING: sportsbet has unexpected input')
                 continue
 
             if status == 'in win span':
@@ -889,6 +904,7 @@ class WebWorker:
             self.wait = WebDriverWait(self.driver, 10)
         self.is_get_data = is_get_data
         self.keep_driver_alive = keep_driver_alive
+        self.logger = logging.getLogger('')
 
     def run(self,
             websites,
@@ -910,9 +926,9 @@ class WebWorker:
             with open(file, 'wb') as pkl:
                 pickle.dump(obj, pkl)
                 if len(obj) == 0:
-                    print('WARNING:', filename, 'will be truncated.')
+                    self.logger.info('WARNING:', filename, 'will be truncated.')
                 else:
-                    print(filename, 'saved.')
+                    self.logger.info(filename, 'saved.')
 
         def prepare_email():
             with open('output.html', 'r') as file, \
@@ -978,7 +994,7 @@ class WebWorker:
                             time.sleep(2)
                         if hasattr(website, league + '_urls'):
                             setattr(website, league + '_url', url)
-                            print('... will get next url after 10 secs...')
+                            self.logger.info('... will get next url after 10 secs...')
                             time.sleep(10)
                         website.current_league = league
                         website.fetch(matches)
@@ -1033,8 +1049,8 @@ class WebWorker:
                             with open('output_title.txt', 'r') as title_file:
                                 if title_file.read() != 'None':
                                     send_email_by_api()
-                    print('League [{}] scan time: {}'.format(l, datetime.now()-league_start_time))
-            print('Whole scan time: {}'.format(datetime.now()-whole_start_time))
+                    self.logger.info('League [{}] scan time: {}'.format(l, datetime.now()-league_start_time))
+            self.logger.info('Whole scan time: {}'.format(datetime.now()-whole_start_time))
 
             if is_get_only or loop_minutes is 0:
                 if self.driver and not self.keep_driver_alive:
@@ -1042,6 +1058,6 @@ class WebWorker:
                 break
 
             for m in range(loop_minutes):
-                print('Will rescan in {} minute{} ...'.format(
+                self.logger.info('Will rescan in {} minute{} ...'.format(
                     loop_minutes-m, '' if loop_minutes-m == 1 else 's'))
                 time.sleep(60)
