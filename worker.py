@@ -494,11 +494,13 @@ class Website:
         blocks = self.driver.find_elements_by_css_selector(css_string)
         return blocks
 
-    def get_href_link(self):
+    # In Pinnacle, the url that unlogined account can see is different with logined account
+    def get_href_link(self, get_logined=False):
         """
         e.g. return <a href='https://www.tab.com.au/sports/betting/Soccer/competitions/A%20League'>tab</a>  # noqa
         """
-        return '<a href="' + getattr(self, self.current_league + '_url') + '">' + self.name + '</a>'
+        url = '_url_logined' if get_logined else '_url'
+        return '<a href="' + getattr(self, self.current_league + url) + '">' + self.name + '</a>'
 
     def fetch(self, _):
         log_and_print('WARNING: fetch() should be overridden.')
@@ -622,10 +624,13 @@ class Luxbet(Website):
             m = Match()
             teams = b.find_elements_by_css_selector('div.bcg_asian_selection_name')
             m.home_team, m.away_team = teams[0].text, teams[2].text
-            odds = b.find_element_by_css_selector('td.asian_market_cell.market_type_template_12')
-            m.odds[0], m.odds[1], m.odds[2] = odds.text.split('\n')
+            odds_text = b.find_element_by_css_selector('td.asian_market_cell.market_type_template_12').text  # noqa
+            odds = odds_text.split('\n')
+            if len(odds) < 3:
+                log_and_print('luxbet: there are no 3 odds in ' + odds_text)
+                continue
             for i in range(3):
-                m.odds[i] = m.odds[i].strip()
+                m.odds[i] = odds[i].strip()
             m.agents = ['Luxbet'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -698,6 +703,11 @@ class Pinnacle(Website):
         self.eng_url = 'https://www.pinnacle.com/en/odds/match/soccer/england/england-premier-league'  # noqa
         self.ita_url = 'https://www.pinnacle.com/en/odds/match/soccer/italy/italy-serie-a'
         self.liga_url = 'https://www.pinnacle.com/en/odds/match/soccer/spain/spain-la-liga'
+        self.a_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1766'
+        self.arg_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1740'
+        self.eng_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1980'
+        self.ita_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/2436'
+        self.liga_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/2196'
 
     def fetch(self, matches):
         blocks = self.get_blocks('tbody.ng-scope')
@@ -713,7 +723,7 @@ class Pinnacle(Website):
                 m.odds[2] = odds[1].text
                 m.odds[1] = odds[2].text
                 m.agents = ['pinacle'] * 3
-                m.urls = [self.get_href_link()] * 3
+                m.urls = [self.get_href_link(get_logined=True)] * 3
                 matches.append(m)
 
 
