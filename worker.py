@@ -218,12 +218,14 @@ class MatchMerger:
                  pickles_eng,
                  pickles_ita,
                  pickles_liga,
+                 pickles_w,
                  ):
         self.pickles_a = pickles_a
         self.pickles_arg = pickles_arg
         self.pickles_eng = pickles_eng
         self.pickles_ita = pickles_ita
         self.pickles_liga = pickles_liga
+        self.pickles_w = pickles_w
 
         # Keyword --> Display Name
         # Keyword: a string with lowercase + whitespace removing
@@ -336,11 +338,18 @@ class MatchMerger:
             'valencia': 'Valencia',
             'villarreal': 'Villarreal CF'
         }
+        self.w_map = {
+            'adelaide': 'Adelaide United',
+            'brisbane': 'Brisbane Roar',
+            'canberra': 'Canberra United',
+            'melbournecity': 'Melbourne City FC',
+        }
         self.a_league_keys = list(self.a_league_map.keys())
         self.arg_keys = list(self.arg_map.keys())
         self.eng_keys = list(self.eng_map.keys())
         self.ita_keys = list(self.ita_map.keys())
         self.la_liga_keys = list(self.la_liga_map.keys())
+        self.w_keys = list(self.w_map.keys())
 
     @staticmethod
     def get_id(team_name, keys, league_name):
@@ -370,19 +379,6 @@ class MatchMerger:
             team_name, converted_name, league_name))
         return None
 
-    def print_each_match(self):
-        for pickles in self.pickles_a, self.pickles_arg, self.pickles_eng, self.pickles_liga:
-            log_and_print('-'*80)
-            for p_name in pickles:
-                with open(os.path.join(gettempdir(), p_name), 'rb') as pkl:
-                    pickle_matches = pickle.load(pkl)
-                    for pm in pickle_matches:
-                        log_and_print('{} {}\t{}\t[{}] [{}] [{}]'.format(
-                            pm.home_team, pm.away_team,
-                            pm.agents[0],
-                            pm.odds[0], pm.odds[1], pm.odds[2]
-                        ))
-
     def merge_and_print(self, leagues, html_file):
         def odds_to_float(match):
             # Convert text to float
@@ -407,6 +403,8 @@ class MatchMerger:
             loop.append((self.pickles_ita, self.ita_keys, self.ita_map, 'Italian Serie A'))
         elif 'liga' in leagues:
             loop.append((self.pickles_liga, self.la_liga_keys, self.la_liga_map, 'Spanish La Liga'))
+        elif 'w' in leagues:
+            loop.append((self.pickles_w, self.w_keys, self.w_map, 'Australia W-League'))
         else:
             log_and_print('WARNING: merge_and_print unexpected league: ' + str(leagues))
 
@@ -472,6 +470,7 @@ class Website:
         self.eng_url = False
         self.ita_url = False
         self.liga_url = False
+        self.w_url = False
         self.name = ''
         self.current_league = ''
         self.ask_gce = False
@@ -506,6 +505,7 @@ class Bet365(Website):
         self.eng_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33577327-2-1-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
         self.ita_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-34031004-2-6-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
         self.liga_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33977144-2-8-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1'  # noqa
+        self.w_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-34948113-2-18-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
 
     def fetch(self, matches):
         blocks = self.get_blocks('div.podEventRow')
@@ -551,8 +551,9 @@ class Bluebet(Website):
         self.a_url = 'https://www.bluebet.com.au/sports/Soccer/Australia/Hyundai-A-League/38925'
         self.arg_url = 'https://www.bluebet.com.au/sports/Soccer/Argentina/Primera-Divisi%C3%B3n/28907'  # noqa
         self.eng_url = 'https://www.bluebet.com.au/sports/Soccer/England/English-Premier-League/36715'  # noqa
-        self.ita_url = 'https://www.bluebet.com.au/sports/Soccer/Italy/Serie-A-TIM/27245'  # noqa
+        self.ita_url = 'https://www.bluebet.com.au/sports/Soccer/Italy/Serie-A-TIM/27245'
         self.liga_url = 'https://www.bluebet.com.au/sports/Soccer/Spain/Liga-de-F%C3%BAtbol-Profesional/27225'  # noqa
+        self.w_url = 'https://www.bluebet.com.au/sports/Soccer/Australia/Westfield-W-League/40620'
 
     def fetch(self, matches):
         blocks = self.get_blocks('section.push--bottom.ng-scope')
@@ -583,6 +584,7 @@ class Crownbet(Website):
         self.eng_url = 'https://crownbet.com.au/sports-betting/soccer/united-kingdom/english-premier-league-matches'  # noqa
         self.ita_url = 'https://crownbet.com.au/sports-betting/soccer/italy/italian-serie-a-matches/'  # noqa
         self.liga_url = 'https://crownbet.com.au/sports-betting/soccer/spain/spanish-la-liga-matches/'  # noqa
+        self.w_url = 'https://crownbet.com.au/sports-betting/soccer/australia/w-league-matches/'
 
     def fetch(self, matches):
         blocks = []
@@ -638,23 +640,51 @@ class Luxbet(Website):
         self.eng_url = 'https://www.luxbet.com/?cPath=616&event_id=ALL'
         self.ita_url = 'https://www.luxbet.com/?cPath=1172&event_id=ALL'
         self.liga_url = 'https://www.luxbet.com/?cPath=931&event_id=ALL'
+        self.w_url = 'https://www.luxbet.com/?cPath=2436&event_id=ALL'
 
     def fetch(self, matches):
-        blocks = self.get_blocks('tr.asian_display_row')
-        for b in blocks:
-            m = Match()
-            teams = b.find_elements_by_css_selector('div.bcg_asian_selection_name')
-            m.home_team, m.away_team = teams[0].text, teams[2].text
-            odds_text = b.find_element_by_css_selector('td.asian_market_cell.market_type_template_12').text  # noqa
-            odds = odds_text.split('\n')
-            if len(odds) < 3:
-                log_and_print('luxbet: there are no 3 odds in ' + odds_text)
-                continue
-            for i in range(3):
-                m.odds[i] = odds[i].strip()
-            m.agents = ['Luxbet'] * 3
-            m.urls = [self.get_href_link()] * 3
-            matches.append(m)
+        if self.current_league == 'w':
+            blocks = self.get_blocks('table.eaw_group')
+            for b in blocks:
+                info = b.text.split('\n')
+                if info[0] != 'Match Result':
+                    continue
+                if len(info) != 6:
+                    log_and_print('luxbet - unexpected info: ' + b.text)
+                info3 = info[3].split(' ')
+                info4 = info[4].split(' ')
+                info5 = info[5].split(' ')
+                m = Match()
+                m.odds[0] = info3.pop()
+                m.odds[1] = info5.pop()
+                m.odds[2] = info4.pop()
+                m.home_team = ' '.join(info3)
+                m.away_team = ' '.join(info4)
+
+                m.agents = ['Luxbet'] * 3
+                m.urls = [self.get_href_link()] * 3
+                matches.append(m)
+        else:
+            blocks = self.get_blocks('tr.asian_display_row')
+            for b in blocks:
+                m = Match()
+                teams = b.find_elements_by_css_selector('div.bcg_asian_selection_name')
+                if len(teams) < 3:
+                    log_and_print('luxbet - unexpected team info ' + b.text)
+                    continue
+
+                m.home_team, m.away_team = teams[0].text, teams[2].text
+                odds_text = b.find_element_by_css_selector('td.asian_market_cell.market_type_template_12').text  # noqa
+                odds = odds_text.split('\n')
+                if len(odds) < 3:
+                    log_and_print('luxbet: there are no 3 odds in ' + odds_text)
+                    continue
+                for i in range(3):
+                    m.odds[i] = odds[i].strip()
+
+                m.agents = ['Luxbet'] * 3
+                m.urls = [self.get_href_link()] * 3
+                matches.append(m)
 
 
 class Madbookie(Website):
@@ -971,6 +1001,7 @@ class WebWorker:
             is_get_eng=False,
             is_get_ita=False,
             is_get_liga=False,
+            is_get_w=False,
             is_get_only=False,
             is_send_email_api=False,
             is_send_email_smtp=False,
@@ -1079,17 +1110,17 @@ class WebWorker:
         def set_pickles(league):
             return [league + '_' + w_.name + '.pkl'
                     for w_ in websites if getattr(w_, league + '_url')]
-        pickles_a = set_pickles('a') if is_get_a else []
-        pickles_arg = set_pickles('arg') if is_get_arg else []
-        pickles_eng = set_pickles('eng') if is_get_eng else []
-        pickles_ita = set_pickles('ita') if is_get_ita else []
-        pickles_liga = set_pickles('liga') if is_get_liga else []
-        match_merger = MatchMerger(pickles_a, pickles_arg, pickles_eng, pickles_ita, pickles_liga)
+        match_merger = MatchMerger(set_pickles('a') if is_get_a else [],
+                                   set_pickles('arg') if is_get_arg else [],
+                                   set_pickles('eng') if is_get_eng else [],
+                                   set_pickles('ita') if is_get_ita else [],
+                                   set_pickles('liga') if is_get_liga else [],
+                                   set_pickles('w') if is_get_w else [])
 
         html_file = WriteToHtmlFile()
         while True:
             whole_start_time = datetime.now()
-            for l in 'a', 'arg', 'eng', 'ita', 'liga':
+            for l in 'a', 'arg', 'eng', 'ita', 'liga', 'w':
                 if eval('is_get_' + l):
                     league_start_time = datetime.now()
                     for w in websites:

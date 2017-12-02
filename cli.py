@@ -17,6 +17,7 @@ def main():
       --eng                     Get EPL
       --ita                     Get Italy league
       --liga                    Get La Liga
+      --w                       Get W-league
       --get-only                Don't merge and print matches
       --print                   Don't get latest odds, just print out based on saved odds
       --send-email-api          Send email by MailGun's restful api
@@ -49,6 +50,7 @@ def main():
         is_get_eng=args['--eng'],
         is_get_ita=args['--ita'],
         is_get_liga=args['--liga'],
+        is_get_w=args['--w'],
         is_get_only=args['--get-only'],
         is_send_email_api=args['--send-email-api'],
         is_send_email_smtp=args['--send-email-smtp'],
