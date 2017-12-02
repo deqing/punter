@@ -5,24 +5,15 @@ restarting aws:
 https://aws.amazon.com/premiumsupport/knowledge-center/start-stop-lambda-cloudwatch/
 http://boto3.readthedocs.io/en/latest/reference/services/ec2.html?highlight=start_instances#EC2.Client.reboot_instances
 
-pinnacle modify your links
-
-add log to file:
-https://stackoverflow.com/questions/15727420/using-python-logging-in-multiple-modules
-
 cronjob (when python able to write to file)
 https://www.taniarascia.com/setting-up-a-basic-cron-job-in-linux/
 
-odds-api.py
-    a-league odds
-    go though all odds to see which is highest
-    more accounts?
-
+add w league
+add champions league
 add germany
 add france
 
-check bluebet
-add neds.com.au (not easy to get by css)
+not add neds.com.au (not easy to get by css)
 """
 
 import re
@@ -553,6 +544,36 @@ class Betstar(Website):  # bookmarker uses same odds  TODO try bookmarker's arg 
             matches.append(m)
 
 
+class Bluebet(Website):
+    def __init__(self, driver, wait):
+        super(Bluebet, self).__init__(driver, wait)
+        self.name = 'bluebet'
+        self.a_url = 'https://www.bluebet.com.au/sports/Soccer/Australia/Hyundai-A-League/38925'
+        self.arg_url = 'https://www.bluebet.com.au/sports/Soccer/Argentina/Primera-Divisi%C3%B3n/28907'  # noqa
+        self.eng_url = 'https://www.bluebet.com.au/sports/Soccer/England/English-Premier-League/36715'  # noqa
+        self.ita_url = 'https://www.bluebet.com.au/sports/Soccer/Italy/Serie-A-TIM/27245'  # noqa
+        self.liga_url = 'https://www.bluebet.com.au/sports/Soccer/Spain/Liga-de-F%C3%BAtbol-Profesional/27225'  # noqa
+
+    def fetch(self, matches):
+        blocks = self.get_blocks('section.push--bottom.ng-scope')
+        for b in blocks:
+            info = b.find_elements_by_css_selector('div.flag-object.flag--tight')
+            if len(info) != 3:
+                log_and_print('bluebet - unexpected info: [{}]'.format(info.text))
+            info0 = info[0].text.split('\n')
+            info1 = info[1].text.split('\n')
+            info2 = info[2].text.split('\n')
+            m = Match()
+            m.home_team, m.away_team = info0[0], info2[0]
+            m.odds[0] = info0[1]
+            m.odds[1] = info1[1]
+            m.odds[2] = info2[1]
+
+            m.agents = ['Bluebet'] * 3
+            m.urls = [self.get_href_link()] * 3
+            matches.append(m)
+
+
 class Crownbet(Website):
     def __init__(self, driver, wait):
         super(Crownbet, self).__init__(driver, wait)
@@ -1042,7 +1063,7 @@ class WebWorker:
                 traceback.print_tb(eb)
                 save_to([], pkl_name)
 
-        websites_str = websites if websites != 'all' else 'bet365,betstar,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
+        websites_str = websites if websites != 'all' else 'bet365,betstar,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
         websites = []
         website_map = {}
         for w in websites_str.split(','):
