@@ -1,6 +1,7 @@
 """
 TODO
 
+betstar and ladbrokes are the same?
 add w league
 add champions league
 add germany
@@ -13,7 +14,9 @@ http://boto3.readthedocs.io/en/latest/reference/services/ec2.html?highlight=star
 cronjob (when python able to write to file)
 https://www.taniarascia.com/setting-up-a-basic-cron-job-in-linux/
 
-not add neds.com.au (not easy to get by css)
+Don't do:
+- calculator - live is Phone only
+- add neds.com.au (not easy to get by css)
 """
 
 import re
@@ -352,7 +355,7 @@ class MatchMerger:
         self.w_keys = list(self.w_map.keys())
 
     @staticmethod
-    def get_id(team_name, keys, league_name):
+    def get_id(team_name, keys, league_name, p_name):
         converted_name = ''.join(team_name.lower().split())
         if league_name == 'Spanish La Liga':
             if 'tico' in converted_name:
@@ -375,20 +378,20 @@ class MatchMerger:
         for name in keys:
             if name in converted_name:
                 return name
-        log_and_print('WARNING: {}[{}] is not found in the map of {}!'.format(
-            team_name, converted_name, league_name))
+        log_and_print('WARNING: [{}] - {}[{}] is not found in the map of {}!'.format(
+            p_name, team_name, converted_name, league_name))
         return None
 
     def merge_and_print(self, leagues, html_file):
-        def odds_to_float(match):
+        def odds_to_float(match, league_name_):
             # Convert text to float
             match.odds = list(match.odds)
             for i_ in range(3):
                 try:
                     match.odds[i_] = float(match.odds[i_])
                 except ValueError as e:
-                    log_and_print('WARNING when converting [{}]: {}'.format(
-                        match.odds[i_], str(e)))
+                    log_and_print('WARNING converting website [{}] league [{}] odds [{}]'
+                                  .format(match.agents[0], league_name_, match.odds[i_]))
                     match.odds[i_] = 0
 
         empty_count = 0
@@ -419,19 +422,19 @@ class MatchMerger:
                         empty_count += 1
                     else:
                         for pm in pickle_matches:
-                            id1 = self.get_id(pm.home_team, keys, league_name)
-                            id2 = self.get_id(pm.away_team, keys, league_name)
+                            id1 = self.get_id(pm.home_team, keys, league_name, p_name)
+                            id2 = self.get_id(pm.away_team, keys, league_name, p_name)
                             if id1 is None or id2 is None:
                                 continue
-                            odds_to_float(pm)
+                            odds_to_float(pm, league_name)
 
                             key = id1 + id2
                             if key not in matches.keys():
                                 m = Match()
                                 m.__dict__.update(pm.__dict__)
                                 m.odds = list(m.odds)  # Sometimes it's an immutable tuple
-                                m.home_team = league_map[self.get_id(pm.home_team, keys, league_name)]  # noqa
-                                m.away_team = league_map[self.get_id(pm.away_team, keys, league_name)]  # noqa
+                                m.home_team = league_map[self.get_id(pm.home_team, keys, league_name, p_name)]  # noqa
+                                m.away_team = league_map[self.get_id(pm.away_team, keys, league_name, p_name)]  # noqa
                                 matches[key] = m
                             else:
                                 m = matches[key]
@@ -521,7 +524,7 @@ class Bet365(Website):
             matches.append(m)
 
 
-class Betstar(Website):  # bookmarker uses same odds  TODO try bookmarker's arg and ita
+class Betstar(Website):  # bookmarker uses same odds  TODO try bookmarker's arg and ita - looks like same as ladbrokers?
     def __init__(self, driver, wait):
         super(Betstar, self).__init__(driver, wait)
         self.name = 'betstar'
@@ -820,7 +823,7 @@ class Sportsbet(Website):
                 elif status == 'wait away team':
                     m.away_team = self.extract(line, team_name_r)
                     status = 'wait lose'
-                elif status != 'wait draw':
+                elif status is not None and status != 'wait draw':
                     log_and_print('WARNING: sportsbet has unexpected input')
                 continue
 
@@ -882,7 +885,6 @@ class Topbetta(Website):
         super(Topbetta, self).__init__(driver, wait)
         self.name = 'topbetta'
         self.a_url = 'https://www.topbetta.com.au/sports/football/hyundai-a-league-regular-season-151825'  # noqa
-        # No Argentina
         self.eng_url = self.ita_url = self.liga_url = ' '
         self.eng_urls = [
             'https://www.topbetta.com.au/sports/football/england-premier-league-round-15-146765',
@@ -899,10 +901,10 @@ class Topbetta(Website):
 
     def fetch(self, matches):
         blocks = self.get_blocks('div.head-to-head-event')
-        for b in range(len(blocks)):
+        for b in blocks:
+            teams = b.find_elements_by_css_selector('div.team-container')
+            odds = b.find_elements_by_css_selector('button.js_price-button.price')
             m = Match()
-            teams = blocks[b].find_elements_by_css_selector('div.team-container')
-            odds = blocks[b].find_elements_by_css_selector('button.js_price-button.price')
             m.home_team = teams[0].text
             m.away_team = teams[1].text
             m.odds[0] = odds[0].text
@@ -958,6 +960,8 @@ class Unibet(Website):
         for b in blocks:
             teams = b.find_elements_by_css_selector('div.KambiBC-event-participants__name')
             odds = b.find_elements_by_css_selector('span.KambiBC-mod-outcome__odds')
+            if len(teams) < 3 or len(odds) < 3:
+                continue
             m = Match()
             m.home_team, m.away_team = teams[0].text, teams[1].text
             for i in range(3):
