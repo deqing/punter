@@ -1,8 +1,6 @@
 """
 TODO
 
-betstar and ladbrokes are the same?
-add w league
 add champions league
 add germany
 add france
@@ -23,7 +21,8 @@ import re
 import pickle
 from colorama import Fore, Back, Style
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, \
+    StaleElementReferenceException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -389,7 +388,7 @@ class MatchMerger:
             for i_ in range(3):
                 try:
                     match.odds[i_] = float(match.odds[i_])
-                except ValueError as e:
+                except ValueError:
                     log_and_print('WARNING converting website [{}] league [{}] odds [{}]'
                                   .format(match.agents[0], league_name_, match.odds[i_]))
                     match.odds[i_] = 0
@@ -524,29 +523,6 @@ class Bet365(Website):
             matches.append(m)
 
 
-class Betstar(Website):  # bookmarker uses same odds  TODO try bookmarker's arg and ita - looks like same as ladbrokers?
-    def __init__(self, driver, wait):
-        super(Betstar, self).__init__(driver, wait)
-        self.name = 'betstar'
-        self.a_url = 'https://www.betstar.com.au/sports/soccer/39922191-football-australia-australian-a-league/'  # noqa
-        self.eng_url = 'https://www.betstar.com.au/sports/soccer/41388947-football-england-premier-league/'  # noqa
-        self.liga_url = 'https://www.betstar.com.au/sports/soccer/40963090-football-spain-spanish-la-liga/'  # noqa
-
-    def fetch(self, matches):
-        blocks = self.get_blocks('table.bettype-group.listings.odds.sports.match.soccer')
-        for b in blocks:
-            info = b.find_elements_by_css_selector('tr.row')
-            if len(info) < 3:
-                continue
-            m = Match()
-            m.home_team, m.odds[0] = info[0].text.split('\n')
-            m.away_team, m.odds[2] = info[1].text.split('\n')
-            m.odds[1] = info[2].text.split('\n')[1]
-            m.agents = ['Betstar'] * 3
-            m.urls = [self.get_href_link()] * 3
-            matches.append(m)
-
-
 class Bluebet(Website):
     def __init__(self, driver, wait):
         super(Bluebet, self).__init__(driver, wait)
@@ -609,7 +585,7 @@ class Crownbet(Website):
             matches.append(m)
 
 
-class Ladbrokes(Website):
+class Ladbrokes(Website):  # BetStar (and Bookmarker?) are the same
     def __init__(self, driver, wait):
         super(Ladbrokes, self).__init__(driver, wait)
         self.name = 'ladbrokes'
@@ -929,19 +905,22 @@ class Ubet(Website):
     def fetch(self, matches):
         blocks = self.get_blocks('div.ubet-sub-events-summary')
         for b in blocks:
-            odds = b.find_elements_by_css_selector('div.ubet-offer-win-only')
-            match = Match()
-            m = []
-            for i in range(3):
-                m.append(odds[i].text.split('\n'))
-                match.odds[i] = m[i][1].replace('LIVE ', '')
-                match.agents[i] = 'UBET'
-                match.urls[i] = self.get_href_link()
-            if 'SUSPENDED' in match.odds[0]:
+            try:
+                odds = b.find_elements_by_css_selector('div.ubet-offer-win-only')
+                match = Match()
+                m = []
+                for i in range(3):
+                    m.append(odds[i].text.split('\n'))
+                    match.odds[i] = m[i][1].replace('LIVE ', '')
+                    match.agents[i] = 'UBET'
+                    match.urls[i] = self.get_href_link()
+                if 'SUSPENDED' in match.odds[0]:
+                    continue
+                match.home_team = m[0][0]
+                match.away_team = m[2][0]
+                matches.append(match)
+            except StaleElementReferenceException:
                 continue
-            match.home_team = m[0][0]
-            match.away_team = m[2][0]
-            matches.append(match)
 
 
 class Unibet(Website):
@@ -1115,7 +1094,7 @@ class WebWorker:
                 traceback.print_tb(eb)
                 save_to([], pkl_name)
 
-        websites_str = websites if websites != 'all' else 'bet365,betstar,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
+        websites_str = websites if websites != 'all' else 'bet365,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
         websites = []
         website_map = {}
         for w in websites_str.split(','):
