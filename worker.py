@@ -1,17 +1,17 @@
 """
 TODO
 
+add w league
+add champions league
+add germany
+add france
+
 restarting aws:
 https://aws.amazon.com/premiumsupport/knowledge-center/start-stop-lambda-cloudwatch/
 http://boto3.readthedocs.io/en/latest/reference/services/ec2.html?highlight=start_instances#EC2.Client.reboot_instances
 
 cronjob (when python able to write to file)
 https://www.taniarascia.com/setting-up-a-basic-cron-job-in-linux/
-
-add w league
-add champions league
-add germany
-add france
 
 not add neds.com.au (not easy to get by css)
 """
@@ -20,7 +20,7 @@ import re
 import pickle
 from colorama import Fore, Back, Style
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -342,7 +342,7 @@ class MatchMerger:
             'adelaide': 'Adelaide United',
             'brisbane': 'Brisbane Roar',
             'canberra': 'Canberra United',
-            'melbournecity': 'Melbourne City FC',
+            'city': 'Melbourne City FC',
         }
         self.a_league_keys = list(self.a_league_map.keys())
         self.arg_keys = list(self.arg_map.keys())
@@ -667,14 +667,20 @@ class Luxbet(Website):
         else:
             blocks = self.get_blocks('tr.asian_display_row')
             for b in blocks:
+                if b.text.split('\n')[0] == 'IN PLAY':
+                    continue
                 m = Match()
                 teams = b.find_elements_by_css_selector('div.bcg_asian_selection_name')
                 if len(teams) < 3:
                     log_and_print('luxbet - unexpected team info ' + b.text)
                     continue
-
                 m.home_team, m.away_team = teams[0].text, teams[2].text
-                odds_text = b.find_element_by_css_selector('td.asian_market_cell.market_type_template_12').text  # noqa
+
+                try:
+                    odds_text = b.find_element_by_css_selector('td.asian_market_cell.market_type_template_12').text  # noqa
+                except NoSuchElementException:
+                    log_and_print('luxbet - unexpected odds in ' + b.text)
+                    continue
                 odds = odds_text.split('\n')
                 if len(odds) < 3:
                     log_and_print('luxbet: there are no 3 odds in ' + odds_text)
@@ -696,6 +702,7 @@ class Madbookie(Website):
         self.eng_url = 'https://www.madbookie.com.au/Sport/Soccer/English_Premier_League/Matches'
         self.ita_url = 'https://www.madbookie.com.au/Sport/Soccer/Italian_Serie_A/Matches'
         self.liga_url = 'https://www.madbookie.com.au/Sport/Soccer/Spanish_La_Liga/Matches'
+        self.w_url = 'https://www.madbookie.com.au/Sport/Soccer/Australian_W-League/Matches'
 
     def fetch(self, matches):
         blocks = self.get_blocks('table.MarketTable.MatchMarket')
@@ -726,6 +733,7 @@ class Palmerbet(Website):
         self.eng_url = 'https://www.palmerbet.com/sports/soccer/england-premier-league'
         self.ita_url = 'https://www.palmerbet.com/sports/soccer/italy-serie-a'
         self.liga_url = 'https://www.palmerbet.com/sports/soccer/spain-primera-division'
+        self.w_url = 'https://www.palmerbet.com/sports/soccer/australia-w_league'
 
     def fetch(self, matches):
         names = self.driver.find_elements_by_css_selector('td.nam')
@@ -787,6 +795,7 @@ class Sportsbet(Website):
         self.eng_url = 'https://www.sportsbet.com.au/betting/soccer/united-kingdom/english-premier-league'  # noqa
         self.ita_url = 'https://www.sportsbet.com.au/betting/soccer/italy/italian-serie-a'
         self.liga_url = 'https://www.sportsbet.com.au/betting/soccer/spain/spanish-la-liga'
+        self.w_url = 'https://www.sportsbet.com.au/betting/soccer/australia/australian-w-league-ladies'  # noqa
         self.use_request = True
         self.content = []
 
@@ -848,14 +857,19 @@ class Tab(Website):
         self.eng_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/English%20Premier%20League'  # noqa
         self.ita_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/Italian%20Serie%20A'  # noqa
         self.liga_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/Spanish%20Primera%20Division'  # noqa
+        self.w_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/Australia%20W%20League'  # noqa
 
     def fetch(self, matches):
         blocks = self.get_blocks('div.template-item.ng-scope')
-        for block in blocks:
-            m = Match()
-            m.home_team, m.away_team = block.find_element_by_css_selector(
+        for b in blocks:
+            teams = b.find_element_by_css_selector(
                 'span.match-name-text.ng-binding').text.split(' v ')
-            odds = block.find_elements_by_css_selector('div.animate-odd.ng-binding.ng-scope')
+            if len(teams) != 2:
+                log_and_print('Tab - unexpected teams in: ' + b.text)
+                continue
+            m = Match()
+            m.home_team, m.away_team = teams[0], teams[1]
+            odds = b.find_elements_by_css_selector('div.animate-odd.ng-binding.ng-scope')
             for i in range(3):
                 m.odds[i] = odds[i].text
             m.agents = ['TAB'] * 3
@@ -908,6 +922,7 @@ class Ubet(Website):
         self.eng_url = 'https://ubet.com/sports/soccer/england-premier-league/premier-league-matches'  # noqa
         self.ita_url = 'https://ubet.com/sports/soccer/italy-serie-a'
         self.liga_url = 'https://ubet.com/sports/soccer/spain-la-liga'
+        self.w_url = 'https://ubet.com/sports/soccer/australia-w-league'
 
     def fetch(self, matches):
         blocks = self.get_blocks('div.ubet-sub-events-summary')
@@ -932,10 +947,11 @@ class Unibet(Website):
         super(Unibet, self).__init__(driver, wait)
         self.name = 'unibet'
         self.a_url = 'https://www.unibet.com.au/betting#filter/football/australia/a-league'
-        # No arg
+        self.arg_url = 'https://www.unibet.com.au/betting#filter/football/argentina/primera_division'  # noqa
         self.eng_url = 'https://www.unibet.com.au/betting#filter/football/england/premier_league'
-        # No ita
+        self.ita_url = 'https://www.unibet.com.au/betting#filter/football/italy/serie_a'
         self.liga_url = 'https://www.unibet.com.au/betting#filter/football/spain/laliga'
+        self.w_url = 'https://www.unibet.com.au/betting#filter/football/australia/w-league__w_'
 
     def fetch(self, matches):
         blocks = self.get_blocks('div.KambiBC-event-item__event-wrapper')
@@ -960,6 +976,7 @@ class Williamhill(Website):
         self.eng_url = 'https://www.williamhill.com.au/sports/soccer/british-irish/english-premier-league-matches'  # noqa
         self.ita_url = 'https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches'
         self.liga_url = 'https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches'  # noqa
+        self.w_url = 'https://www.williamhill.com.au/sports/soccer/australia/w-league-matches'
 
     def fetch(self, matches):
         if 'rimera' in self.driver.current_url and \
