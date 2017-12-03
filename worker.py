@@ -878,14 +878,17 @@ class Topbetta(Website):
     def fetch(self, matches):
         blocks = self.get_blocks('div.head-to-head-event')
         for b in blocks:
-            teams = b.find_elements_by_css_selector('div.team-container')
-            odds = b.find_elements_by_css_selector('button.js_price-button.price')
             m = Match()
-            m.home_team = teams[0].text
-            m.away_team = teams[1].text
-            m.odds[0] = odds[0].text
-            m.odds[1] = odds[2].text
-            m.odds[2] = odds[1].text
+            try:
+                teams = b.find_elements_by_css_selector('div.team-container')
+                odds = b.find_elements_by_css_selector('button.js_price-button.price')
+                m.home_team = teams[0].text
+                m.away_team = teams[1].text
+                m.odds[0] = odds[0].text
+                m.odds[1] = odds[2].text
+                m.odds[2] = odds[1].text
+            except StaleElementReferenceException:
+                continue
             m.agents = ['TopBetta'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
