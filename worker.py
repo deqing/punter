@@ -373,6 +373,10 @@ class MatchMerger:
                 converted_name = 'blanca'
             elif 'velez' in converted_name:
                 converted_name = 'rsfield'
+            elif 'lanús' == converted_name:
+                converted_name = 'lanus'
+            elif 'colón' == converted_name:
+                converted_name = 'colon'
 
         for name in keys:
             if name in converted_name:
@@ -888,6 +892,7 @@ class Topbetta(Website):
                 m.odds[1] = odds[2].text
                 m.odds[2] = odds[1].text
             except StaleElementReferenceException:
+                log_and_print('topbetta - selenium has StaleElementReferenceException: ' + b.text)
                 continue
             m.agents = ['TopBetta'] * 3
             m.urls = [self.get_href_link()] * 3
