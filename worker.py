@@ -1128,13 +1128,12 @@ class WebWorker:
             with open('output_title.txt', 'r') as title_file:
                 title = title_file.read()
                 if title != 'None':
-                    with open('output_title.old.txt', 'rw') as title_old_file:
+                    with open('output_title.old.txt', 'r+') as title_old_file:
                         if title != title_old_file.read():
                             send_email_by_api()
                             title_old_file.write(title)
                         else:
-                            log_and_print(
-                                'send_email_when_found - has highlight but email already sent')
+                            log_and_print('INFO: send_email_when_found - email already sent')
 
         html_file = WriteToHtmlFile()
         while True:
