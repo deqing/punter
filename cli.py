@@ -26,6 +26,7 @@ def main():
       --loop=<n>                Repeat every n minutes [default: 0]
       --ask-gce=<websites>      Read from GCE for these websites
       --gce-ip=<ip>             GCE instance IP
+      --bonus                   Calculate and print bonus profit
 
     Example:
       cli.py luxbet,crownbet --a
@@ -43,22 +44,25 @@ def main():
 
     args = docopt(str(main.__doc__))
     worker = WebWorker(is_get_data=not args['--print'], keep_driver_alive=False)
-    worker.run(
-        websites=args['<websites>'],
-        is_get_a=args['--a'],
-        is_get_arg=args['--arg'],
-        is_get_eng=args['--eng'],
-        is_get_ita=args['--ita'],
-        is_get_liga=args['--liga'],
-        is_get_w=args['--w'],
-        is_get_only=args['--get-only'],
-        is_send_email_api=args['--send-email-api'],
-        is_send_email_smtp=args['--send-email-smtp'],
-        is_send_email_when_found=args['--send-email-when-found'],
-        loop_minutes=int(args['--loop']),
-        ask_gce=args['--ask-gce'],
-        gce_ip=args['--gce-ip'],
-    )
+    if args['--bonus']:
+        worker.calc_bonus_profit()
+    else:
+        worker.run(
+            websites=args['<websites>'],
+            is_get_a=args['--a'],
+            is_get_arg=args['--arg'],
+            is_get_eng=args['--eng'],
+            is_get_ita=args['--ita'],
+            is_get_liga=args['--liga'],
+            is_get_w=args['--w'],
+            is_get_only=args['--get-only'],
+            is_send_email_api=args['--send-email-api'],
+            is_send_email_smtp=args['--send-email-smtp'],
+            is_send_email_when_found=args['--send-email-when-found'],
+            loop_minutes=int(args['--loop']),
+            ask_gce=args['--ask-gce'],
+            gce_ip=args['--gce-ip'],
+        )
 
 
 if __name__ == "__main__":

@@ -42,6 +42,8 @@ from logging.handlers import RotatingFileHandler
 
 HEAD = '<html lang="en">\n'
 log_to_file = False
+g_leagues = ('a', 'arg', 'eng', 'ita', 'liga', 'w')
+g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 
 
 def log_init():
@@ -165,12 +167,13 @@ class Match:
             self.urls[i] = json_['urls'][i]
 
     def display(self, html_file=WriteToHtmlFileDummy()):
-        msg = '{}\t{}({})({})({})\t{}({})({})({})\t{}({})({})({})\t- {} vs {}'.format(
-            round(self.profit, 2),
-            self.odds[0], self.agents[0], self.perts[0], self.earns[0],
-            self.odds[1], self.agents[1], self.perts[1], self.earns[1],
-            self.odds[2], self.agents[2], self.perts[2], self.earns[2],
-            self.home_team, self.away_team)
+        msg = '{:.2f}\t{:.2f}({})({})({})\t{:.2f}({})({})({})\t{:.2f}({})({})({})\t' \
+              '- {} vs {}'.format(
+                self.profit,
+                float(self.odds[0]), self.agents[0], self.perts[0], self.earns[0],
+                float(self.odds[1]), self.agents[1], self.perts[1], self.earns[1],
+                float(self.odds[2]), self.agents[2], self.perts[2], self.earns[2],
+                self.home_team, self.away_team)
         if self.has_other_agents:
             msg += '\t(' + '|'.join([','.join(x) for x in self.other_agents]) + ')'
 
@@ -866,15 +869,15 @@ class Topbetta(Website):
         self.a_url = 'https://www.topbetta.com.au/sports/football/hyundai-a-league-regular-season-151825'  # noqa
         self.eng_url = self.ita_url = self.liga_url = ' '
         self.eng_urls = [
-            'https://www.topbetta.com.au/sports/football/england-premier-league-round-15-146765',
+            'https://www.topbetta.com.au/sports/football/england-premier-league-round-16-146767',
+            'https://www.topbetta.com.au/sports/football/england-premier-league-round-17-146769',
             ]
         self.ita_urls = [
-            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-15-153151',
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-16-153155',
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-17-153157',
             ]
         self.liga_urls = [
-            'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-14-151371',  # noqa
+            'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-16-151375',  # noqa
             ]
 
     def fetch(self, matches):
@@ -969,9 +972,10 @@ class Williamhill(Website):
         self.w_url = 'https://www.williamhill.com.au/sports/soccer/australia/w-league-matches'
 
     def fetch(self, matches):
-        if 'rimera' in self.driver.current_url and \
-           'rimera' not in self.driver.find_elements_by_css_selector('div.Collapse_root_3H1.FilterList_menu_3g7')[0].text:  # noqa
-            return  # La Liga is removed
+        if 'rimera' in self.driver.current_url:  # if is arg
+            s = self.driver.find_elements_by_css_selector('div.Collapse_root_3H1.FilterList_menu_3g7')
+            if len(s) is 0 or 'rimera' not in s[0].text:  # noqa
+                return  # La Liga is removed
         blocks = self.driver.find_elements_by_css_selector('div.EventBlock_root_1Pn')
         for b in blocks:
             names = b.find_elements_by_css_selector('span.SoccerListing_name_2g4')
@@ -1000,6 +1004,76 @@ class WebWorker:
         log_to_file = log_to_file_
         if log_to_file:
             log_init()
+
+    @staticmethod
+    def calc_bonus_profit(website='sportsbet', stake=45):
+        maxp, bmh, bma, bpb, bi, bj, bp1, bp2, ba1, ba2, bob, bo1, bo2\
+            = 0, 0, 0, 0, 0, 0, 0, 0, '', '', 0, 0, 0
+        for l in g_leagues:
+            with open(os.path.join(gettempdir(), l + '_' + website + '.pkl'), 'rb') as b_pkl:
+                pickle_bonus_matches = pickle.load(b_pkl)
+                if len(pickle_bonus_matches) is 0:
+                    continue
+                maxp = 0
+                for bm in pickle_bonus_matches:
+                    for w1 in g_websites_str.split(','):
+                        if w1 == website:
+                            continue
+                        try:
+                            with open(os.path.join(gettempdir(),
+                                                   l + '_' + w1 + '.pkl'), 'rb') as pkl1:
+                                matches1 = pickle.load(pkl1)
+                                if len(matches1) is 0:
+                                    continue
+                                for m1 in matches1:
+                                    if m1.home_team != bm.home_team or m1.away_team != bm.away_team:
+                                        continue
+                                    for odd_idx in range(3):
+                                        ob = odd_idx
+                                        o1 = (odd_idx + 1) % 3
+                                        o2 = (odd_idx + 2) % 3
+                                        for w2 in g_websites_str.split(','):
+                                            if w2 == website:
+                                                continue
+                                            with open(os.path.join(gettempdir(),
+                                                      l + '_' + w2 + '.pkl'), 'rb') as pkl2:
+                                                matches2 = pickle.load(pkl2)
+                                                if len(matches2) is 0:
+                                                    continue
+                                                for m2 in matches2:
+                                                    if m2.home_team != bm.home_team or \
+                                                                    m2.away_team != bm.away_team:
+                                                        continue
+                                                    for i in range(stake * 3):
+                                                        for j in range(stake * 3):
+                                                            p_bw = float(bm.odds[ob]) * stake - stake - i - j  # noqa
+                                                            p_1w = float(m1.odds[o1]) * i - i - j
+                                                            p_2w = float(m2.odds[o2]) * j - j - i
+                                                            minp = min(p_bw, p_1w, p_2w)
+                                                            if maxp < minp:
+                                                                maxp = minp
+                                                                bmh = bm.home_team
+                                                                bma = bm.away_team
+                                                                bpb = p_bw
+                                                                bp1 = p_1w
+                                                                bp2 = p_2w
+                                                                bi = i
+                                                                bj = j
+                                                                ba1 = m1.agents[0]
+                                                                ba2 = m2.agents[1]
+                                                                bob = float(bm.odds[ob])
+                                                                bo1 = float(m1.odds[o1])
+                                                                bo2 = float(m2.odds[o2])
+                        except FileNotFoundError:
+                            continue
+                log_and_print('{:.2f} - {} vs {} - '
+                              '{:.2f}({:.2f})({:.2f})({}) '
+                              '{:.2f}({:.2f})({:.2f})({}) '
+                              '{:.2f}({:.2f})({:.2f})({})'.format(
+                                maxp, bmh, bma,
+                                bpb, bob, stake, website,
+                                bp1, bo1, bi, ba1,
+                                bp2, bo2, bj, ba2))
 
     def run(self,
             websites,
@@ -1101,7 +1175,7 @@ class WebWorker:
                 traceback.print_tb(eb)
                 save_to([], pkl_name)
 
-        websites_str = websites if websites != 'all' else 'bet365,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
+        websites_str = websites if websites != 'all' else g_websites_str
         websites = []
         website_map = {}
         for w in websites_str.split(','):
@@ -1138,7 +1212,7 @@ class WebWorker:
         html_file = WriteToHtmlFile()
         while True:
             whole_start_time = datetime.now()
-            for l in 'a', 'arg', 'eng', 'ita', 'liga', 'w':
+            for l in g_leagues:
                 if eval('is_get_' + l):
                     league_start_time = datetime.now()
                     for w in websites:
