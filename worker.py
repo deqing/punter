@@ -870,7 +870,6 @@ class Topbetta(Website):
             ]
         self.ita_urls = [
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-15-153151',
-            'https://www.topbetta.com.au/sports/football/serie-a-tim-round-15-153153',
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-16-153155',
             'https://www.topbetta.com.au/sports/football/serie-a-tim-round-17-153157',
             ]
@@ -1125,6 +1124,18 @@ class WebWorker:
                                    set_pickles('liga') if is_get_liga else [],
                                    set_pickles('w') if is_get_w else [])
 
+        def send_email_when_found():
+            with open('output_title.txt', 'r') as title_file:
+                title = title_file.read()
+                if title != 'None':
+                    with open('output_title.old.txt', 'rw') as title_old_file:
+                        if title != title_old_file.read():
+                            send_email_by_api()
+                            title_old_file.write(title)
+                        else:
+                            log_and_print(
+                                'send_email_when_found - has highlight but email already sent')
+
         html_file = WriteToHtmlFile()
         while True:
             whole_start_time = datetime.now()
@@ -1143,9 +1154,7 @@ class WebWorker:
                         if is_send_email_api:
                             send_email_by_api()
                         if is_send_email_when_found:
-                            with open('output_title.txt', 'r') as title_file:
-                                if title_file.read() != 'None':
-                                    send_email_by_api()
+                            send_email_when_found()
                     log_and_print('League [{}] scan time: {}'
                                   .format(l, datetime.now()-league_start_time))
             log_and_print('Whole scan time: {}'.format(datetime.now()-whole_start_time))
