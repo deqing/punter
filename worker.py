@@ -344,7 +344,6 @@ class MatchMerger:
             'adelaide': 'Adelaide United',
             'brisbane': 'Brisbane Roar',
             'canberra': 'Canberra United',
-            'city': 'Melbourne City FC',
         }
         self.a_league_keys = list(self.a_league_map.keys())
         self.arg_keys = list(self.arg_map.keys())
