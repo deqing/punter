@@ -942,7 +942,8 @@ class Unibet(Website):
         for b in blocks:
             teams = b.find_elements_by_css_selector('div.KambiBC-event-participants__name')
             odds = b.find_elements_by_css_selector('span.KambiBC-mod-outcome__odds')
-            if len(teams) < 3 or len(odds) < 3:
+            if len(teams) < 2 or len(odds) < 3:
+                log_and_print('unibet - incorrect teams or odds: ' + b.text)
                 continue
             m = Match()
             m.home_team, m.away_team = teams[0].text, teams[1].text
