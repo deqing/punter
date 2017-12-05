@@ -980,6 +980,10 @@ class Williamhill(Website):
         for b in blocks:
             names = b.find_elements_by_css_selector('span.SoccerListing_name_2g4')
             odds = b.find_elements_by_css_selector('span.BetButton_display_3ty')
+            if len(names) < 3 or \
+               names[0].text == 'BOTH TEAMS TO SCORE' or \
+               names[2].text == 'BOTH TEAMS TO SCORE':
+                continue
             m = Match()
             m.home_team, m.away_team = names[0].text, names[2].text
             for i in range(3):
