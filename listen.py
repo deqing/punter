@@ -16,8 +16,8 @@ def reply():
     league = request.args.get('league')
 
     args = dict()
-    args['websites'] = website
-    args['leagues'] = league
+    args['websites_str'] = website
+    args['leagues_str'] = league
     args['is_get_only'] = True
     worker.run(**args)
 
