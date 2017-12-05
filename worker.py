@@ -448,6 +448,7 @@ class MatchMerger:
                                         m.odds[i] = pm.odds[i]
                                         m.agents[i] = pm.agents[i]
                                         m.urls[i] = pm.urls[i]
+                                        m.other_agents[i] = []
                                     elif pm.odds[i] == m.odds[i]:
                                         m.has_other_agents = True
                                         m.other_agents[i].append(pm.agents[i].strip())
