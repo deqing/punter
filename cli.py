@@ -8,7 +8,7 @@ def main():
     """Punter command-line interface.
 
     Usage:
-      cli.py <websites> [options]
+      cli.py <websites> <leagues> [options]
 
     Options:
       --all                     Get all leagues
@@ -48,6 +48,7 @@ def main():
 
     args = docopt(str(main.__doc__))
     worker = WebWorker(is_get_data=not args['--print'], keep_driver_alive=False)
+
     if args['--bonus']:
         worker.calc_bonus_profit()
     elif args['--calc-best'] is not None:
@@ -55,15 +56,8 @@ def main():
         worker.calc_best_shot(float(o1), float(o2), float(o3))
     else:
         worker.run(
-            websites=args['<websites>'],
-            is_get_a=args['--a'],
-            is_get_arg=args['--arg'],
-            is_get_eng=args['--eng'],
-            is_get_gem=args['--gem'],
-            is_get_ita=args['--ita'],
-            is_get_liga=args['--liga'],
-            is_get_uefa=args['--uefa'],
-            is_get_w=args['--w'],
+            websites_str=args['<websites>'],
+            leagues_str=args['<leagues>'],
             is_get_only=args['--get-only'],
             is_send_email_api=args['--send-email-api'],
             is_send_email_smtp=args['--send-email-smtp'],

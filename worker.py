@@ -458,7 +458,7 @@ class MatchMerger:
                     'cologne' == converted_name:
                 converted_name = 'koln'
             elif 'mgladbach' == converted_name or 'bormonch' == converted_name or \
-                            'gladbach' in converted_name:
+                    'gladbach' in converted_name:
                 converted_name = 'nchengladbach'
 
         for name in keys:
@@ -615,7 +615,7 @@ class Bet365(Website):
             m.home_team, m.away_team = names[0].text, names[1].text
             for i in range(3):
                 m.odds[i] = odds[i].text
-            m.agents = ['Bet365'] * 3
+            m.agents = ['Bet365 '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -681,7 +681,7 @@ class Crownbet(Website):
             m = Match()
             m.home_team, m.away_team = values[4], values[8]
             m.odds = values[5], values[7], values[9]
-            m.agents = ['Crown'] * 3
+            m.agents = ['Crown  '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -708,7 +708,7 @@ class Ladbrokes(Website):  # BetStar (and Bookmarker?) are the same
             m.home_team, m.odds[0] = info[0].text.split('\n')
             m.away_team, m.odds[2] = info[1].text.split('\n')
             m.odds[1] = info[2].text.split('\n')[1]
-            m.agents = ['Ladbroke'] * 3
+            m.agents = ['Ladbrok'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -745,7 +745,7 @@ class Luxbet(Website):
                 m.home_team = ' '.join(info3)
                 m.away_team = ' '.join(info4)
 
-                m.agents = ['Luxbet'] * 3
+                m.agents = ['Luxbet '] * 3
                 m.urls = [self.get_href_link()] * 3
                 matches.append(m)
         else:
@@ -836,7 +836,7 @@ class Palmerbet(Website):
             m.odds = odds[0].text, odds[2].text, odds[1].text
             odds = odds[3:] if len(show_all[0].text) is 0 else odds[5:]
             show_all = show_all[1:]
-            m.agents = ['Palmer'] * 3
+            m.agents = ['Palmer '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -873,7 +873,7 @@ class Pinnacle(Website):
                 m.odds[0] = odds[0].text
                 m.odds[2] = odds[1].text
                 m.odds[1] = odds[2].text
-                m.agents = ['pinacle'] * 3
+                m.agents = ['Pinacle'] * 3
                 m.urls = [self.get_href_link(get_logined=True)] * 3
                 matches.append(m)
 
@@ -931,7 +931,7 @@ class Sportsbet(Website):
             if status == 'in lose span':
                 m.odds[2] = line
                 status = None
-                m.agents = ['sports'] * 3
+                m.agents = ['Sports '] * 3
                 m.urls = [self.get_href_link()] * 3
                 matches.append(m)
                 m = Match()
@@ -968,7 +968,7 @@ class Tab(Website):
             odds = b.find_elements_by_css_selector('div.animate-odd.ng-binding.ng-scope')
             for i in range(3):
                 m.odds[i] = odds[i].text
-            m.agents = ['TAB'] * 3
+            m.agents = ['TAB    '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -1020,7 +1020,7 @@ class Topbetta(Website):
             except StaleElementReferenceException:
                 log_and_print('topbetta - Selenium has StaleElementReferenceException: ' + b.text)
                 continue
-            m.agents = ['TopBetta'] * 3
+            m.agents = ['TopBeta'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -1048,7 +1048,7 @@ class Ubet(Website):
                 for i in range(3):
                     m.append(odds[i].text.split('\n'))
                     match.odds[i] = m[i][1].replace('LIVE ', '')
-                    match.agents[i] = 'UBET'
+                    match.agents[i] = 'UBET   '
                     match.urls[i] = self.get_href_link()
                 if 'SUSPENDED' in match.odds[0]:
                     continue
@@ -1084,7 +1084,7 @@ class Unibet(Website):
             m.home_team, m.away_team = teams[0].text, teams[1].text
             for i in range(3):
                 m.odds[i] = odds[i].text
-            m.agents = ['Unibet'] * 3
+            m.agents = ['Unibet '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
 
@@ -1247,15 +1247,8 @@ class WebWorker:
         m.display()
                     
     def run(self,
-            websites,
-            is_get_a=False,
-            is_get_arg=False,
-            is_get_eng=False,
-            is_get_gem=False,
-            is_get_ita=False,
-            is_get_liga=False,
-            is_get_uefa=False,
-            is_get_w=False,
+            websites_str,
+            leagues_str,
             is_get_only=False,
             is_send_email_api=False,
             is_send_email_smtp=False,
@@ -1348,7 +1341,7 @@ class WebWorker:
                 traceback.print_tb(eb)
                 save_to([], pkl_name)
 
-        websites_str = websites if websites != 'all' else g_websites_str
+        websites_str = websites_str if websites_str != 'all' else g_websites_str
         websites = []
         website_map = {}
         for w in websites_str.split(','):
@@ -1361,17 +1354,18 @@ class WebWorker:
             for w in ask_gce.split(','):
                 website_map[w].ask_gce = True
 
-        def set_pickles(league):
-            return [league + '_' + w_.name + '.pkl'
-                    for w_ in websites if getattr(w_, league + '_url')]
-        match_merger = MatchMerger(set_pickles('a') if is_get_a else [],
-                                   set_pickles('arg') if is_get_arg else [],
-                                   set_pickles('eng') if is_get_eng else [],
-                                   set_pickles('gem') if is_get_gem else [],
-                                   set_pickles('ita') if is_get_ita else [],
-                                   set_pickles('liga') if is_get_liga else [],
-                                   set_pickles('uefa') if is_get_uefa else [],
-                                   set_pickles('w') if is_get_w else [])
+        def set_pickles(l_name):
+            return [l_name + '_' + w_.name + '.pkl'
+                    for w_ in websites if getattr(w_, l_name + '_url') and l_name in league_names]
+        league_names = leagues_str.split(',')
+        match_merger = MatchMerger(set_pickles('a'),
+                                   set_pickles('arg'),
+                                   set_pickles('eng'),
+                                   set_pickles('gem'),
+                                   set_pickles('ita'),
+                                   set_pickles('liga'),
+                                   set_pickles('uefa'),
+                                   set_pickles('w'))
 
         def send_email_when_found():
             with open('output_title.txt', 'r') as title_file:
@@ -1387,24 +1381,23 @@ class WebWorker:
         html_file = WriteToHtmlFile()
         while True:
             whole_start_time = datetime.now()
-            for l in g_leagues:
-                if eval('is_get_' + l):
-                    league_start_time = datetime.now()
-                    for w in websites:
-                        if self.is_get_data and getattr(w, l+'_url'):
-                            fetch_and_save_to_pickle(w, l)
-                    if not is_get_only:
-                        html_file.init()
-                        match_merger.merge_and_print(leagues=[l], html_file=html_file)
-                        html_file.close()
-                        if is_send_email_smtp:
-                            send_email_by_smtp()
-                        if is_send_email_api:
-                            send_email_by_api()
-                        if is_send_email_when_found:
-                            send_email_when_found()
-                    log_and_print('League [{}] scan time: {}'
-                                  .format(l, datetime.now()-league_start_time))
+            for l in league_names:
+                league_start_time = datetime.now()
+                for w in websites:
+                    if self.is_get_data and getattr(w, l+'_url'):
+                        fetch_and_save_to_pickle(w, l)
+                if not is_get_only:
+                    html_file.init()
+                    match_merger.merge_and_print(leagues=[l], html_file=html_file)
+                    html_file.close()
+                    if is_send_email_smtp:
+                        send_email_by_smtp()
+                    if is_send_email_api:
+                        send_email_by_api()
+                    if is_send_email_when_found:
+                        send_email_when_found()
+                log_and_print('League [{}] scan time: {}'
+                              .format(l, datetime.now()-league_start_time))
             log_and_print('Whole scan time: {}'.format(datetime.now()-whole_start_time))
 
             if is_get_only or loop_minutes is 0:
