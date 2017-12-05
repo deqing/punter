@@ -42,7 +42,7 @@ from logging.handlers import RotatingFileHandler
 
 HEAD = '<html lang="en">\n'
 log_to_file = False
-g_leagues = ('a', 'arg', 'eng', 'ita', 'liga', 'w')
+g_leagues = ('a', 'arg', 'eng', 'ita', 'liga', 'w', 'uefa')
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 
 
@@ -223,6 +223,7 @@ class MatchMerger:
                  pickles_eng,
                  pickles_ita,
                  pickles_liga,
+                 pickles_uefa,
                  pickles_w,
                  ):
         self.pickles_a = pickles_a
@@ -230,6 +231,7 @@ class MatchMerger:
         self.pickles_eng = pickles_eng
         self.pickles_ita = pickles_ita
         self.pickles_liga = pickles_liga
+        self.pickles_uefa = pickles_uefa
         self.pickles_w = pickles_w
 
         # Keyword --> Display Name
@@ -343,6 +345,40 @@ class MatchMerger:
             'valencia': 'Valencia',
             'villarreal': 'Villarreal CF'
         }
+        self.uefa_map = {
+            'anderlecht': 'Anderlecht',
+            'apoel': 'APOEL Nicosia',
+            'atleticomadrid': 'Atletico Madrid',
+            'barcelona': 'Barcelona',
+            'basel': 'FC Basel',
+            'bayern': 'Bayern Munich',
+            'benfica': 'Benfica',
+            'besiktas': 'Besiktas JK',
+            'celtic': 'Celtic',
+            'chelsea': 'Chelsea',
+            'cska': 'CSKA Moscow',
+            'dortmund': 'Borussia Dortmund',
+            'feyenoord': 'Feyenoord',
+            'juventus': 'Juventus',
+            'leipzig': 'RB Leipzig',
+            'sporting': 'Sporting Lisbon',
+            'liverpool': 'Liverpool',
+            'mancity': 'Manchester City',
+            'manutd': 'Manchester United',
+            'maribor': 'NK Maribor',
+            'monaco': 'AS Monaco',
+            'napoli': 'Napoli',
+            'olympia': 'Olympiakos',
+            'paris': 'Paris Saint Germain',
+            'porto': 'FC Porto',
+            'qarabag': 'FK Qarabag',
+            'realmad': 'Real Madrid',
+            'roma': 'AS Roma',
+            'sevilla': 'Sevilla',
+            'shakhtar': 'Shakhtar Donetsk',
+            'spartak': 'Spartak Moscow',
+            'tottenham': 'Tottenham Hotspur',
+        }
         self.w_map = {
             'adelaide': 'Adelaide United',
             'brisbane': 'Brisbane Roar',
@@ -353,6 +389,7 @@ class MatchMerger:
         self.eng_keys = list(self.eng_map.keys())
         self.ita_keys = list(self.ita_map.keys())
         self.la_liga_keys = list(self.la_liga_map.keys())
+        self.uefa_keys = list(self.uefa_map.keys())
         self.w_keys = list(self.w_map.keys())
 
     @staticmethod
@@ -379,6 +416,20 @@ class MatchMerger:
                 converted_name = 'lanus'
             elif 'colón' == converted_name:
                 converted_name = 'colon'
+        elif league_name == 'UEFA Champions League':
+            if 'manchestercity' == converted_name:
+                converted_name = 'mancity'
+            elif 'lisbon' in converted_name:
+                converted_name = 'sporting'
+            elif 'psg' in converted_name:
+                converted_name = 'paris'
+            elif 'ticodemadrid' in converted_name or 'atlmadrid' == converted_name \
+                    or 'ticomadrid' in converted_name:
+                converted_name = 'atleticomadrid'
+            elif 'manchesterunited' in converted_name or 'manunited' == converted_name:
+                converted_name = 'manutd'
+            elif 'karabakh' in converted_name or 'qaraba' in converted_name:
+                converted_name = 'qarabag'
 
         for name in keys:
             if name in converted_name:
@@ -411,6 +462,8 @@ class MatchMerger:
             loop.append((self.pickles_ita, self.ita_keys, self.ita_map, 'Italian Serie A'))
         elif 'liga' in leagues:
             loop.append((self.pickles_liga, self.la_liga_keys, self.la_liga_map, 'Spanish La Liga'))
+        elif 'uefa' in leagues:
+            loop.append((self.pickles_uefa, self.uefa_keys, self.uefa_map, 'UEFA Champions League'))
         elif 'w' in leagues:
             loop.append((self.pickles_w, self.w_keys, self.w_map, 'Australia W-League'))
         else:
@@ -480,6 +533,7 @@ class Website:
         self.eng_url = False
         self.ita_url = False
         self.liga_url = False
+        self.uefa_url = False
         self.w_url = False
         self.name = ''
         self.current_league = ''
@@ -515,6 +569,7 @@ class Bet365(Website):
         self.eng_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33577327-2-1-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
         self.ita_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-34031004-2-6-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
         self.liga_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33977144-2-8-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1'  # noqa
+        self.uefa_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-34343042-2-3-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
         self.w_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-34948113-2-18-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
 
     def fetch(self, matches):
@@ -540,6 +595,7 @@ class Bluebet(Website):
         self.eng_url = 'https://www.bluebet.com.au/sports/Soccer/England/English-Premier-League/36715'  # noqa
         self.ita_url = 'https://www.bluebet.com.au/sports/Soccer/Italy/Serie-A-TIM/27245'
         self.liga_url = 'https://www.bluebet.com.au/sports/Soccer/Spain/Liga-de-F%C3%BAtbol-Profesional/27225'  # noqa
+        self.uefa_url = 'https://www.bluebet.com.au/sports/Soccer/Europe/UEFA-Champions-League/25325'  # noqa
         self.w_url = 'https://www.bluebet.com.au/sports/Soccer/Australia/Westfield-W-League/40620'
 
     def fetch(self, matches):
@@ -571,6 +627,7 @@ class Crownbet(Website):
         self.eng_url = 'https://crownbet.com.au/sports-betting/soccer/united-kingdom/english-premier-league-matches'  # noqa
         self.ita_url = 'https://crownbet.com.au/sports-betting/soccer/italy/italian-serie-a-matches/'  # noqa
         self.liga_url = 'https://crownbet.com.au/sports-betting/soccer/spain/spanish-la-liga-matches/'  # noqa
+        self.uefa_url = 'https://crownbet.com.au/sports-betting/soccer/uefa-competitions/champions-league-matches/'  # noqa
         self.w_url = 'https://crownbet.com.au/sports-betting/soccer/australia/w-league-matches/'
 
     def fetch(self, matches):
@@ -602,6 +659,7 @@ class Ladbrokes(Website):  # BetStar (and Bookmarker?) are the same
         self.eng_url = 'https://www.ladbrokes.com.au/sports/soccer/41388947-football-england-premier-league/'  # noqa
         self.ita_url = 'https://www.ladbrokes.com.au/sports/soccer/42212441-football-italy-italian-serie-a/'   # noqa
         self.liga_url = 'https://www.ladbrokes.com.au/sports/soccer/40962944-football-spain-spanish-la-liga/'  # noqa
+        self.uefa_url = 'https://www.ladbrokes.com.au/sports/soccer/43625772-football-uefa-club-competitions-uefa-champions-league/'  # noqa
 
     def fetch(self, matches):
         blocks = self.get_blocks('table.bettype-group.listings.odds.sports.match.soccer')
@@ -627,6 +685,7 @@ class Luxbet(Website):
         self.eng_url = 'https://www.luxbet.com/?cPath=616&event_id=ALL'
         self.ita_url = 'https://www.luxbet.com/?cPath=1172&event_id=ALL'
         self.liga_url = 'https://www.luxbet.com/?cPath=931&event_id=ALL'
+        self.uefa_url = 'https://www.luxbet.com/?cPath=6781&event_id=ALL'
         self.w_url = 'https://www.luxbet.com/?cPath=2436&event_id=ALL'
 
     def fetch(self, matches):
@@ -689,6 +748,7 @@ class Madbookie(Website):
         self.eng_url = 'https://www.madbookie.com.au/Sport/Soccer/English_Premier_League/Matches'
         self.ita_url = 'https://www.madbookie.com.au/Sport/Soccer/Italian_Serie_A/Matches'
         self.liga_url = 'https://www.madbookie.com.au/Sport/Soccer/Spanish_La_Liga/Matches'
+        self.uefa_url = 'https://www.madbookie.com.au/Sport/Soccer/UEFA_Champions_League/Matches'
         self.w_url = 'https://www.madbookie.com.au/Sport/Soccer/Australian_W-League/Matches'
 
     def fetch(self, matches):
@@ -720,6 +780,7 @@ class Palmerbet(Website):
         self.eng_url = 'https://www.palmerbet.com/sports/soccer/england-premier-league'
         self.ita_url = 'https://www.palmerbet.com/sports/soccer/italy-serie-a'
         self.liga_url = 'https://www.palmerbet.com/sports/soccer/spain-primera-division'
+        self.uefa_url = 'https://www.palmerbet.com/sports/soccer/uefa-champions-league'
         self.w_url = 'https://www.palmerbet.com/sports/soccer/australia-w_league'
 
     def fetch(self, matches):
@@ -749,11 +810,13 @@ class Pinnacle(Website):
         self.eng_url = 'https://www.pinnacle.com/en/odds/match/soccer/england/england-premier-league'  # noqa
         self.ita_url = 'https://www.pinnacle.com/en/odds/match/soccer/italy/italy-serie-a'
         self.liga_url = 'https://www.pinnacle.com/en/odds/match/soccer/spain/spain-la-liga'
+        self.uefa_url = 'https://www.pinnacle.com/en/odds/match/soccer/uefa/uefa-champions-league'
         self.a_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1766'
         self.arg_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1740'
         self.eng_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1980'
         self.ita_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/2436'
         self.liga_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/2196'
+        self.uefa_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/2627'
 
     def fetch(self, matches):
         blocks = self.get_blocks('tbody.ng-scope')
@@ -782,6 +845,7 @@ class Sportsbet(Website):
         self.eng_url = 'https://www.sportsbet.com.au/betting/soccer/united-kingdom/english-premier-league'  # noqa
         self.ita_url = 'https://www.sportsbet.com.au/betting/soccer/italy/italian-serie-a'
         self.liga_url = 'https://www.sportsbet.com.au/betting/soccer/spain/spanish-la-liga'
+        self.uefa_url = 'https://www.sportsbet.com.au/betting/soccer/uefa-competitions/uefa-champions-league'  # noqa
         self.w_url = 'https://www.sportsbet.com.au/betting/soccer/australia/australian-w-league-ladies'  # noqa
         self.use_request = True
         self.content = []
@@ -844,6 +908,7 @@ class Tab(Website):
         self.eng_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/English%20Premier%20League'  # noqa
         self.ita_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/Italian%20Serie%20A'  # noqa
         self.liga_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/Spanish%20Primera%20Division'  # noqa
+        self.uefa_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/UEFA%20Champions%20League'  # noqa
         self.w_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/Australia%20W%20League'  # noqa
 
     def fetch(self, matches):
@@ -869,7 +934,7 @@ class Topbetta(Website):
         super(Topbetta, self).__init__(driver, wait)
         self.name = 'topbetta'
         self.a_url = 'https://www.topbetta.com.au/sports/football/hyundai-a-league-regular-season-151825'  # noqa
-        self.eng_url = self.ita_url = self.liga_url = ' '
+        self.eng_url = self.ita_url = self.liga_url = self.uefa_url = ' '
         self.eng_urls = [
             'https://www.topbetta.com.au/sports/football/england-premier-league-round-16-146767',
             'https://www.topbetta.com.au/sports/football/england-premier-league-round-17-146769',
@@ -881,6 +946,16 @@ class Topbetta(Website):
         self.liga_urls = [
             'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-16-151375',  # noqa
             ]
+        self.uefa_urls = [
+            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-a-155259',
+            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-b-155261',
+            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-c-155263',
+            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-d-155265',
+            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-e-155267',
+            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-f-155269',
+            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-g-155271',
+            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-h-155273',
+        ]
 
     def fetch(self, matches):
         blocks = self.get_blocks('div.head-to-head-event')
@@ -895,7 +970,7 @@ class Topbetta(Website):
                 m.odds[1] = odds[2].text
                 m.odds[2] = odds[1].text
             except StaleElementReferenceException:
-                log_and_print('topbetta - selenium has StaleElementReferenceException: ' + b.text)
+                log_and_print('topbetta - Selenium has StaleElementReferenceException: ' + b.text)
                 continue
             m.agents = ['TopBetta'] * 3
             m.urls = [self.get_href_link()] * 3
@@ -911,6 +986,7 @@ class Ubet(Website):
         self.eng_url = 'https://ubet.com/sports/soccer/england-premier-league/premier-league-matches'  # noqa
         self.ita_url = 'https://ubet.com/sports/soccer/italy-serie-a'
         self.liga_url = 'https://ubet.com/sports/soccer/spain-la-liga'
+        self.uefa_url = 'https://ubet.com/sports/soccer/uefa-champions-league'
         self.w_url = 'https://ubet.com/sports/soccer/australia-w-league'
 
     def fetch(self, matches):
@@ -943,6 +1019,7 @@ class Unibet(Website):
         self.eng_url = 'https://www.unibet.com.au/betting#filter/football/england/premier_league'
         self.ita_url = 'https://www.unibet.com.au/betting#filter/football/italy/serie_a'
         self.liga_url = 'https://www.unibet.com.au/betting#filter/football/spain/laliga'
+        self.uefa_url = 'https://www.unibet.com.au/betting#filter/football/champions_league'
         self.w_url = 'https://www.unibet.com.au/betting#filter/football/australia/w-league__w_'
 
     def fetch(self, matches):
@@ -971,12 +1048,14 @@ class Williamhill(Website):
         self.eng_url = 'https://www.williamhill.com.au/sports/soccer/british-irish/english-premier-league-matches'  # noqa
         self.ita_url = 'https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches'
         self.liga_url = 'https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches'  # noqa
+        self.uefa_url = 'https://www.williamhill.com.au/sports/soccer/european-cups/uefa-champions-league-matches'  # noqa
         self.w_url = 'https://www.williamhill.com.au/sports/soccer/australia/w-league-matches'
 
     def fetch(self, matches):
         if 'rimera' in self.driver.current_url:  # if is arg
-            s = self.driver.find_elements_by_css_selector('div.Collapse_root_3H1.FilterList_menu_3g7')
-            if len(s) is 0 or 'rimera' not in s[0].text:  # noqa
+            s = self.driver.find_elements_by_css_selector(
+                'div.Collapse_root_3H1.FilterList_menu_3g7')
+            if len(s) is 0 or 'rimera' not in s[0].text:
                 return  # La Liga is removed
         blocks = self.driver.find_elements_by_css_selector('div.EventBlock_root_1Pn')
         for b in blocks:
@@ -1012,75 +1091,110 @@ class WebWorker:
             log_init()
 
     @staticmethod
-    def calc_bonus_profit(website='sportsbet', stake=45):
+    def calc_bonus_profit(website='luxbet', stake=50):
         maxp, bmh, bma, bpb, bi, bj, bp1, bp2, ba1, ba2, bob, bo1, bo2\
             = 0, 0, 0, 0, 0, 0, 0, 0, '', '', 0, 0, 0
         for l in g_leagues:
-            with open(os.path.join(gettempdir(), l + '_' + website + '.pkl'), 'rb') as b_pkl:
-                pickle_bonus_matches = pickle.load(b_pkl)
-                if len(pickle_bonus_matches) is 0:
-                    continue
-                maxp = 0
-                for bm in pickle_bonus_matches:
-                    for w1 in g_websites_str.split(','):
-                        if w1 == website:
-                            continue
-                        try:
-                            with open(os.path.join(gettempdir(),
-                                                   l + '_' + w1 + '.pkl'), 'rb') as pkl1:
-                                matches1 = pickle.load(pkl1)
-                                if len(matches1) is 0:
-                                    continue
-                                for m1 in matches1:
-                                    if m1.home_team != bm.home_team or m1.away_team != bm.away_team:
+            try:
+                with open(os.path.join(gettempdir(), l + '_' + website + '.pkl'), 'rb') as b_pkl:
+                    pickle_bonus_matches = pickle.load(b_pkl)
+                    if len(pickle_bonus_matches) is 0:
+                        continue
+                    maxp = 0
+                    for bm in pickle_bonus_matches:
+                        for w1 in g_websites_str.split(','):
+                            if w1 == website:
+                                continue
+                            try:
+                                with open(os.path.join(gettempdir(),
+                                                       l + '_' + w1 + '.pkl'), 'rb') as pkl1:
+                                    matches1 = pickle.load(pkl1)
+                                    if len(matches1) is 0:
                                         continue
-                                    for odd_idx in range(3):
-                                        ob = odd_idx
-                                        o1 = (odd_idx + 1) % 3
-                                        o2 = (odd_idx + 2) % 3
-                                        for w2 in g_websites_str.split(','):
-                                            if w2 == website:
-                                                continue
-                                            with open(os.path.join(gettempdir(),
-                                                      l + '_' + w2 + '.pkl'), 'rb') as pkl2:
-                                                matches2 = pickle.load(pkl2)
-                                                if len(matches2) is 0:
+                                    for m1 in matches1:
+                                        if m1.home_team != bm.home_team or \
+                                           m1.away_team != bm.away_team:
+                                            continue
+                                        for odd_idx in range(3):
+                                            ob = odd_idx
+                                            o1 = (odd_idx + 1) % 3
+                                            o2 = (odd_idx + 2) % 3
+                                            for w2 in g_websites_str.split(','):
+                                                if w2 == website:
                                                     continue
-                                                for m2 in matches2:
-                                                    if m2.home_team != bm.home_team or \
-                                                                    m2.away_team != bm.away_team:
+                                                with open(os.path.join(gettempdir(),
+                                                          l + '_' + w2 + '.pkl'), 'rb') as pkl2:
+                                                    matches2 = pickle.load(pkl2)
+                                                    if len(matches2) is 0:
                                                         continue
-                                                    for i in range(stake * 3):
-                                                        for j in range(stake * 3):
-                                                            p_bw = float(bm.odds[ob]) * stake - stake - i - j  # noqa
-                                                            p_1w = float(m1.odds[o1]) * i - i - j
-                                                            p_2w = float(m2.odds[o2]) * j - j - i
-                                                            minp = min(p_bw, p_1w, p_2w)
-                                                            if maxp < minp:
-                                                                maxp = minp
-                                                                bmh = bm.home_team
-                                                                bma = bm.away_team
-                                                                bpb = p_bw
-                                                                bp1 = p_1w
-                                                                bp2 = p_2w
-                                                                bi = i
-                                                                bj = j
-                                                                ba1 = m1.agents[0]
-                                                                ba2 = m2.agents[1]
-                                                                bob = float(bm.odds[ob])
-                                                                bo1 = float(m1.odds[o1])
-                                                                bo2 = float(m2.odds[o2])
-                        except FileNotFoundError:
-                            continue
-                log_and_print('{:.2f} - {} vs {} - '
-                              '{:.2f}({:.2f})({:.2f})({}) '
-                              '{:.2f}({:.2f})({:.2f})({}) '
-                              '{:.2f}({:.2f})({:.2f})({})'.format(
-                                maxp, bmh, bma,
-                                bpb, bob, stake, website,
-                                bp1, bo1, bi, ba1,
-                                bp2, bo2, bj, ba2))
+                                                    for m2 in matches2:
+                                                        if m2.home_team != bm.home_team or \
+                                                              m2.away_team != bm.away_team:
+                                                            continue
+                                                        for i in range(stake * 3):
+                                                            for j in range(stake * 3):
+                                                                p_bw = float(bm.odds[ob]) * stake - stake - i - j  # noqa
+                                                                p_1w = float(m1.odds[o1]) * i - i - j  # noqa
+                                                                p_2w = float(m2.odds[o2]) * j - j - i  # noqa
+                                                                minp = min(p_bw, p_1w, p_2w)
+                                                                if maxp < minp:
+                                                                    maxp = minp
+                                                                    bmh = bm.home_team
+                                                                    bma = bm.away_team
+                                                                    bpb = p_bw
+                                                                    bp1 = p_1w
+                                                                    bp2 = p_2w
+                                                                    bi = i
+                                                                    bj = j
+                                                                    ba1 = m1.agents[0]
+                                                                    ba2 = m2.agents[0]
+                                                                    bob = float(bm.odds[ob])
+                                                                    bo1 = float(m1.odds[o1])
+                                                                    bo2 = float(m2.odds[o2])
+                                                                elif maxp == minp:
+                                                                    ba1 += ' ' + m1.agents[0]
+                                                                    ba2 += ' ' + m2.agents[0]
+                            except FileNotFoundError:
+                                continue
+                    log_and_print('Max {:.2f} - '
+                                  '{:.2f} (odds {:.2f}) ({:.2f} on {})\t'
+                                  '{:.2f} (odds {:.2f}) ({:.2f} on {})\t'
+                                  '{:.2f} (odds {:.2f}) ({:.2f} on {}) - {} vs {}'.format(
+                                    maxp,
+                                    bpb, bob, stake, website,
+                                    bp1, bo1, bi, ba1,
+                                    bp2, bo2, bj, ba2, bmh, bma))
+            except FileNotFoundError:
+                continue
 
+    @staticmethod
+    def calc_best_shot(o1, o2, o3):
+        def min_pay(w, d, l, wp, dp, lp):
+            if w * wp <= d * dp and w * wp <= l * lp:
+                return w * wp
+            if d * dp <= w * wp and d * dp <= l * lp:
+                return d * dp
+            else:
+                return l * lp
+
+        max_profit = 0
+        m = Match()
+        for i in range(100):
+            for j in range(100 - i):
+                profit = min_pay(o1, o2, o3,
+                                 i, j, 100 - i - j)
+                if profit > max_profit:
+                    max_profit = profit
+                    m.perts[0] = i
+                    m.perts[1] = j
+                    m.perts[2] = 100 - i - j
+                    m.earns[0] = round(i*o1 - 100, 2)
+                    m.earns[1] = round(j*o2 - 100, 2)
+                    m.earns[2] = round((100-i-j)*o3 - 100, 2)
+                    m.odds = o1, o2, o3
+                    m.profit = profit
+        m.display()
+                    
     def run(self,
             websites,
             is_get_a=False,
@@ -1088,6 +1202,7 @@ class WebWorker:
             is_get_eng=False,
             is_get_ita=False,
             is_get_liga=False,
+            is_get_uefa=False,
             is_get_w=False,
             is_get_only=False,
             is_send_email_api=False,
@@ -1202,6 +1317,7 @@ class WebWorker:
                                    set_pickles('eng') if is_get_eng else [],
                                    set_pickles('ita') if is_get_ita else [],
                                    set_pickles('liga') if is_get_liga else [],
+                                   set_pickles('uefa') if is_get_uefa else [],
                                    set_pickles('w') if is_get_w else [])
 
         def send_email_when_found():

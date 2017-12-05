@@ -17,6 +17,7 @@ def main():
       --eng                     Get EPL
       --ita                     Get Italy league
       --liga                    Get La Liga
+      --uefa                    Get UEFA Champions League
       --w                       Get W-league
       --get-only                Don't merge and print matches
       --print                   Don't get latest odds, just print out based on saved odds
@@ -27,11 +28,13 @@ def main():
       --ask-gce=<websites>      Read from GCE for these websites
       --gce-ip=<ip>             GCE instance IP
       --bonus                   Calculate and print bonus profit
+      --calc-best=<odds>        Calculate and print best profit
 
     Example:
       cli.py luxbet,crownbet --a
       cli.py all --eng
       cli.py bet365,ubet --eng --ask-gce=bet365 --loop=10
+      cli.py all --calc-best=2.10,3.5,3.75
     """
     worker = False
 
@@ -46,6 +49,9 @@ def main():
     worker = WebWorker(is_get_data=not args['--print'], keep_driver_alive=False)
     if args['--bonus']:
         worker.calc_bonus_profit()
+    elif args['--calc-best'] is not None:
+        o1, o2, o3 = args['--calc-best'].split(',')
+        worker.calc_best_shot(float(o1), float(o2), float(o3))
     else:
         worker.run(
             websites=args['<websites>'],
@@ -54,6 +60,7 @@ def main():
             is_get_eng=args['--eng'],
             is_get_ita=args['--ita'],
             is_get_liga=args['--liga'],
+            is_get_uefa=args['--uefa'],
             is_get_w=args['--w'],
             is_get_only=args['--get-only'],
             is_send_email_api=args['--send-email-api'],
