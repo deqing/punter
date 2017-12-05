@@ -14,7 +14,8 @@ def main():
       --all                     Get all leagues
       --a                       Get A-league
       --arg                     Get Argentina league
-      --eng                     Get EPL
+      --eng                     Get English Premier League
+      --gem                     Get Germany League
       --ita                     Get Italy league
       --liga                    Get La Liga
       --uefa                    Get UEFA Champions League
@@ -58,6 +59,7 @@ def main():
             is_get_a=args['--a'],
             is_get_arg=args['--arg'],
             is_get_eng=args['--eng'],
+            is_get_gem=args['--gem'],
             is_get_ita=args['--ita'],
             is_get_liga=args['--liga'],
             is_get_uefa=args['--uefa'],
