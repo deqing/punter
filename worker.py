@@ -167,12 +167,15 @@ class Match:
             self.urls[i] = json_['urls'][i]
 
     def display(self, html_file=WriteToHtmlFileDummy()):
-        msg = '{:.2f}\t{:.2f}({})({})({})\t{:.2f}({})({})({})\t{:.2f}({})({})({})\t' \
+        def width(s):
+            return '{:0.2f}'.format(float(s))
+
+        msg = '{}\t{}({})({})({})\t{}({})({})({})\t{}({})({})({})\t' \
               '- {} vs {}'.format(
-                self.profit,
-                float(self.odds[0]), self.agents[0], self.perts[0], self.earns[0],
-                float(self.odds[1]), self.agents[1], self.perts[1], self.earns[1],
-                float(self.odds[2]), self.agents[2], self.perts[2], self.earns[2],
+                width(self.profit),
+                width(self.odds[0]), self.agents[0], width(self.perts[0]), width(self.earns[0]),
+                width(self.odds[1]), self.agents[1], width(self.perts[1]), width(self.earns[1]),
+                width(self.odds[2]), self.agents[2], width(self.perts[2]), width(self.earns[2]),
                 self.home_team, self.away_team)
         if self.has_other_agents:
             msg += '\t(' + '|'.join([','.join(x) for x in self.other_agents]) + ')'
@@ -453,6 +456,8 @@ class MatchMerger:
                 converted_name = 'manutd'
             elif 'karabakh' in converted_name or 'qaraba' in converted_name:
                 converted_name = 'qarabag'
+            elif 'beşikta' in converted_name:
+                converted_name = 'besiktas'
         elif league_name == 'German Bundesliga':
             if 'fcköln' in converted_name or 'koeln' in converted_name or \
                     'cologne' == converted_name:
