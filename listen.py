@@ -17,8 +17,8 @@ def reply():
 
     args = dict()
     args['websites'] = website
+    args['leagues'] = league
     args['is_get_only'] = True
-    args['is_get_' + league] = True
     worker.run(**args)
 
     pkl_name = league + '_' + website + '.pkl'
