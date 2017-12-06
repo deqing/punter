@@ -1,8 +1,5 @@
 """
 TODO
-
-add champions league
-add germany
 add france
 
 restarting aws:
@@ -42,7 +39,7 @@ from logging.handlers import RotatingFileHandler
 
 HEAD = '<html lang="en">\n'
 log_to_file = False
-g_leagues = ('a', 'arg', 'eng', 'gem', 'ita', 'liga', 'uefa', 'w')
+g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 
 
@@ -224,6 +221,7 @@ class MatchMerger:
                  pickles_a,
                  pickles_arg,
                  pickles_eng,
+                 pickles_fra,
                  pickles_gem,
                  pickles_ita,
                  pickles_liga,
@@ -233,6 +231,7 @@ class MatchMerger:
         self.pickles_a = pickles_a
         self.pickles_arg = pickles_arg
         self.pickles_eng = pickles_eng
+        self.pickles_fra = pickles_fra
         self.pickles_gem = pickles_gem
         self.pickles_ita = pickles_ita
         self.pickles_liga = pickles_liga
@@ -305,6 +304,28 @@ class MatchMerger:
             'watford': 'Watford',
             'westbrom': 'West Brom',
             'westham': 'West Ham',
+        }
+        self.fra_map = {
+            'amiens': 'Amiens',
+            'angers': 'Angers SCO',
+            'bordeaux': 'Bordeaux',
+            'caen': 'Caen',
+            'dijon': 'Dijon',
+            'tienne': 'St Etienne',
+            'guingamp': 'Guingamp',
+            'lille': 'Lille',
+            'lyon': 'Lyon',
+            'marseille': 'Marseille',
+            'metz': 'Metz',
+            'monaco': 'AS Monaco',
+            'montpellier': 'Montpellier HSC',
+            'nantes': 'Nantes',
+            'nice': 'Nice',
+            'paris': 'Paris Saint Germain',
+            'renn': 'Stade Rennais',
+            'strasbourg': 'Strasbourg',
+            'toulouse': 'Toulouse FC',
+            'troyes': 'Troyes AC',
         }
         self.gem_map = {
             'augsburg': 'Augsburg',
@@ -412,6 +433,7 @@ class MatchMerger:
         self.a_league_keys = list(self.a_league_map.keys())
         self.arg_keys = list(self.arg_map.keys())
         self.eng_keys = list(self.eng_map.keys())
+        self.fra_keys = list(self.fra_map.keys())
         self.gem_keys = list(self.gem_map.keys())
         self.ita_keys = list(self.ita_map.keys())
         self.la_liga_keys = list(self.la_liga_map.keys())
@@ -465,6 +487,9 @@ class MatchMerger:
             elif 'mgladbach' == converted_name or 'bormonch' == converted_name or \
                     'gladbach' in converted_name:
                 converted_name = 'nchengladbach'
+        elif league_name == 'French Ligue 1':
+            if converted_name == 'psg':
+                converted_name = 'paris'
 
         for name in keys:
             if name in converted_name:
@@ -493,6 +518,8 @@ class MatchMerger:
             loop.append((self.pickles_arg, self.arg_keys, self.arg_map, 'Argentina Superliga'))
         elif 'eng' in leagues:
             loop.append((self.pickles_eng, self.eng_keys, self.eng_map, 'English Premier League'))
+        elif 'fra' in leagues:
+            loop.append((self.pickles_fra, self.fra_keys, self.fra_map, 'French Ligue 1'))
         elif 'gem' in leagues:
             loop.append((self.pickles_gem, self.gem_keys, self.gem_map, 'German Bundesliga'))
         elif 'ita' in leagues:
@@ -568,6 +595,7 @@ class Website:
         self.a_url = False
         self.arg_url = False
         self.eng_url = False
+        self.fra_url = False
         self.gem_url = False
         self.ita_url = False
         self.liga_url = False
@@ -605,6 +633,7 @@ class Bet365(Website):
         self.a_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-27119403-2-18-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1'  # noqa
         self.arg_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-34240206-2-12-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
         self.eng_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33577327-2-1-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
+        self.fra_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33754893-2-15-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
         self.gem_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33754901-2-7-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
         self.ita_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-34031004-2-6-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=30;anim=1'  # noqa
         self.liga_url = 'https://mobile.bet365.com.au/#type=Coupon;key=1-1-13-33977144-2-8-0-0-1-0-0-4100-0-0-1-0-0-0-0-0-0;ip=0;lng=1;anim=1'  # noqa
@@ -632,6 +661,7 @@ class Bluebet(Website):
         self.a_url = 'https://www.bluebet.com.au/sports/Soccer/Australia/Hyundai-A-League/38925'
         self.arg_url = 'https://www.bluebet.com.au/sports/Soccer/Argentina/Primera-Divisi%C3%B3n/28907'  # noqa
         self.eng_url = 'https://www.bluebet.com.au/sports/Soccer/England/English-Premier-League/36715'  # noqa
+        self.fra_url = 'https://www.bluebet.com.au/sports/Soccer/France/Ligue-1-Orange/27235'
         self.gem_url = 'https://www.bluebet.com.au/sports/Soccer/Germany/Bundesliga/27243'
         self.ita_url = 'https://www.bluebet.com.au/sports/Soccer/Italy/Serie-A-TIM/27245'
         self.liga_url = 'https://www.bluebet.com.au/sports/Soccer/Spain/Liga-de-F%C3%BAtbol-Profesional/27225'  # noqa
@@ -665,6 +695,7 @@ class Crownbet(Website):
         self.a_url = 'https://crownbet.com.au/sports-betting/soccer/australia/a-league-matches'
         self.arg_url = 'https://crownbet.com.au/sports-betting/soccer/americas/argentina-primera-division-matches'  # noqa
         self.eng_url = 'https://crownbet.com.au/sports-betting/soccer/united-kingdom/english-premier-league-matches'  # noqa
+        self.fra_url = 'https://crownbet.com.au/sports-betting/soccer/france/french-ligue-1-matches'
         self.gem_url = 'https://crownbet.com.au/sports-betting/soccer/germany/german-bundesliga-matches'  # noqa
         self.ita_url = 'https://crownbet.com.au/sports-betting/soccer/italy/italian-serie-a-matches/'  # noqa
         self.liga_url = 'https://crownbet.com.au/sports-betting/soccer/spain/spanish-la-liga-matches/'  # noqa
@@ -698,6 +729,7 @@ class Ladbrokes(Website):  # BetStar (and Bookmarker?) are the same
         self.a_url = 'https://www.ladbrokes.com.au/sports/soccer/39445848-football-australia-australian-a-league/?utm_source=%2Fsports%2Fsoccer%2F35326546-australian-a-league-2017-2018%2F35326546-australian-a-league-2017-2018%2F&utm_medium=sport+banner&utm_campaign=a+league+round+4'  # noqa
         self.arg_url = 'https://www.ladbrokes.com.au/sports/soccer/43008934-football-argentina-argentinian-primera-division/'  # noqa
         self.eng_url = 'https://www.ladbrokes.com.au/sports/soccer/41388947-football-england-premier-league/'  # noqa
+        self.fra_url = 'https://www.ladbrokes.com.au/sports/soccer/43547428-football-france-french-ligue-1/'  # noqa
         self.gem_url = 'https://www.ladbrokes.com.au/sports/soccer/42213482-football-germany-german-bundesliga/'  # noqa
         self.ita_url = 'https://www.ladbrokes.com.au/sports/soccer/42212441-football-italy-italian-serie-a/'   # noqa
         self.liga_url = 'https://www.ladbrokes.com.au/sports/soccer/40962944-football-spain-spanish-la-liga/'  # noqa
@@ -725,6 +757,7 @@ class Luxbet(Website):
         self.a_url = 'https://www.luxbet.com/?cPath=596&event_id=ALL'
         self.arg_url = 'https://www.luxbet.com/?cPath=6278&event_id=ALL'
         self.eng_url = 'https://www.luxbet.com/?cPath=616&event_id=ALL'
+        self.fra_url = 'https://www.luxbet.com/?cPath=635&event_id=ALL'
         self.gem_url = 'https://www.luxbet.com/?cPath=624&event_id=ALL'
         self.ita_url = 'https://www.luxbet.com/?cPath=1172&event_id=ALL'
         self.liga_url = 'https://www.luxbet.com/?cPath=931&event_id=ALL'
@@ -789,6 +822,7 @@ class Madbookie(Website):
         self.a_url = 'https://www.madbookie.com.au/Sport/Soccer/Australian_A-League/Matches'
         self.arg_url = 'https://www.madbookie.com.au/Sport/Soccer/Argentinian_Primera_Division/Matches'  # noqa
         self.eng_url = 'https://www.madbookie.com.au/Sport/Soccer/English_Premier_League/Matches'
+        self.fra_url = 'https://www.madbookie.com.au/Sport/Soccer/French_Ligue_1/Matches'
         self.gem_url = 'https://www.madbookie.com.au/Sport/Soccer/German_Bundesliga/Matches'
         self.ita_url = 'https://www.madbookie.com.au/Sport/Soccer/Italian_Serie_A/Matches'
         self.liga_url = 'https://www.madbookie.com.au/Sport/Soccer/Spanish_La_Liga/Matches'
@@ -822,6 +856,7 @@ class Palmerbet(Website):
         self.a_url = 'https://www.palmerbet.com/sports/soccer/australia-a_league'
         self.arg_url = 'https://www.palmerbet.com/sports/soccer/argentina-primera-división'
         self.eng_url = 'https://www.palmerbet.com/sports/soccer/england-premier-league'
+        self.fra_url = 'https://www.palmerbet.com/sports/soccer/france-ligue-1'
         self.gem_url = 'https://www.palmerbet.com/sports/soccer/germany-bundesliga'
         self.ita_url = 'https://www.palmerbet.com/sports/soccer/italy-serie-a'
         self.liga_url = 'https://www.palmerbet.com/sports/soccer/spain-primera-division'
@@ -853,6 +888,7 @@ class Pinnacle(Website):
         self.a_url = 'https://www.pinnacle.com/en/odds/match/soccer/australia/australia-a-league'
         self.arg_url = 'https://www.pinnacle.com/en/odds/match/soccer/argentina/argentina-primera-division'  # noqa
         self.eng_url = 'https://www.pinnacle.com/en/odds/match/soccer/england/england-premier-league'  # noqa
+        self.fra_url = 'https://www.pinnacle.com/en/odds/match/soccer/france/ligue-1'
         self.gem_url = 'https://www.pinnacle.com/en/odds/match/soccer/germany/bundesliga'
         self.ita_url = 'https://www.pinnacle.com/en/odds/match/soccer/italy/italy-serie-a'
         self.liga_url = 'https://www.pinnacle.com/en/odds/match/soccer/spain/spain-la-liga'
@@ -860,6 +896,7 @@ class Pinnacle(Website):
         self.a_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1766'
         self.arg_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1740'
         self.eng_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1980'
+        self.fra_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/2036'
         self.gem_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/1842'
         self.ita_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/2436'
         self.liga_url_logined = 'https://beta.pinnacle.com/en/Sports/29/Leagues/2196'
@@ -890,6 +927,7 @@ class Sportsbet(Website):
         self.a_url = 'https://www.sportsbet.com.au/betting/soccer/australia/australian-a-league'
         self.arg_url = 'https://www.sportsbet.com.au/betting/soccer/americas/argentinian-primera-division'  # noqa
         self.eng_url = 'https://www.sportsbet.com.au/betting/soccer/united-kingdom/english-premier-league'  # noqa
+        self.fra_url = 'https://www.sportsbet.com.au/betting/soccer/france/french-ligue-1'
         self.gem_url = 'https://www.sportsbet.com.au/betting/soccer/germany/german-bundesliga'
         self.ita_url = 'https://www.sportsbet.com.au/betting/soccer/italy/italian-serie-a'
         self.liga_url = 'https://www.sportsbet.com.au/betting/soccer/spain/spanish-la-liga'
@@ -954,6 +992,7 @@ class Tab(Website):
         self.name = 'tab'
         self.a_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/A%20League'
         self.eng_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/English%20Premier%20League'  # noqa
+        self.fra_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/French%20Ligue%201'  # noqa
         self.gem_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/German%20Bundesliga'  # noqa
         self.ita_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/Italian%20Serie%20A'  # noqa
         self.liga_url = 'https://www.tab.com.au/sports/betting/Soccer/competitions/Spanish%20Primera%20Division'  # noqa
@@ -983,11 +1022,14 @@ class Topbetta(Website):
         super(Topbetta, self).__init__(driver, wait)
         self.name = 'topbetta'
         self.a_url = 'https://www.topbetta.com.au/sports/football/hyundai-a-league-regular-season-151825'  # noqa
-        self.eng_url = self.gem_url = self.ita_url = self.liga_url = self.uefa_url = ' '
+        self.eng_url = self.fra_url = self.gem_url = self.ita_url = self.liga_url = self.uefa_url = ' '  # noqa
         self.eng_urls = [
             'https://www.topbetta.com.au/sports/football/england-premier-league-round-16-146767',
             'https://www.topbetta.com.au/sports/football/england-premier-league-round-17-146769',
             ]
+        self.fra_urls = [
+            'https://www.topbetta.com.au/sports/football/ligue-1-orange-round-17-166360',
+        ]
         self.gem_urls = [
             'https://www.topbetta.com.au/sports/football/bundesliga-round-15-150651',
             'https://www.topbetta.com.au/sports/football/bundesliga-round-16-150653',
@@ -1000,10 +1042,10 @@ class Topbetta(Website):
             'https://www.topbetta.com.au/sports/football/liga-de-futbol-profesional-round-16-151375',  # noqa
             ]
         self.uefa_urls = [
-            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-a-155259',
-            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-b-155261',
-            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-c-155263',
-            'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-d-155265',
+            # 'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-a-155259',
+            # 'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-b-155261',
+            # 'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-c-155263',
+            # 'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-d-155265',
             'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-e-155267',
             'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-f-155269',
             'https://www.topbetta.com.au/sports/football/uefa-champions-league-group-g-155271',
@@ -1037,6 +1079,7 @@ class Ubet(Website):
         self.a_url = 'https://ubet.com/sports/soccer/australia-a-league/a-league-matches'
         self.arg_url = 'https://ubet.com/sports/soccer/argentina-primera-division/arg-primera-matches'  # noqa
         self.eng_url = 'https://ubet.com/sports/soccer/england-premier-league/premier-league-matches'  # noqa
+        self.fra_url = 'https://ubet.com/sports/soccer/france-ligue-1'
         self.gem_url = 'https://ubet.com/sports/soccer/germany-bundesliga'
         self.ita_url = 'https://ubet.com/sports/soccer/italy-serie-a'
         self.liga_url = 'https://ubet.com/sports/soccer/spain-la-liga'
@@ -1078,6 +1121,7 @@ class Unibet(Website):
         self.a_url = 'https://www.unibet.com.au/betting#filter/football/australia/a-league'
         self.arg_url = 'https://www.unibet.com.au/betting#filter/football/argentina/primera_division'  # noqa
         self.eng_url = 'https://www.unibet.com.au/betting#filter/football/england/premier_league'
+        self.fra_url = 'https://www.unibet.com.au/betting#filter/football/france/ligue_1'
         self.gem_url = 'https://www.unibet.com.au/betting#filter/football/germany/bundesliga'
         self.ita_url = 'https://www.unibet.com.au/betting#filter/football/italy/serie_a'
         self.liga_url = 'https://www.unibet.com.au/betting#filter/football/spain/laliga'
@@ -1108,6 +1152,7 @@ class Williamhill(Website):
         self.a_url = 'https://www.williamhill.com.au/sports/soccer/australia/a-league-matches'
         self.arg_url = 'https://www.williamhill.com.au/sports/soccer/americas/argentine-primera-division-matches'  # noqa
         self.eng_url = 'https://www.williamhill.com.au/sports/soccer/british-irish/english-premier-league-matches'  # noqa
+        self.fra_url = 'https://www.williamhill.com.au/sports/soccer/europe/french-ligue-1-matches'
         self.gem_url = 'https://www.williamhill.com.au/sports/soccer/europe/german-bundesliga-matches'  # noqa
         self.ita_url = 'https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches'
         self.liga_url = 'https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches'  # noqa
@@ -1373,6 +1418,7 @@ class WebWorker:
         match_merger = MatchMerger(set_pickles('a'),
                                    set_pickles('arg'),
                                    set_pickles('eng'),
+                                   set_pickles('fra'),
                                    set_pickles('gem'),
                                    set_pickles('ita'),
                                    set_pickles('liga'),
