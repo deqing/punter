@@ -1047,21 +1047,28 @@ class Ubet(Website):
         blocks = self.get_blocks('div.ubet-sub-events-summary')
         for b in blocks:
             try:
-                odds = b.find_elements_by_css_selector('div.ubet-offer-win-only')
-                match = Match()
-                m = []
-                for i in range(3):
-                    m.append(odds[i].text.split('\n'))
-                    match.odds[i] = m[i][1].replace('LIVE ', '')
-                    match.agents[i] = 'UBET   '
-                    match.urls[i] = self.get_href_link()
-                if 'SUSPENDED' in match.odds[0]:
-                    continue
-                match.home_team = m[0][0]
-                match.away_team = m[2][0]
-                matches.append(match)
+                values = b.text.split('\n')
             except StaleElementReferenceException:
+                log_and_print('Ubet skipping - Selenium has StaleElementReferenceException')
                 continue
+            if len(values) < 7:
+                log_and_print('Ubet - wrong info: ' + b.text)
+                continue
+            if 'WINNER' == values[0]:
+                continue
+            m = Match()
+            m.home_team = values[1]
+            m.away_team = values[5]
+            m.odds[0] = values[2]
+            m.odds[1] = values[4]
+            m.odds[2] = values[6]
+
+            for i in range(3):
+                m.agents[i] = 'UBET   '
+                m.urls[i] = self.get_href_link()
+            if 'SUSPENDED' in m.odds[0]:
+                continue
+            matches.append(m)
 
 
 class Unibet(Website):
