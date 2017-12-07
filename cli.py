@@ -12,14 +12,6 @@ def main():
 
     Options:
       --all                     Get all leagues
-      --a                       Get A-league
-      --arg                     Get Argentina league
-      --eng                     Get English Premier League
-      --gem                     Get Germany League
-      --ita                     Get Italy league
-      --liga                    Get La Liga
-      --uefa                    Get UEFA Champions League
-      --w                       Get W-league
       --get-only                Don't merge and print matches
       --print                   Don't get latest odds, just print out based on saved odds
       --send-email-api          Send email by MailGun's restful api
@@ -32,10 +24,10 @@ def main():
       --calc-best=<odds>        Calculate and print best profit
 
     Example:
-      cli.py luxbet,crownbet --a
-      cli.py all --eng
-      cli.py bet365,ubet --eng --ask-gce=bet365 --loop=10
-      cli.py all --calc-best=2.10,3.5,3.75
+      cli.py luxbet,crownbet a
+      cli.py all eng,uefa
+      cli.py bet365,ubet fra --ask-gce=bet365 --gce-ip=1.2.3.4 --loop=10
+      cli.py all abc --calc-best=2.10,3.5,3.75
     """
     worker = False
 

@@ -1,6 +1,5 @@
 """
 TODO
-add france
 
 restarting aws:
 https://aws.amazon.com/premiumsupport/knowledge-center/start-stop-lambda-cloudwatch/
@@ -10,7 +9,7 @@ cronjob (when python able to write to file)
 https://www.taniarascia.com/setting-up-a-basic-cron-job-in-linux/
 
 Don't do:
-- calculator - live is Phone only
+- live bet - live is Phone only
 - add neds.com.au (not easy to get by css)
 """
 
@@ -196,8 +195,8 @@ class Match:
             else:
                 return l * lp
 
-        for i in range(100):
-            for j in range(100 - i):
+        for i in range(1, 99):
+            for j in range(1, 100 - i):
                 try:
                     profit = min_pay(float(self.odds[0]),
                                      float(self.odds[1]),
@@ -1287,8 +1286,8 @@ class WebWorker:
 
         max_profit = 0
         m = Match()
-        for i in range(100):
-            for j in range(100 - i):
+        for i in range(1, 99):
+            for j in range(1, 100 - i):
                 profit = min_pay(o1, o2, o3,
                                  i, j, 100 - i - j)
                 if profit > max_profit:
