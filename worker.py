@@ -164,7 +164,11 @@ class Match:
 
     def display(self, html_file=WriteToHtmlFileDummy()):
         def width(s):
-            return '{:0.2f}'.format(float(s))
+            try:
+                return '{:0.2f}'.format(float(s))
+            except ValueError:
+                log_and_print('WARNING: Cannot convert {} to float'.format(s))
+                return '-'
 
         msg = '{}\t{}({})({})({})\t{}({})({})({})\t{}({})({})({})\t' \
               '- {} vs {}'.format(
