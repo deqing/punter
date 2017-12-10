@@ -429,9 +429,11 @@ class MatchMerger:
             'tottenham': 'Tottenham Hotspur',
         }
         self.w_map = {
-            'adelaide': 'Adelaide United',
-            'brisbane': 'Brisbane Roar',
-            'canberra': 'Canberra United',
+            'adelaide': 'Adelaide United Women',
+            'brisbane': 'Brisbane Roar Women',
+            'canberra': 'Canberra United Women',
+            'melbournecity': 'Melbourne City Women',
+            'newcastle': 'Newcastle Jets Women',
         }
         self.a_league_keys = list(self.a_league_map.keys())
         self.arg_keys = list(self.arg_map.keys())
@@ -493,6 +495,11 @@ class MatchMerger:
         elif league_name == 'French Ligue 1':
             if converted_name == 'psg':
                 converted_name = 'paris'
+        elif league_name == 'Australia W-League':
+            if 'melbcity' in converted_name:
+                converted_name = 'melbournecity'
+            elif 'newcstlejets' in converted_name:
+                converted_name = 'newcastle'
 
         for name in keys:
             if name in converted_name:
