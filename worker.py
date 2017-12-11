@@ -693,12 +693,10 @@ class Betfair(Website):
         def save_cookie(f):
             with open(f, 'wb') as cookies_file:
                 pickle.dump(self.driver.get_cookies(), cookies_file)
-                log_and_print('cookies saved to: ' + f)
 
         def load_cookie(f):
             with open(f, 'rb') as cookies_file:
                 cookies = pickle.load(cookies_file)
-                log_and_print('cookies got from: ' + f)
                 for cookie in cookies:
                     self.driver.add_cookie(cookie)
 
@@ -714,6 +712,9 @@ class Betfair(Website):
                 account.send_keys(username_file.read().rstrip())
                 password.send_keys(password_file.read().rstrip())
             login.click()
+            self.wait.until(
+                expected_conditions.visibility_of_element_located((By.CSS_SELECTOR,
+                                                                   'form.ssc-lof')))
             save_cookie(path)
 
     def fetch(self, matches):
