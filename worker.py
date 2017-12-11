@@ -463,6 +463,8 @@ class MatchMerger:
                 converted_name = 'atlmadrid'
             elif 'lacoru' in converted_name:
                 converted_name = 'deportivo'
+            elif 'sociedad' in converted_name:
+                converted_name = 'realsoc'
         elif league_name == 'English Premier League':
             if 'mancity' == converted_name:
                 converted_name = 'manchestercity'
@@ -691,10 +693,12 @@ class Betfair(Website):
         def save_cookie(f):
             with open(f, 'wb') as cookies_file:
                 pickle.dump(self.driver.get_cookies(), cookies_file)
+                log_and_print('cookies saved to: ' + f)
 
         def load_cookie(f):
             with open(f, 'rb') as cookies_file:
                 cookies = pickle.load(cookies_file)
+                log_and_print('cookies got from: ' + f)
                 for cookie in cookies:
                     self.driver.add_cookie(cookie)
 
