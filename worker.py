@@ -39,7 +39,7 @@ from logging.handlers import RotatingFileHandler
 HEAD = '<html lang="en">\n'
 log_to_file = False
 g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
-# TODO: g_websites_str = 'bet365,betfair,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
+#g_websites_str = 'bet365,betfair,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 
 
@@ -1283,7 +1283,7 @@ class WebWorker:
             log_init()
 
     @staticmethod
-    def calc_bonus_profit(website='luxbet', stake=50):
+    def calc_bonus_profit(websites_str, website='luxbet', stake=50):
         maxp, bmh, bma, bpb, bi, bj, bp1, bp2, ba1, ba2, bob, bo1, bo2\
             = 0, 0, 0, 0, 0, 0, 0, 0, '', '', 0, 0, 0
         for l in g_leagues:
@@ -1294,7 +1294,8 @@ class WebWorker:
                         continue
                     maxp = 0
                     for bm in pickle_bonus_matches:
-                        for w1 in g_websites_str.split(','):
+                        websites_str = g_websites_str if websites_str == 'all' else websites_str
+                        for w1 in websites_str.split(','):
                             if w1 == website:
                                 continue
                             try:
@@ -1311,7 +1312,7 @@ class WebWorker:
                                             ob = odd_idx
                                             o1 = (odd_idx + 1) % 3
                                             o2 = (odd_idx + 2) % 3
-                                            for w2 in g_websites_str.split(','):
+                                            for w2 in websites_str.split(','):
                                                 if w2 == website:
                                                     continue
                                                 with open(os.path.join(gettempdir(),
@@ -1520,7 +1521,7 @@ class WebWorker:
             with open('output_title.txt', 'r') as title_file:
                 title = title_file.read()
                 if title != 'None':
-                    with open('output_title.old.txt', 'r+') as title_old_file:
+                    with open('output_title.old.txt', 'w+') as title_old_file:
                         if title != title_old_file.read():
                             send_email_by_api()
                             title_old_file.write(title)

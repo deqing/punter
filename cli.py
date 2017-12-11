@@ -44,7 +44,7 @@ def main():
     worker = WebWorker(is_get_data=not args['--print'], keep_driver_alive=False)
 
     if args['--bonus']:
-        worker.calc_bonus_profit()
+        worker.calc_bonus_profit(args['<websites>'])
     elif args['--calc-best'] is not None:
         o1, o2, o3 = args['--calc-best'].split(',')
         worker.calc_best_shot(float(o1), float(o2), float(o3))
