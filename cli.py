@@ -22,12 +22,14 @@ def main():
       --gce-ip=<ip>             GCE instance IP
       --bonus                   Calculate and print bonus profit
       --calc-best=<odds>        Calculate and print best profit
+      --calc-back=<odd>         Calculate and print real back odd
 
     Example:
       cli.py luxbet,crownbet a
       cli.py all eng,uefa
       cli.py bet365,ubet fra --ask-gce=bet365 --gce-ip=1.2.3.4 --loop=10
-      cli.py all abc --calc-best=2.10,3.5,3.75
+      cli.py a a --calc-best=2.10,3.5,3.75
+      cli.py a a --calc-back=4.2
     """
     worker = False
 
@@ -46,6 +48,8 @@ def main():
     elif args['--calc-best'] is not None:
         o1, o2, o3 = args['--calc-best'].split(',')
         worker.calc_best_shot(float(o1), float(o2), float(o3))
+    elif args['--calc-back'] is not None:
+        worker.calc_real_back_odd(args['--calc-back'])
     else:
         worker.run(
             websites_str=args['<websites>'],

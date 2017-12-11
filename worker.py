@@ -39,6 +39,7 @@ from logging.handlers import RotatingFileHandler
 HEAD = '<html lang="en">\n'
 log_to_file = False
 g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
+# TODO: g_websites_str = 'bet365,betfair,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 
 
@@ -70,6 +71,15 @@ def log_and_print(s, highlight=False):
         print(s)
     if log_to_file:
         logging.getLogger().info(s)
+
+
+def real_back_odd(s):
+    try:
+        odd = float(s)
+    except ValueError:
+        log_and_print('WARNING: Cannot convert {} to float'.format(s))
+        return 0.0
+    return ((odd - 1) * 95 + 100) / 100
 
 
 class WriteToHtmlFile:
@@ -664,6 +674,66 @@ class Bet365(Website):
             matches.append(m)
 
 
+class Betfair(Website):
+    def __init__(self, driver, wait):
+        super(Betfair, self).__init__(driver, wait)
+        self.name = 'betfair'
+        self.a_url = 'https://www.betfair.com.au/exchange/plus/football/competition/11418298?group-by=matched_amount'  # noqa
+        self.arg_url = 'https://www.betfair.com.au/exchange/plus/football/competition/67387?group-by=matched_amount'  # noqa
+        self.eng_url = 'https://www.betfair.com.au/exchange/plus/football/competition/10932509?group-by=matched_amount'  # noqa
+        self.fra_url = 'https://www.betfair.com.au/exchange/plus/football/competition/55?group-by=matched_amount'  # noqa
+        self.gem_url = 'https://www.betfair.com.au/exchange/plus/football/competition/59?group-by=matched_amount'  # noqa
+        self.ita_url = 'https://www.betfair.com.au/exchange/plus/football/competition/81?group-by=matched_amount'  # noqa
+        self.liga_url = 'https://www.betfair.com.au/exchange/plus/football/competition/117?group-by=matched_amount'  # noqa
+        self.need_login = True
+
+    def login(self):
+        def save_cookie(f):
+            with open(f, 'wb') as cookies_file:
+                pickle.dump(self.driver.get_cookies(), cookies_file)
+
+        def load_cookie(f):
+            with open(f, 'rb') as cookies_file:
+                cookies = pickle.load(cookies_file)
+                for cookie in cookies:
+                    self.driver.add_cookie(cookie)
+
+        path = os.path.join(gettempdir(), 'betfair_cookie.pkl')
+        try:
+            load_cookie(path)
+        except FileNotFoundError:
+            account = self.driver.find_element_by_id('ssc-liu')
+            password = self.driver.find_element_by_id('ssc-lipw')
+            login = self.driver.find_element_by_id('ssc-lis')
+            with open('betfair.username', 'r') as username_file, \
+                    open('betfair.password', 'r') as password_file:
+                account.send_keys(username_file.read().rstrip())
+                password.send_keys(password_file.read().rstrip())
+            login.click()
+            save_cookie(path)
+
+    def fetch(self, matches):
+        blocks = self.get_blocks('table.coupon-table')
+        if len(blocks) is 0:
+            log_and_print('Betfair - matches not found')
+            return
+        all_teams = blocks[0].find_elements_by_css_selector('ul.runners')
+        all_odds = blocks[0].find_elements_by_css_selector('div.coupon-runner')
+        for teams in all_teams:
+            m = Match()
+            m.home_team, m.away_team = teams.text.split('\n')
+            m.odds[0] = all_odds[0].text.split('\n')[0]  # TODO: get real odds
+            m.odds[1] = all_odds[1].text.split('\n')[0]
+            m.odds[2] = all_odds[2].text.split('\n')[0]
+            m.agents = ['Betfair'] * 3
+            m.urls = [self.get_href_link()] * 3
+            matches.append(m)
+            if len(all_odds) > 3:
+                del all_odds[:3]
+            else:
+                break
+
+
 class Bluebet(Website):
     def __init__(self, driver, wait):
         super(Bluebet, self).__init__(driver, wait)
@@ -692,7 +762,6 @@ class Bluebet(Website):
             m.odds[0] = info0[1]
             m.odds[1] = info1[1]
             m.odds[2] = info2[1]
-
             m.agents = ['Bluebet'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -1312,6 +1381,10 @@ class WebWorker:
                     m.odds = o1, o2, o3
                     m.profit = profit
         m.display()
+
+    @staticmethod
+    def calc_real_back_odd(s):
+        print(real_back_odd(s))
                     
     def run(self,
             websites_str,
@@ -1394,6 +1467,9 @@ class WebWorker:
                             website.content = requests.get(url).text.split('\n')
                         else:
                             self.driver.get(url)
+                            if hasattr(website, 'need_login'):
+                                website.login()
+                                self.driver.get(url)
                             time.sleep(2)
                         if hasattr(website, league + '_urls'):
                             setattr(website, league + '_url', url)
