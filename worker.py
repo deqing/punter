@@ -1521,10 +1521,16 @@ class WebWorker:
             with open('output_title.txt', 'r') as title_file:
                 title = title_file.read()
                 if title != 'None':
-                    with open('output_title.old.txt', 'w+') as title_old_file:
-                        if title != title_old_file.read():
+                    with open('output_title.old.txt', 'r+') as title_old_file:
+                        old_title = title_old_file.read()
+                        if title != old_title:
+                            log_and_print(
+                                'INFO: send_email_when_found - title [{}] and old title [{}],'
+                                ' so I am sending the email out'.format(title, old_title))
                             send_email_by_api()
+                            title_old_file.seek(0)
                             title_old_file.write(title)
+                            title_old_file.truncate()
                         else:
                             log_and_print('INFO: send_email_when_found - email already sent')
 
