@@ -23,6 +23,7 @@ def main():
       --bonus                   Calculate and print bonus profit
       --calc-best=<odds>        Calculate and print best profit
       --calc-back=<odd>         Calculate and print real back odd
+      --highlight=<string>      monitor one match
 
     Example:
       cli.py luxbet,crownbet a
@@ -30,6 +31,7 @@ def main():
       cli.py bet365,ubet fra --ask-gce=bet365 --gce-ip=1.2.3.4 --loop=10
       cli.py a a --calc-best=2.10,3.5,3.75
       cli.py a a --calc-back=4.2
+      cli.py bet365 gem "Adelaide Utd,Central Coast,,3.55,1.0"   # draw > 3.55 or lost > 1.0
     """
     worker = False
 
@@ -61,6 +63,7 @@ def main():
             loop_minutes=int(args['--loop']),
             ask_gce=args['--ask-gce'],
             gce_ip=args['--gce-ip'],
+            highlight=args['--highlight'],
         )
 
 

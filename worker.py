@@ -39,7 +39,6 @@ from logging.handlers import RotatingFileHandler
 HEAD = '<html lang="en">\n'
 log_to_file = False
 g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
-#g_websites_str = 'bet365,betfair,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 
 
@@ -80,6 +79,27 @@ def real_back_odd(s):
         log_and_print('WARNING: Cannot convert {} to float'.format(s))
         return 0.0
     return ((odd - 1) * 95 + 100) / 100
+
+
+class MonitorMatch:
+    def __init__(self):
+        self.home, self.away, self.odd1, self.odd2, self.odd3 = None, None, None, None, None
+        self.do = False
+
+    def init(self, h_, a_, o1_=None, o2_=None, o3_=None):
+        self.home, self.away, self.odd1, self.odd2, self.odd3 = h_, a_, o1_, o2_, o3_
+        self.do = True
+
+    def compare(self, h_, a_, o1_, o2_, o3_):
+        if self.home != h_ or self.away != a_:
+            return False
+        else:
+            return not (self.odd1 is not None and self.odd1 >= o1_ or
+                        self.odd2 is not None and self.odd2 >= o2_ or
+                        self.odd3 is not None and self.odd3 >= o3_)
+
+
+g_monitor_match = MonitorMatch()
 
 
 class WriteToHtmlFile:
@@ -190,7 +210,10 @@ class Match:
         if self.has_other_agents:
             msg += '\t(' + '|'.join([','.join(x) for x in self.other_agents]) + ')'
 
-        if float(self.profit) > 99.9:
+        global g_monitor_match
+        if g_monitor_match.do and g_monitor_match.compare(self.home_team, self.away_team,
+                                                          self.odds[0], self.odds[1], self.odds[2])\
+                or float(self.profit) > 99.9:
             log_and_print(msg, highlight=True)
             html_file.write_highlight_line(msg, self.urls)
         else:
@@ -1283,7 +1306,7 @@ class WebWorker:
             log_init()
 
     @staticmethod
-    def calc_bonus_profit(websites_str, website='luxbet', stake=50):
+    def calc_bonus_profit(websites_str, website='luxbet', stake=50, without_stake=True):
         maxp, bmh, bma, bpb, bi, bj, bp1, bp2, ba1, ba2, bob, bo1, bo2\
             = 0, 0, 0, 0, 0, 0, 0, 0, '', '', 0, 0, 0
         for l in g_leagues:
@@ -1326,7 +1349,10 @@ class WebWorker:
                                                             continue
                                                         for i in range(stake * 3):
                                                             for j in range(stake * 3):
-                                                                p_bw = float(bm.odds[ob]) * stake - stake - i - j  # noqa
+                                                                if without_stake:
+                                                                    p_bw = float(bm.odds[ob]) * stake - stake - i - j  # noqa
+                                                                else:
+                                                                    p_bw = float(bm.odds[ob]) * stake - i - j
                                                                 p_1w = float(m1.odds[o1]) * i - i - j  # noqa
                                                                 p_2w = float(m2.odds[o2]) * j - j - i  # noqa
                                                                 minp = min(p_bw, p_1w, p_2w)
@@ -1402,6 +1428,7 @@ class WebWorker:
             loop_minutes=0,
             ask_gce=None,
             gce_ip=None,
+            highlight=None,
             ):
         def save_to(obj, filename):
             file = os.path.join(gettempdir(), filename)
@@ -1502,6 +1529,13 @@ class WebWorker:
         if ask_gce is not None:
             for w in ask_gce.split(','):
                 website_map[w].ask_gce = True
+
+        if highlight is not None:
+            hls = highlight.split(',')
+            for i in range(2, 5):
+                hls[i] = None if hls[i] == '' else float(hls[i])
+            global g_monitor_match
+            g_monitor_match.init(*hls)
 
         def set_pickles(l_name):
             return [l_name + '_' + w_.name + '.pkl'
