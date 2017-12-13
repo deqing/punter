@@ -56,16 +56,15 @@ def log_init():
     print('Log file: ' + log_file_name)
 
 
-def color_print(msg, foreground='black', background='white'):
-    fground = foreground.upper()
-    bground = background.upper()
-    style = getattr(Fore, fground) + getattr(Back, bground)
-    print(style + msg + Style.RESET_ALL)
+def log_and_print(s, highlight=None):
+    def color_print(msg, foreground='black', background='white'):
+        fground = foreground.upper()
+        bground = background.upper()
+        style = getattr(Fore, fground) + getattr(Back, bground)
+        print(style + msg + Style.RESET_ALL)
 
-
-def log_and_print(s, highlight=False):
-    if highlight:
-        color_print(s, background='yellow')
+    if highlight is not None:
+        color_print(s, background=highlight)
     else:
         print(s)
     if log_to_file:
@@ -197,7 +196,7 @@ class Match:
             try:
                 return '{:0.2f}'.format(float(s))
             except ValueError:
-                log_and_print('WARNING: Cannot convert {} to float'.format(s))
+                log_and_print('WARNING: Cannot convert [{}] to float'.format(s))
                 return '-'
 
         msg = '{}\t{}({})({})({})\t{}({})({})({})\t{}({})({})({})\t' \
@@ -214,7 +213,7 @@ class Match:
         if g_monitor_match.do and g_monitor_match.compare(self.home_team, self.away_team,
                                                           self.odds[0], self.odds[1], self.odds[2])\
                 or float(self.profit) > 99.9:
-            log_and_print(msg, highlight=True)
+            log_and_print(msg, highlight='yellow')
             html_file.write_highlight_line(msg, self.urls)
         else:
             log_and_print(msg)
@@ -252,6 +251,12 @@ class Match:
                     continue
 
 
+class BetfairMatch(Match):
+    def __init__(self):
+        Match.__init__(self)
+        self.lays = ['', '', '']
+
+
 class MatchMerger:
     def __init__(self,
                  pickles_a,
@@ -273,6 +278,8 @@ class MatchMerger:
         self.pickles_liga = pickles_liga
         self.pickles_uefa = pickles_uefa
         self.pickles_w = pickles_w
+
+        self.betfair_delta = None
 
         # Keyword --> Display Name
         # Keyword: a string with lowercase + whitespace removing
@@ -580,7 +587,7 @@ class MatchMerger:
 
         for pickles, keys, league_map, league_name in loop:
             empty_names = ''
-            matches = {}  # hometeam and awayteam = map's key
+            matches_map = {}  # hometeam and awayteam = map's key
             for p_name in pickles:
                 with open(os.path.join(gettempdir(), p_name), 'rb') as pkl:
                     pickle_matches = pickle.load(pkl)
@@ -596,15 +603,15 @@ class MatchMerger:
                             odds_to_float(pm, league_name)
 
                             key = id1 + id2
-                            if key not in matches.keys():
+                            if key not in matches_map.keys():
                                 m = Match()
                                 m.__dict__.update(pm.__dict__)
                                 m.odds = list(m.odds)  # Sometimes it's an immutable tuple
                                 m.home_team = league_map[self.get_id(pm.home_team, keys, league_name, p_name)]  # noqa
                                 m.away_team = league_map[self.get_id(pm.away_team, keys, league_name, p_name)]  # noqa
-                                matches[key] = m
+                                matches_map[key] = m
                             else:
-                                m = matches[key]
+                                m = matches_map[key]
                                 for i in range(3):
                                     if pm.odds[i] > m.odds[i]:
                                         m.odds[i] = pm.odds[i]
@@ -615,7 +622,7 @@ class MatchMerger:
                                     elif pm.odds[i] == m.odds[i]:
                                         m.has_other_agents = True
                                         m.other_agents[i].append(pm.agents[i].strip())
-            matches = sorted(matches.values())
+            matches = sorted(matches_map.values())
             if len(matches) is not 0:
                 output = '--- {} ---'.format(league_name)
                 empty_str = '({} pickles, empty: [{}])'.format(len(pickles), empty_names.rstrip())
@@ -628,8 +635,34 @@ class MatchMerger:
                     m.display(html_file)
                 html_file.write_line('</table>')
 
+            if self.betfair_delta is not None:
+                self.merge_and_print_betfair(matches_map, keys, league_name, pickles[0])
+
         with open('output_empty_pickles.txt', 'w') as empty_count_file:
             empty_count_file.write('({} empty pickles)'.format(empty_count))
+
+    def merge_and_print_betfair(self, matches_map, keys, league_name, p_name):
+            with open(os.path.join(gettempdir(), p_name.split('_')[0] + '_betfair.pkl'),
+                      'rb') as pkl:
+                betfair_matches = pickle.load(pkl)
+                if len(betfair_matches) is not 0:
+                    for bm in betfair_matches:
+                        id1 = self.get_id(bm.home_team, keys, league_name, p_name)
+                        id2 = self.get_id(bm.away_team, keys, league_name, p_name)
+                        if id1 is None or id2 is None:
+                            continue
+
+                        key = id1 + id2
+                        if key not in matches_map.keys():
+                            log_and_print('betfair match [{} vs {}] not found in matches'.format(
+                                bm.home_team, bm.away_team))
+                        else:
+                            m = matches_map[key]
+                            for i in range(3):
+                                if bm.lays[i] - m.odds[i] < self.betfair_delta:
+                                    log_and_print('{} vs {} - lay {} back {} @ {}'.format(
+                                        m.home_team, m.away_team,
+                                        bm.lays[i], m.odds[i], m.agents[i]), highlight='green')
 
 
 class Website:
@@ -748,11 +781,12 @@ class Betfair(Website):
         all_teams = blocks[0].find_elements_by_css_selector('ul.runners')
         all_odds = blocks[0].find_elements_by_css_selector('div.coupon-runner')
         for teams in all_teams:
-            m = Match()
+            m = BetfairMatch()
             m.home_team, m.away_team = teams.text.split('\n')
-            m.odds[0] = all_odds[0].text.split('\n')[0]  # TODO: get real odds
-            m.odds[1] = all_odds[1].text.split('\n')[0]
-            m.odds[2] = all_odds[2].text.split('\n')[0]
+            for i in range(3):
+                odds = all_odds[i].text.split('\n')
+                m.odds[i] = odds[0]  # TODO: get real odds (already has real_back_odd() method)
+                m.lays[i] = odds[2]  # TODO: get real odds
             m.agents = ['Betfair'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -1429,6 +1463,7 @@ class WebWorker:
             ask_gce=None,
             gce_ip=None,
             highlight=None,
+            betfair_delta=None,
             ):
         def save_to(obj, filename):
             file = os.path.join(gettempdir(), filename)
@@ -1518,6 +1553,9 @@ class WebWorker:
                 save_to([], pkl_name)
 
         websites_str = websites_str if websites_str != 'all' else g_websites_str
+        if betfair_delta is not None:
+            websites_str += ',betfair'
+
         websites = []
         website_map = {}
         for w in websites_str.split(','):
@@ -1577,6 +1615,8 @@ class WebWorker:
                     if self.is_get_data and getattr(w, l+'_url'):
                         fetch_and_save_to_pickle(w, l)
                 if not is_get_only:
+                    if betfair_delta is not None:
+                        match_merger.betfair_delta = betfair_delta
                     html_file.init()
                     match_merger.merge_and_print(leagues=[l], html_file=html_file)
                     html_file.close()
