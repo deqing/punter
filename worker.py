@@ -71,12 +71,7 @@ def log_and_print(s, highlight=None):
         logging.getLogger().info(s)
 
 
-def real_back_odd(s):
-    try:
-        odd = float(s)
-    except ValueError:
-        log_and_print('WARNING: Cannot convert {} to float'.format(s))
-        return 0.0
+def real_back_odd(odd):
     return ((odd - 1) * 95 + 100) / 100
 
 
@@ -155,10 +150,10 @@ class Match:
         self.profit = 0
         self.home_team = ''
         self.away_team = ''
-        self.odds = ['', '', '']
-        self.agents = ['', '', '']
-        self.perts = ['', '', '']
-        self.earns = ['', '', '']
+        self.odds = [0.0] * 3
+        self.perts = [0.0] * 3
+        self.earns = [0.0] * 3
+        self.agents = [''] * 3
         self.other_agents = [[], [], []]
         self.urls = ['', '', '']
         self.has_other_agents = False
@@ -192,12 +187,8 @@ class Match:
             self.urls[i] = json_['urls'][i]
 
     def display(self, html_file=WriteToHtmlFileDummy()):
-        def width(s):
-            try:
-                return '{:0.2f}'.format(float(s))
-            except ValueError:
-                log_and_print('WARNING: Cannot convert [{}] to float'.format(s))
-                return '-'
+        def width(odd):
+            return '{:0.2f}'.format(odd)
 
         msg = '{}\t{}({})({})({})\t{}({})({})({})\t{}({})({})({})\t' \
               '- {} vs {}'.format(
@@ -212,7 +203,7 @@ class Match:
         global g_monitor_match
         if g_monitor_match.do and g_monitor_match.compare(self.home_team, self.away_team,
                                                           self.odds[0], self.odds[1], self.odds[2])\
-                or float(self.profit) > 99.9:
+                or self.profit > 99.9:
             log_and_print(msg, highlight='yellow')
             html_file.write_highlight_line(msg, self.urls)
         else:
@@ -233,22 +224,18 @@ class Match:
 
         for i in range(1, 99):
             for j in range(1, 100 - i):
-                try:
-                    profit = min_pay(float(self.odds[0]),
-                                     float(self.odds[1]),
-                                     float(self.odds[2]),
-                                     i, j, 100 - i - j)
-                    if profit > self.profit:
-                        self.profit = profit
-                        self.perts[0] = i
-                        self.perts[1] = j
-                        self.perts[2] = 100 - i - j
-                        self.earns[0] = round(i*float(self.odds[0]) - 100, 2)
-                        self.earns[1] = round(j*float(self.odds[1]) - 100, 2)
-                        self.earns[2] = round((100-i-j)*float(self.odds[2]) - 100, 2)
-                except ValueError as e:
-                    log_and_print('WARNING: calculate_best_shot() exception: ' + str(e))
-                    continue
+                profit = min_pay(self.odds[0],
+                                 self.odds[1],
+                                 self.odds[2],
+                                 i, j, 100 - i - j)
+                if profit > self.profit:
+                    self.profit = profit
+                    self.perts[0] = i
+                    self.perts[1] = j
+                    self.perts[2] = 100 - i - j
+                    self.earns[0] = round(i*self.odds[0] - 100, 2)
+                    self.earns[1] = round(j*self.odds[1] - 100, 2)
+                    self.earns[2] = round((100-i-j)*self.odds[2] - 100, 2)
 
 
 class BetfairMatch(Match):
@@ -542,6 +529,9 @@ class MatchMerger:
                 converted_name = 'melbournecity'
             elif 'newcstlejets' in converted_name:
                 converted_name = 'newcastle'
+        elif league_name == 'Australia League':
+            if converted_name == 'sydney':
+                converted_name = 'sydneyfc'
 
         for name in keys:
             if name in converted_name:
@@ -551,17 +541,6 @@ class MatchMerger:
         return None
 
     def merge_and_print(self, leagues, html_file):
-        def odds_to_float(match, league_name_):
-            # Convert text to float
-            match.odds = list(match.odds)
-            for i_ in range(3):
-                try:
-                    match.odds[i_] = float(match.odds[i_])
-                except ValueError:
-                    log_and_print('WARNING converting website [{}] league [{}] odds [{}]'
-                                  .format(match.agents[0], league_name_, match.odds[i_]))
-                    match.odds[i_] = 0
-
         empty_count = 0
         loop = []
         if 'a' in leagues:
@@ -600,7 +579,6 @@ class MatchMerger:
                             id2 = self.get_id(pm.away_team, keys, league_name, p_name)
                             if id1 is None or id2 is None:
                                 continue
-                            odds_to_float(pm, league_name)
 
                             key = id1 + id2
                             if key not in matches_map.keys():
@@ -660,9 +638,13 @@ class MatchMerger:
                             m = matches_map[key]
                             for i in range(3):
                                 if bm.lays[i] - m.odds[i] < self.betfair_delta:
+                                    color = 'cyan'
+                                    if bm.lays[i] < m.odds[i]:
+                                        color = 'green'
                                     log_and_print('{} vs {} - lay {} back {} @ {}'.format(
                                         m.home_team, m.away_team,
-                                        bm.lays[i], m.odds[i], m.agents[i]), highlight='green')
+                                        bm.lays[i], '{:0.2f}'.format(m.odds[i]), m.agents[i]),
+                                        highlight=color)
 
 
 class Website:
@@ -682,6 +664,17 @@ class Website:
         self.name = ''
         self.current_league = ''
         self.ask_gce = False
+
+    def to_float(self, text):
+        try:
+            return float(text)
+        except ValueError:
+            log_and_print('{}: error when converting [{}] to float'.format(self.name, text))
+            return 0.0
+
+    def odds_to_float(self, m):
+        for i in range(3):
+            m.odds[i] = self.to_float(m.odds[i])
 
     def get_blocks(self, css_string):
         try:
@@ -726,7 +719,7 @@ class Bet365(Website):
             m = Match()
             m.home_team, m.away_team = names[0].text, names[1].text
             for i in range(3):
-                m.odds[i] = odds[i].text
+                m.odds[i] = self.to_float(odds[i].text)
             m.agents = ['Bet365 '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -785,8 +778,8 @@ class Betfair(Website):
             m.home_team, m.away_team = teams.text.split('\n')
             for i in range(3):
                 odds = all_odds[i].text.split('\n')
-                m.odds[i] = odds[0]  # TODO: get real odds (already has real_back_odd() method)
-                m.lays[i] = odds[2]  # TODO: get real odds
+                m.odds[i] = real_back_odd(self.to_float(odds[0]))
+                m.lays[i] = self.to_float(odds[2])
             m.agents = ['Betfair'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -821,9 +814,9 @@ class Bluebet(Website):
             info2 = info[2].text.split('\n')
             m = Match()
             m.home_team, m.away_team = info0[0], info2[0]
-            m.odds[0] = info0[1]
-            m.odds[1] = info1[1]
-            m.odds[2] = info2[1]
+            m.odds[0] = self.to_float(info0[1])
+            m.odds[1] = self.to_float(info1[1])
+            m.odds[2] = self.to_float(info2[1])
             m.agents = ['Bluebet'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -857,7 +850,8 @@ class Crownbet(Website):
                 continue
             m = Match()
             m.home_team, m.away_team = values[4], values[8]
-            m.odds = values[5], values[7], values[9]
+            for i, j in zip(range(3), (5, 7, 9)):
+                m.odds[i] = self.to_float(values[j])
             m.agents = ['Crown  '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -886,6 +880,7 @@ class Ladbrokes(Website):  # BetStar (and Bookmarker?) are the same
             m.home_team, m.odds[0] = info[0].text.split('\n')
             m.away_team, m.odds[2] = info[1].text.split('\n')
             m.odds[1] = info[2].text.split('\n')[1]
+            self.odds_to_float(m)
             m.agents = ['Ladbrok'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -921,6 +916,7 @@ class Luxbet(Website):
                 m.odds[0] = info3.pop()
                 m.odds[1] = info5.pop()
                 m.odds[2] = info4.pop()
+                self.odds_to_float(m)
                 m.home_team = ' '.join(info3)
                 m.away_team = ' '.join(info4)
 
@@ -949,7 +945,7 @@ class Luxbet(Website):
                     log_and_print('luxbet: there are no 3 odds in ' + odds_text)
                     continue
                 for i in range(3):
-                    m.odds[i] = odds[i].strip()
+                    m.odds[i] = self.to_float(odds[i].strip())
 
                 m.agents = ['Luxbet'] * 3
                 m.urls = [self.get_href_link()] * 3
@@ -984,6 +980,7 @@ class Madbookie(Website):
             m.odds[0] = home_team_strs.pop()
             m.home_team = ' '.join(home_team_strs)
             m.odds[2] = away_team_strs.pop()
+            self.odds_to_float(m)
             m.away_team = ' '.join(away_team_strs)
             m.agents = ['Madbook'] * 3
             m.urls = [self.get_href_link()] * 3
@@ -1014,7 +1011,11 @@ class Palmerbet(Website):
         for n in names:
             m = Match()
             m.home_team, m.away_team = n.text.split('\n')
-            m.odds = odds[0].text, odds[2].text, odds[1].text
+            if len(odds) < 3:
+                log_and_print('{}: unexpected len of odds: {}'.format(self.name, len(odds)))
+                continue
+            for i, j in zip(range(3), (0, 2, 1)):
+                m.odds[i] = self.to_float(odds[j].text)
             odds = odds[3:] if len(show_all[0].text) is 0 else odds[5:]
             show_all = show_all[1:]
             m.agents = ['Palmer '] * 3
@@ -1056,6 +1057,7 @@ class Pinnacle(Website):
                 m.odds[0] = odds[0].text
                 m.odds[2] = odds[1].text
                 m.odds[1] = odds[2].text
+                self.odds_to_float(m)
                 m.agents = ['Pinacle'] * 3
                 m.urls = [self.get_href_link(get_logined=True)] * 3
                 matches.append(m)
@@ -1114,6 +1116,7 @@ class Sportsbet(Website):
 
             if status == 'in lose span':
                 m.odds[2] = line
+                self.odds_to_float(m)
                 status = None
                 m.agents = ['Sports '] * 3
                 m.urls = [self.get_href_link()] * 3
@@ -1152,7 +1155,7 @@ class Tab(Website):
             m.home_team, m.away_team = teams[0], teams[1]
             odds = b.find_elements_by_css_selector('div.animate-odd.ng-binding.ng-scope')
             for i in range(3):
-                m.odds[i] = odds[i].text
+                m.odds[i] = self.to_float(odds[i].text)
             m.agents = ['TAB    '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -1205,6 +1208,7 @@ class Topbetta(Website):
                 m.odds[0] = odds[0].text
                 m.odds[1] = odds[2].text
                 m.odds[2] = odds[1].text
+                self.odds_to_float(m)
             except StaleElementReferenceException:
                 log_and_print('topbetta - Selenium has StaleElementReferenceException: ' + b.text)
                 continue
@@ -1252,6 +1256,8 @@ class Ubet(Website):
                 m.urls[i] = self.get_href_link()
             if 'SUSPENDED' in m.odds[0]:
                 continue
+            else:
+                self.odds_to_float(m)
             matches.append(m)
 
 
@@ -1280,7 +1286,7 @@ class Unibet(Website):
             m = Match()
             m.home_team, m.away_team = teams[0].text, teams[1].text
             for i in range(3):
-                m.odds[i] = odds[i].text
+                m.odds[i] = self.to_float(odds[i].text)
             m.agents = ['Unibet '] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -1317,7 +1323,7 @@ class Williamhill(Website):
             m = Match()
             m.home_team, m.away_team = names[0].text, names[2].text
             for i in range(3):
-                m.odds[i] = odds[i].text
+                m.odds[i] = self.to_float(odds[i].text)
             m.agents = ['William'] * 3
             m.urls = [self.get_href_link()] * 3
             matches.append(m)
@@ -1384,11 +1390,11 @@ class WebWorker:
                                                         for i in range(stake * 3):
                                                             for j in range(stake * 3):
                                                                 if without_stake:
-                                                                    p_bw = float(bm.odds[ob]) * stake - stake - i - j  # noqa
+                                                                    p_bw = bm.odds[ob] * stake - stake - i - j  # noqa
                                                                 else:
-                                                                    p_bw = float(bm.odds[ob]) * stake - i - j
-                                                                p_1w = float(m1.odds[o1]) * i - i - j  # noqa
-                                                                p_2w = float(m2.odds[o2]) * j - j - i  # noqa
+                                                                    p_bw = bm.odds[ob] * stake - i - j  # noqa
+                                                                p_1w = m1.odds[o1] * i - i - j  # noqa
+                                                                p_2w = m2.odds[o2] * j - j - i  # noqa
                                                                 minp = min(p_bw, p_1w, p_2w)
                                                                 if maxp < minp:
                                                                     maxp = minp
@@ -1401,9 +1407,9 @@ class WebWorker:
                                                                     bj = j
                                                                     ba1 = m1.agents[0]
                                                                     ba2 = m2.agents[0]
-                                                                    bob = float(bm.odds[ob])
-                                                                    bo1 = float(m1.odds[o1])
-                                                                    bo2 = float(m2.odds[o2])
+                                                                    bob = bm.odds[ob]
+                                                                    bo1 = m1.odds[o1]
+                                                                    bo2 = m2.odds[o2]
                                                                 elif maxp == minp:
                                                                     ba1 += ' ' + m1.agents[0]
                                                                     ba2 += ' ' + m2.agents[0]
@@ -1615,7 +1621,7 @@ class WebWorker:
                     if self.is_get_data and getattr(w, l+'_url'):
                         fetch_and_save_to_pickle(w, l)
                 if not is_get_only:
-                    if betfair_delta is not None:
+                    if betfair_delta is not 0.0:
                         match_merger.betfair_delta = betfair_delta
                     html_file.init()
                     match_merger.merge_and_print(leagues=[l], html_file=html_file)

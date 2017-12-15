@@ -524,17 +524,6 @@ class MatchMerger:
         return None
 
     def merge_and_print(self, leagues, html_file):
-        def odds_to_float(match, league_name_):
-            # Convert text to float
-            match.odds = list(match.odds)
-            for i_ in range(3):
-                try:
-                    match.odds[i_] = float(match.odds[i_])
-                except ValueError:
-                    log_and_print('WARNING converting website [{}] league [{}] odds [{}]'
-                                  .format(match.agents[0], league_name_, match.odds[i_]))
-                    match.odds[i_] = 0
-
         empty_count = 0
         loop = []
         if 'a' in leagues:
