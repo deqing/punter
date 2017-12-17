@@ -25,6 +25,7 @@ def main():
       --calc-back=<odd>         Calculate and print real back odd
       --highlight=<string>      monitor one match
       --betfair-delta=<number>  highlight when biggest back and lay less than [default: 0.0]
+      --betfair                 including betfair back odds
 
     Example:
       cli.py luxbet,crownbet a
@@ -66,6 +67,7 @@ def main():
             gce_ip=args['--gce-ip'],
             highlight=args['--highlight'],
             betfair_delta=float(args['--betfair-delta']),
+            is_betfair=(args['--betfair']),
         )
 
 

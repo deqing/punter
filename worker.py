@@ -39,7 +39,8 @@ from logging.handlers import RotatingFileHandler
 HEAD = '<html lang="en">\n'
 log_to_file = False
 g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
-g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,luxbet,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
+#g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
+g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,madbookie,palmerbet,pinnacle,sportsbet,tab,ubet,unibet,williamhill'  # noqa
 
 
 def log_init():
@@ -619,6 +620,26 @@ class MatchMerger:
         with open('output_empty_pickles.txt', 'w') as empty_count_file:
             empty_count_file.write('({} empty pickles)'.format(empty_count))
 
+    @staticmethod
+    def get_balanced_stake(back_odd, lay_odd, back_stake, min_lay=None):
+        min_target = back_stake
+        ret = dict()
+        for lay_aim_stake in range(1, back_stake*10):
+            lay_earn = lay_aim_stake * 0.95
+            back_earn = back_stake * (back_odd - 1)
+            liability = lay_aim_stake * (lay_odd - 1)
+            profit_if_lay_win = lay_earn - back_stake
+            profit_if_back_win = back_earn - liability  # liability is the "stake" you paid in lay
+            target = abs(profit_if_back_win - profit_if_lay_win) if min_lay is None \
+                else abs(profit_if_lay_win - min_lay)
+            if target < min_target:
+                min_target = target
+                ret['profit_if_lay_win'] = profit_if_lay_win
+                ret['profit_if_back_win'] = profit_if_back_win
+                ret['lay_aim_stake'] = lay_aim_stake
+                ret['liability'] = liability
+        return ret
+
     def merge_and_print_betfair(self, matches_map, keys, league_name, p_name):
             with open(os.path.join(gettempdir(), p_name.split('_')[0] + '_betfair.pkl'),
                       'rb') as pkl:
@@ -638,12 +659,29 @@ class MatchMerger:
                             m = matches_map[key]
                             for i in range(3):
                                 if bm.lays[i] - m.odds[i] < self.betfair_delta:
-                                    color = 'cyan'
-                                    if bm.lays[i] < m.odds[i]:
-                                        color = 'green'
-                                    log_and_print('{} vs {} - lay {} back {} @ {}'.format(
-                                        m.home_team, m.away_team,
-                                        bm.lays[i], '{:0.2f}'.format(m.odds[i]), m.agents[i]),
+                                    color = None
+                                    ret = self.get_balanced_stake(
+                                        back_odd=m.odds[i],
+                                        lay_odd=bm.lays[i],
+                                        back_stake=100,
+                                        #min_lay=5
+                                    )
+                                    if ret['profit_if_lay_win'] >= 0 and \
+                                       ret['profit_if_back_win'] >= 0:
+                                            color = 'cyan'
+                                    log_and_print(
+                                        '{} vs {} - {} back {} lay {} [{}] - '
+                                        'lay aim stake [{}] liability [{}] '
+                                        'lay profit [{}] back profit [{}]'.format(
+                                            m.home_team, m.away_team, m.agents[i],
+                                            '{:0.2f}'.format(m.odds[i]),
+                                            '{:0.2f}'.format(bm.lays[i]),
+                                            '{:0.2f}'.format(bm.lays[i] - m.odds[i]),
+                                            '{:0.2f}'.format(ret['lay_aim_stake']),
+                                            '{:0.2f}'.format(ret['liability']),
+                                            '{:0.2f}'.format(ret['profit_if_lay_win']),
+                                            '{:0.2f}'.format(ret['profit_if_back_win']),
+                                            ),
                                         highlight=color)
 
 
@@ -737,6 +775,7 @@ class Betfair(Website):
         self.ita_url = 'https://www.betfair.com.au/exchange/plus/football/competition/81?group-by=matched_amount'  # noqa
         self.liga_url = 'https://www.betfair.com.au/exchange/plus/football/competition/117?group-by=matched_amount'  # noqa
         self.need_login = True
+        self.get_back_odd = False
 
     def login(self):
         def save_cookie(f):
@@ -778,7 +817,10 @@ class Betfair(Website):
             m.home_team, m.away_team = teams.text.split('\n')
             for i in range(3):
                 odds = all_odds[i].text.split('\n')
-                m.odds[i] = real_back_odd(self.to_float(odds[0]))
+                if len(odds) < 3:
+                    continue
+                if self.get_back_odd:
+                    m.odds[i] = real_back_odd(self.to_float(odds[0]))
                 m.lays[i] = self.to_float(odds[2])
             m.agents = ['Betfair'] * 3
             m.urls = [self.get_href_link()] * 3
@@ -808,7 +850,8 @@ class Bluebet(Website):
         for b in blocks:
             info = b.find_elements_by_css_selector('div.flag-object.flag--tight')
             if len(info) != 3:
-                log_and_print('bluebet - unexpected info: [{}]'.format(info.text))
+                log_and_print('bluebet - unexpected info, len: {}'.format(len(info)))
+                continue
             info0 = info[0].text.split('\n')
             info1 = info[1].text.split('\n')
             info2 = info[2].text.split('\n')
@@ -877,6 +920,9 @@ class Ladbrokes(Website):  # BetStar (and Bookmarker?) are the same
                 continue
             m = Match()
             info = b.find_elements_by_css_selector('tr.row')
+            if len(info) != 3:
+                log_and_print('{}: unexpected info, len: {}'.format(self.name, len(info)))
+                continue
             m.home_team, m.odds[0] = info[0].text.split('\n')
             m.away_team, m.odds[2] = info[1].text.split('\n')
             m.odds[1] = info[2].text.split('\n')[1]
@@ -1470,6 +1516,7 @@ class WebWorker:
             gce_ip=None,
             highlight=None,
             betfair_delta=None,
+            is_betfair=False,
             ):
         def save_to(obj, filename):
             file = os.path.join(gettempdir(), filename)
@@ -1570,6 +1617,9 @@ class WebWorker:
             websites.append(o)
             website_map[w] = o
 
+        if is_betfair:
+            website_map['betfair'].get_back_odd = True
+
         if ask_gce is not None:
             for w in ask_gce.split(','):
                 website_map[w].ask_gce = True
@@ -1621,7 +1671,7 @@ class WebWorker:
                     if self.is_get_data and getattr(w, l+'_url'):
                         fetch_and_save_to_pickle(w, l)
                 if not is_get_only:
-                    if betfair_delta is not 0.0:
+                    if betfair_delta is not None:
                         match_merger.betfair_delta = betfair_delta
                     html_file.init()
                     match_merger.merge_and_print(leagues=[l], html_file=html_file)
