@@ -39,7 +39,6 @@ from logging.handlers import RotatingFileHandler
 HEAD = '<html lang="en">\n'
 log_to_file = False
 g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
-#g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,madbookie,palmerbet,pinnacle,sportsbet,tab,topbetta,ubet,unibet,williamhill'  # noqa
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,madbookie,palmerbet,pinnacle,sportsbet,tab,ubet,unibet,williamhill'  # noqa
 
 
@@ -267,8 +266,8 @@ class MatchMerger:
         self.pickles_uefa = pickles_uefa
         self.pickles_w = pickles_w
 
-        self.betfair_top = None
-        self.betfair_bottom = None
+        self.betfair_min = None
+        self.betfair_max = None
         self.betfair_delta = None
 
         # Keyword --> Display Name
@@ -614,7 +613,8 @@ class MatchMerger:
             if self.betfair_delta is None:
                 if len(matches) is not 0:
                     output = '--- {} ---'.format(league_name)
-                    empty_str = '({} pickles, empty: [{}])'.format(len(pickles), empty_names.rstrip())
+                    empty_str = '({} pickles, empty: [{}])'.format(
+                        len(pickles), empty_names.rstrip())
                     log_and_print(output + empty_str)
 
                     html_file.write_line('<b>' + output + '</b>' + empty_str)
@@ -666,7 +666,7 @@ class MatchMerger:
                             m = matches_map[key]
                             for i in range(3):
                                 if m.odds[i] is not 0 and bm.lays[i] is not 0 \
-                                        and bm.lays[i] <= self.betfair_limit \
+                                        and self.betfair_min < bm.lays[i] < self.betfair_max \
                                         and bm.lays[i] - m.odds[i] < self.betfair_delta:
                                     color = None
                                     ret = self.get_balanced_stake(
@@ -1682,9 +1682,9 @@ class WebWorker:
                 if not is_get_only:
                     if betfair_limits is not None:
                         limits = betfair_limits.split(',')
-                        match_merger.betfair_top = float(limits[0])
-                        match_merger.betfair_bottom = float(limits[1])
-                        match_merger.betfair_delta = float(limits[2])
+                        match_merger.betfair_min = float(0 if limits[0] == '' else limits[0])
+                        match_merger.betfair_max = float(100 if limits[1] == '' else limits[1])
+                        match_merger.betfair_delta = float(100 if limits[2] == '' else limits[2])
                     html_file.init()
                     match_merger.merge_and_print(leagues=[l], html_file=html_file)
                     html_file.close()
