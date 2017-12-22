@@ -34,6 +34,7 @@ def main():
       cli.py a a --calc-best=2.10,3.5,3.75
       cli.py a a --calc-back=4.2
       cli.py bet365 gem "Adelaide Utd,Central Coast,,3.55,1.0"   # draw > 3.55 or lost > 1.0
+      cli.py bet365 eng --betfair-delta=1.3,0.05  # lay odd <= 1.3, diff <= 0.05
     """
     worker = False
 
@@ -55,6 +56,7 @@ def main():
     elif args['--calc-back'] is not None:
         worker.calc_real_back_odd(args['--calc-back'])
     else:
+        betfair_values = args['--betfair-delta'].split(',')
         worker.run(
             websites_str=args['<websites>'],
             leagues_str=args['<leagues>'],
@@ -66,7 +68,8 @@ def main():
             ask_gce=args['--ask-gce'],
             gce_ip=args['--gce-ip'],
             highlight=args['--highlight'],
-            betfair_delta=float(args['--betfair-delta']),
+            betfair_limit=float(betfair_values[0]),
+            betfair_delta=float(betfair_values[1]),
             is_betfair=(args['--betfair']),
         )
 

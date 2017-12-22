@@ -242,7 +242,7 @@ class Match:
 class BetfairMatch(Match):
     def __init__(self):
         Match.__init__(self)
-        self.lays = ['', '', '']
+        self.lays = [0, 0, 0]
 
 
 class MatchMerger:
@@ -267,6 +267,7 @@ class MatchMerger:
         self.pickles_uefa = pickles_uefa
         self.pickles_w = pickles_w
 
+        self.betfair_limit = None
         self.betfair_delta = None
 
         # Keyword --> Display Name
@@ -586,6 +587,12 @@ class MatchMerger:
                                 m = Match()
                                 m.__dict__.update(pm.__dict__)
                                 m.odds = list(m.odds)  # Sometimes it's an immutable tuple
+
+                                def same(a, b):
+                                    return str(float(a)) == str(float(b))
+                                if same(m.odds[0], 0) or same(m.odds[1], 0) or same(m.odds[2], 0):
+                                    continue
+
                                 m.home_team = league_map[self.get_id(pm.home_team, keys, league_name, p_name)]  # noqa
                                 m.away_team = league_map[self.get_id(pm.away_team, keys, league_name, p_name)]  # noqa
                                 matches_map[key] = m
@@ -601,18 +608,20 @@ class MatchMerger:
                                     elif pm.odds[i] == m.odds[i]:
                                         m.has_other_agents = True
                                         m.other_agents[i].append(pm.agents[i].strip())
-            matches = sorted(matches_map.values())
-            if len(matches) is not 0:
-                output = '--- {} ---'.format(league_name)
-                empty_str = '({} pickles, empty: [{}])'.format(len(pickles), empty_names.rstrip())
-                log_and_print(output + empty_str)
 
-                html_file.write_line('<b>' + output + '</b>' + empty_str)
-                html_file.write_line('<table>')
-                for m in matches:
-                    m.calculate_best_shot()
-                    m.display(html_file)
-                html_file.write_line('</table>')
+            matches = sorted(matches_map.values())
+            if self.betfair_delta is None:
+                if len(matches) is not 0:
+                    output = '--- {} ---'.format(league_name)
+                    empty_str = '({} pickles, empty: [{}])'.format(len(pickles), empty_names.rstrip())
+                    log_and_print(output + empty_str)
+
+                    html_file.write_line('<b>' + output + '</b>' + empty_str)
+                    html_file.write_line('<table>')
+                    for m in matches:
+                        m.calculate_best_shot()
+                        m.display(html_file)
+                    html_file.write_line('</table>')
 
             if self.betfair_delta is not None:
                 self.merge_and_print_betfair(matches_map, keys, league_name, pickles[0])
@@ -652,13 +661,12 @@ class MatchMerger:
                             continue
 
                         key = id1 + id2
-                        if key not in matches_map.keys():
-                            log_and_print('betfair match [{} vs {}] not found in matches'.format(
-                                bm.home_team, bm.away_team))
-                        else:
+                        if key in matches_map.keys():
                             m = matches_map[key]
                             for i in range(3):
-                                if bm.lays[i] - m.odds[i] < self.betfair_delta:
+                                if m.odds[i] is not 0 and bm.lays[i] is not 0 \
+                                        and bm.lays[i] <= self.betfair_limit \
+                                        and bm.lays[i] - m.odds[i] < self.betfair_delta:
                                     color = None
                                     ret = self.get_balanced_stake(
                                         back_odd=m.odds[i],
@@ -673,7 +681,7 @@ class MatchMerger:
                                         '{} vs {} - {} back {} lay {} [{}] - '
                                         'lay aim stake [{}] liability [{}] '
                                         'lay profit [{}] back profit [{}]'.format(
-                                            m.home_team, m.away_team, m.agents[i],
+                                            m.home_team, m.away_team, m.agents[i].strip(),
                                             '{:0.2f}'.format(m.odds[i]),
                                             '{:0.2f}'.format(bm.lays[i]),
                                             '{:0.2f}'.format(bm.lays[i] - m.odds[i]),
@@ -1515,6 +1523,7 @@ class WebWorker:
             ask_gce=None,
             gce_ip=None,
             highlight=None,
+            betfair_limit=None,
             betfair_delta=None,
             is_betfair=False,
             ):
@@ -1672,6 +1681,7 @@ class WebWorker:
                         fetch_and_save_to_pickle(w, l)
                 if not is_get_only:
                     if betfair_delta is not None:
+                        match_merger.betfair_limit = betfair_limit
                         match_merger.betfair_delta = betfair_delta
                     html_file.init()
                     match_merger.merge_and_print(leagues=[l], html_file=html_file)
