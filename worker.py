@@ -1692,9 +1692,11 @@ class WebWorker:
                         send_email_by_api()
                     if is_send_email_when_found:
                         send_email_when_found()
-                log_and_print('League [{}] scan time: {}'
-                              .format(l, datetime.now()-league_start_time))
-            log_and_print('Whole scan time: {}'.format(datetime.now()-whole_start_time))
+                if self.is_get_data:
+                    log_and_print('League [{}] scan time: {}'
+                                  .format(l, datetime.now()-league_start_time))
+            if self.is_get_data:
+                log_and_print('Whole scan time: {}'.format(datetime.now()-whole_start_time))
 
             if is_get_only or loop_minutes is 0:
                 if self.driver and not self.keep_driver_alive:
