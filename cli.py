@@ -24,7 +24,7 @@ def main():
       --calc-best=<odds>        Calculate and print best profit
       --calc-back=<odd>         Calculate and print real back odd
       --highlight=<string>      monitor one match
-      --betfair-delta=<number>  highlight when biggest back and lay less than [default: 0.0]
+      --betfair-limits=<number> highlight when biggest back and lay less than
       --betfair                 including betfair back odds
 
     Example:
@@ -34,7 +34,7 @@ def main():
       cli.py a a --calc-best=2.10,3.5,3.75
       cli.py a a --calc-back=4.2
       cli.py bet365 gem "Adelaide Utd,Central Coast,,3.55,1.0"   # draw > 3.55 or lost > 1.0
-      cli.py bet365 eng --betfair-delta=1.3,0.05  # lay odd <= 1.3, diff <= 0.05
+      cli.py bet365 eng --betfair-delta=1,2,0.05  # 1 < lay odd < 2, diff <= 0.05
     """
     worker = False
 
@@ -56,7 +56,6 @@ def main():
     elif args['--calc-back'] is not None:
         worker.calc_real_back_odd(args['--calc-back'])
     else:
-        betfair_values = args['--betfair-delta'].split(',')
         worker.run(
             websites_str=args['<websites>'],
             leagues_str=args['<leagues>'],
@@ -68,8 +67,7 @@ def main():
             ask_gce=args['--ask-gce'],
             gce_ip=args['--gce-ip'],
             highlight=args['--highlight'],
-            betfair_limit=float(betfair_values[0]),
-            betfair_delta=float(betfair_values[1]),
+            betfair_limits=args['--betfair-limits'],
             is_betfair=(args['--betfair']),
         )
 

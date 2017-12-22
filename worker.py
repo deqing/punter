@@ -267,7 +267,8 @@ class MatchMerger:
         self.pickles_uefa = pickles_uefa
         self.pickles_w = pickles_w
 
-        self.betfair_limit = None
+        self.betfair_top = None
+        self.betfair_bottom = None
         self.betfair_delta = None
 
         # Keyword --> Display Name
@@ -1523,8 +1524,7 @@ class WebWorker:
             ask_gce=None,
             gce_ip=None,
             highlight=None,
-            betfair_limit=None,
-            betfair_delta=None,
+            betfair_limits=None,
             is_betfair=False,
             ):
         def save_to(obj, filename):
@@ -1615,7 +1615,7 @@ class WebWorker:
                 save_to([], pkl_name)
 
         websites_str = websites_str if websites_str != 'all' else g_websites_str
-        if betfair_delta is not None:
+        if betfair_limits is not None:
             websites_str += ',betfair'
 
         websites = []
@@ -1680,9 +1680,11 @@ class WebWorker:
                     if self.is_get_data and getattr(w, l+'_url'):
                         fetch_and_save_to_pickle(w, l)
                 if not is_get_only:
-                    if betfair_delta is not None:
-                        match_merger.betfair_limit = betfair_limit
-                        match_merger.betfair_delta = betfair_delta
+                    if betfair_limits is not None:
+                        limits = betfair_limits.split(',')
+                        match_merger.betfair_top = float(limits[0])
+                        match_merger.betfair_bottom = float(limits[1])
+                        match_merger.betfair_delta = float(limits[2])
                     html_file.init()
                     match_merger.merge_and_print(leagues=[l], html_file=html_file)
                     html_file.close()
