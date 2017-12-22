@@ -679,10 +679,10 @@ class MatchMerger:
                                        ret['profit_if_back_win'] >= 0:
                                             color = 'cyan'
                                     log_and_print(
-                                        '{} vs {} - {} back {} lay {} [{}] - '
+                                        '{} back {} lay {} [{}] - '
                                         'lay aim stake [{}] liability [{}] '
-                                        'lay profit [{}] back profit [{}]'.format(
-                                            m.home_team, m.away_team, m.agents[i].strip(),
+                                        'lay profit [{}] back profit [{}] - {} vs {}'.format(
+                                            m.agents[i].strip(),
                                             '{:0.2f}'.format(m.odds[i]),
                                             '{:0.2f}'.format(bm.lays[i]),
                                             '{:0.2f}'.format(bm.lays[i] - m.odds[i]),
@@ -690,7 +690,8 @@ class MatchMerger:
                                             '{:0.2f}'.format(ret['liability']),
                                             '{:0.2f}'.format(ret['profit_if_lay_win']),
                                             '{:0.2f}'.format(ret['profit_if_back_win']),
-                                            ),
+                                            m.home_team, m.away_team,
+                                        ),
                                         highlight=color)
 
 
