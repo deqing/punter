@@ -665,7 +665,8 @@ class MatchMerger:
                         if key in matches_map.keys():
                             m = matches_map[key]
                             for i in range(3):
-                                if m.odds[i] is not 0 and bm.lays[i] is not 0 \
+                                if m.odds[i] is not 0 and m.agents[i] != 'Betfair' \
+                                        and bm.lays[i] is not 0 \
                                         and self.betfair_min < bm.lays[i] < self.betfair_max \
                                         and bm.lays[i] - m.odds[i] < self.betfair_delta:
                                     color = None
@@ -679,7 +680,7 @@ class MatchMerger:
                                        ret['profit_if_back_win'] >= 0:
                                             color = 'cyan'
                                     log_and_print(
-                                        '{} back {} lay {} [{}] - '
+                                        '{} back {} - lay {} [{}] - '
                                         'lay aim stake [{}] liability [{}] '
                                         'lay profit [{}] back profit [{}] - {} vs {}'.format(
                                             m.agents[i].strip(),
@@ -1402,7 +1403,7 @@ class WebWorker:
             log_init()
 
     @staticmethod
-    def calc_bonus_profit(websites_str, website='luxbet', stake=50, without_stake=True):
+    def calc_bonus_profit(websites_str, website='unibet', stake=50, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
         maxp, bmh, bma, bpb, bi, bj, bp1, bp2, ba1, ba2, bob, bo1, bo2\
             = 0, 0, 0, 0, 0, 0, 0, 0, '', '', 0, 0, 0
         for l in g_leagues:
@@ -1428,7 +1429,10 @@ class WebWorker:
                                            m1.away_team != bm.away_team:
                                             continue
                                         for odd_idx in range(3):
-                                            ob = odd_idx
+                                            ob = odd_idx  # ob - odd of bonus website
+                                            if bm.odds[ob] < min_odd:
+                                                continue
+
                                             o1 = (odd_idx + 1) % 3
                                             o2 = (odd_idx + 2) % 3
                                             for w2 in websites_str.split(','):
@@ -1445,10 +1449,10 @@ class WebWorker:
                                                             continue
                                                         for i in range(stake * 3):
                                                             for j in range(stake * 3):
-                                                                if without_stake:
-                                                                    p_bw = bm.odds[ob] * stake - stake - i - j  # noqa
-                                                                else:
+                                                                if with_stake:
                                                                     p_bw = bm.odds[ob] * stake - i - j  # noqa
+                                                                else:
+                                                                    p_bw = bm.odds[ob] * stake - stake - i - j  # noqa
                                                                 p_1w = m1.odds[o1] * i - i - j  # noqa
                                                                 p_2w = m2.odds[o2] * j - j - i  # noqa
                                                                 minp = min(p_bw, p_1w, p_2w)
@@ -1616,7 +1620,7 @@ class WebWorker:
                 save_to([], pkl_name)
 
         websites_str = websites_str if websites_str != 'all' else g_websites_str
-        if betfair_limits is not None:
+        if betfair_limits is not None or is_betfair:
             websites_str += ',betfair'
 
         websites = []
