@@ -649,50 +649,52 @@ class MatchMerger:
         return ret
 
     def merge_and_print_betfair(self, matches_map, keys, league_name, p_name):
-            with open(os.path.join(gettempdir(), p_name.split('_')[0] + '_betfair.pkl'),
-                      'rb') as pkl:
-                betfair_matches = pickle.load(pkl)
-                if len(betfair_matches) is not 0:
-                    for bm in betfair_matches:
-                        id1 = self.get_id(bm.home_team, keys, league_name, p_name)
-                        id2 = self.get_id(bm.away_team, keys, league_name, p_name)
-                        if id1 is None or id2 is None:
-                            continue
+        if self.betfair_min is None or self.betfair_max is None:
+            return
+        with open(os.path.join(gettempdir(), p_name.split('_')[0] + '_betfair.pkl'),
+                  'rb') as pkl:
+            betfair_matches = pickle.load(pkl)
+            if len(betfair_matches) is not 0:
+                for bm in betfair_matches:
+                    id1 = self.get_id(bm.home_team, keys, league_name, p_name)
+                    id2 = self.get_id(bm.away_team, keys, league_name, p_name)
+                    if id1 is None or id2 is None:
+                        continue
 
-                        key = id1 + id2
-                        if key in matches_map.keys():
-                            m = matches_map[key]
-                            for i in range(3):
-                                if m.odds[i] is not 0 and m.agents[i] != 'Betfair' \
-                                        and bm.lays[i] is not 0 \
-                                        and self.betfair_min < bm.lays[i] < self.betfair_max \
-                                        and bm.lays[i] - m.odds[i] < self.betfair_delta:
-                                    color = None
-                                    ret = self.get_balanced_stake(
-                                        back_odd=m.odds[i],
-                                        lay_odd=bm.lays[i],
-                                        back_stake=100
-                                    )
-                                    if ret['profit_if_back_win'] >= self.betfair_hide or \
-                                       ret['profit_if_lay_win'] >= self.betfair_hide:
-                                        if ret['profit_if_lay_win'] >= 0 and \
-                                           ret['profit_if_back_win'] >= 0:
-                                                color = 'cyan'
-                                        log_and_print(
-                                            '{} back {} - lay {} [{}] - '
-                                            'lay aim stake [{}] liability [{}] '
-                                            'lay profit [{}] back profit [{}] - {} vs {}'.format(
-                                                m.agents[i].strip(),
-                                                '{:0.2f}'.format(m.odds[i]),
-                                                '{:0.2f}'.format(bm.lays[i]),
-                                                '{:0.2f}'.format(bm.lays[i] - m.odds[i]),
-                                                '{:0.2f}'.format(ret['lay_aim_stake']),
-                                                '{:0.2f}'.format(ret['liability']),
-                                                '{:0.2f}'.format(ret['profit_if_lay_win']),
-                                                '{:0.2f}'.format(ret['profit_if_back_win']),
-                                                m.home_team, m.away_team,
-                                            ),
-                                            highlight=color)
+                    key = id1 + id2
+                    if key in matches_map.keys():
+                        m = matches_map[key]
+                        for i in range(3):
+                            if m.odds[i] is not 0 and m.agents[i] != 'Betfair' \
+                                    and bm.lays[i] is not 0 \
+                                    and self.betfair_min < bm.lays[i] < self.betfair_max \
+                                    and bm.lays[i] - m.odds[i] < self.betfair_delta:
+                                color = None
+                                ret = self.get_balanced_stake(
+                                    back_odd=m.odds[i],
+                                    lay_odd=bm.lays[i],
+                                    back_stake=100
+                                )
+                                if ret['profit_if_back_win'] >= self.betfair_hide or \
+                                   ret['profit_if_lay_win'] >= self.betfair_hide:
+                                    if ret['profit_if_lay_win'] >= 0 and \
+                                       ret['profit_if_back_win'] >= 0:
+                                            color = 'cyan'
+                                    log_and_print(
+                                        '{} back {} - lay {} [{}] - '
+                                        'lay aim stake [{}] liability [{}] '
+                                        'lay profit [{}] back profit [{}] - {} vs {}'.format(
+                                            m.agents[i].strip(),
+                                            '{:0.2f}'.format(m.odds[i]),
+                                            '{:0.2f}'.format(bm.lays[i]),
+                                            '{:0.2f}'.format(bm.lays[i] - m.odds[i]),
+                                            '{:0.2f}'.format(ret['lay_aim_stake']),
+                                            '{:0.2f}'.format(ret['liability']),
+                                            '{:0.2f}'.format(ret['profit_if_lay_win']),
+                                            '{:0.2f}'.format(ret['profit_if_back_win']),
+                                            m.home_team, m.away_team,
+                                        ),
+                                        highlight=color)
 
 
 class Website:
@@ -1368,9 +1370,9 @@ class Williamhill(Website):
                 'div.Collapse_root_3H1.FilterList_menu_3g7')
             if len(s) is 0 or 'rimera' not in s[0].text:
                 return  # La Liga is removed
-        blocks = self.driver.find_elements_by_css_selector('div.EventBlock_root_1Pn')
+        blocks = self.driver.find_elements_by_css_selector('div.EventBlock_root_1gq')
         for b in blocks:
-            names = b.find_elements_by_css_selector('span.SoccerListing_name_2g4')
+            names = b.find_elements_by_css_selector('span.SoccerListing_name_pzi')
             odds = b.find_elements_by_css_selector('span.BetButton_display_3ty')
             if len(names) < 3 or \
                names[0].text == 'BOTH TEAMS TO SCORE' or \
