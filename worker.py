@@ -611,22 +611,20 @@ class MatchMerger:
                                         m.other_agents[i].append(pm.agents[i].strip())
 
             matches = sorted(matches_map.values())
-            if self.betfair_delta is None:
-                if len(matches) is not 0:
-                    output = '--- {} ---'.format(league_name)
-                    empty_str = '({} pickles, empty: [{}])'.format(
-                        len(pickles), empty_names.rstrip())
-                    log_and_print(output + empty_str)
+            if len(matches) is not 0:
+                output = '--- {} ---'.format(league_name)
+                empty_str = '({} pickles, empty: [{}])'.format(
+                    len(pickles), empty_names.rstrip())
+                log_and_print(output + empty_str)
 
-                    html_file.write_line('<b>' + output + '</b>' + empty_str)
-                    html_file.write_line('<table>')
-                    for m in matches:
-                        m.calculate_best_shot()
-                        m.display(html_file)
-                    html_file.write_line('</table>')
+                html_file.write_line('<b>' + output + '</b>' + empty_str)
+                html_file.write_line('<table>')
+                for m in matches:
+                    m.calculate_best_shot()
+                    m.display(html_file)
+                html_file.write_line('</table>')
 
-            if self.betfair_delta is not None:
-                self.merge_and_print_betfair(matches_map, keys, league_name, pickles[0])
+            self.merge_and_print_betfair(matches_map, keys, league_name, pickles[0])
 
         with open('output_empty_pickles.txt', 'w') as empty_count_file:
             empty_count_file.write('({} empty pickles)'.format(empty_count))
