@@ -269,6 +269,7 @@ class MatchMerger:
         self.betfair_min = None
         self.betfair_max = None
         self.betfair_delta = None
+        self.betfair_hide = None
 
         # Keyword --> Display Name
         # Keyword: a string with lowercase + whitespace removing
@@ -631,7 +632,7 @@ class MatchMerger:
             empty_count_file.write('({} empty pickles)'.format(empty_count))
 
     @staticmethod
-    def get_balanced_stake(back_odd, lay_odd, back_stake, min_lay=None):
+    def get_balanced_stake(back_odd, lay_odd, back_stake):
         min_target = back_stake
         ret = dict()
         for lay_aim_stake in range(1, back_stake*10):
@@ -640,8 +641,7 @@ class MatchMerger:
             liability = lay_aim_stake * (lay_odd - 1)
             profit_if_lay_win = lay_earn - back_stake
             profit_if_back_win = back_earn - liability  # liability is the "stake" you paid in lay
-            target = abs(profit_if_back_win - profit_if_lay_win) if min_lay is None \
-                else abs(profit_if_lay_win - min_lay)
+            target = abs(profit_if_back_win - profit_if_lay_win)
             if target < min_target:
                 min_target = target
                 ret['profit_if_lay_win'] = profit_if_lay_win
@@ -673,27 +673,28 @@ class MatchMerger:
                                     ret = self.get_balanced_stake(
                                         back_odd=m.odds[i],
                                         lay_odd=bm.lays[i],
-                                        back_stake=100,
-                                        #min_lay=5
+                                        back_stake=100
                                     )
-                                    if ret['profit_if_lay_win'] >= 0 and \
-                                       ret['profit_if_back_win'] >= 0:
-                                            color = 'cyan'
-                                    log_and_print(
-                                        '{} back {} - lay {} [{}] - '
-                                        'lay aim stake [{}] liability [{}] '
-                                        'lay profit [{}] back profit [{}] - {} vs {}'.format(
-                                            m.agents[i].strip(),
-                                            '{:0.2f}'.format(m.odds[i]),
-                                            '{:0.2f}'.format(bm.lays[i]),
-                                            '{:0.2f}'.format(bm.lays[i] - m.odds[i]),
-                                            '{:0.2f}'.format(ret['lay_aim_stake']),
-                                            '{:0.2f}'.format(ret['liability']),
-                                            '{:0.2f}'.format(ret['profit_if_lay_win']),
-                                            '{:0.2f}'.format(ret['profit_if_back_win']),
-                                            m.home_team, m.away_team,
-                                        ),
-                                        highlight=color)
+                                    if ret['profit_if_back_win'] >= self.betfair_hide or \
+                                       ret['profit_if_lay_win'] >= self.betfair_hide:
+                                        if ret['profit_if_lay_win'] >= 0 and \
+                                           ret['profit_if_back_win'] >= 0:
+                                                color = 'cyan'
+                                        log_and_print(
+                                            '{} back {} - lay {} [{}] - '
+                                            'lay aim stake [{}] liability [{}] '
+                                            'lay profit [{}] back profit [{}] - {} vs {}'.format(
+                                                m.agents[i].strip(),
+                                                '{:0.2f}'.format(m.odds[i]),
+                                                '{:0.2f}'.format(bm.lays[i]),
+                                                '{:0.2f}'.format(bm.lays[i] - m.odds[i]),
+                                                '{:0.2f}'.format(ret['lay_aim_stake']),
+                                                '{:0.2f}'.format(ret['liability']),
+                                                '{:0.2f}'.format(ret['profit_if_lay_win']),
+                                                '{:0.2f}'.format(ret['profit_if_back_win']),
+                                                m.home_team, m.away_team,
+                                            ),
+                                            highlight=color)
 
 
 class Website:
@@ -1403,7 +1404,7 @@ class WebWorker:
             log_init()
 
     @staticmethod
-    def calc_bonus_profit(websites_str, website='unibet', stake=50, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
+    def calc_bonus_profit(websites_str, website='pinnacle', stake=100, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
         maxp, bmh, bma, bpb, bi, bj, bp1, bp2, ba1, ba2, bob, bo1, bo2\
             = 0, 0, 0, 0, 0, 0, 0, 0, '', '', 0, 0, 0
         for l in g_leagues:
@@ -1690,6 +1691,7 @@ class WebWorker:
                         match_merger.betfair_min = float(0 if limits[0] == '' else limits[0])
                         match_merger.betfair_max = float(100 if limits[1] == '' else limits[1])
                         match_merger.betfair_delta = float(100 if limits[2] == '' else limits[2])
+                        match_merger.betfair_hide = float(100 if limits[3] == '' else limits[3])  # noqa
                     html_file.init()
                     match_merger.merge_and_print(leagues=[l], html_file=html_file)
                     html_file.close()

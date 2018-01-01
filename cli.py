@@ -34,7 +34,7 @@ def main():
       cli.py a a --calc-best=2.10,3.5,3.75
       cli.py a a --calc-back=4.2
       cli.py bet365 gem "Adelaide Utd,Central Coast,,3.55,1.0"   # draw > 3.55 or lost > 1.0
-      cli.py bet365 eng --betfair-delta=1,2,0.05  # 1 < lay odd < 2, diff <= 0.05
+      cli.py bet365 eng --betfair-limits=1,2,0.05,-5  # 1 < lay odd < 2, diff <= 0.05, profit > -5
     """
     worker = False
 
