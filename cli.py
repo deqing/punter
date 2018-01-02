@@ -14,6 +14,7 @@ def main():
       --all                     Get all leagues
       --get-only                Don't merge and print matches
       --print                   Don't get latest odds, just print out based on saved odds
+      --print-betfair-only      Don't print other results
       --send-email-api          Send email by MailGun's restful api
       --send-email-smtp         Send email by SMTP (note: not working in GCE)
       --send-email-when-found   Send email by api when returns bigger than 99.5
@@ -47,7 +48,8 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     args = docopt(str(main.__doc__))
-    worker = WebWorker(is_get_data=not args['--print'], keep_driver_alive=False)
+    worker = WebWorker(is_get_data=not args['--print'] and not args['--print-betfair-only'],
+                       keep_driver_alive=False)
 
     if args['--bonus']:
         worker.calc_bonus_profit(args['<websites>'])
@@ -70,7 +72,8 @@ def main():
             highlight=args['--highlight'],
             betfair_limits=args['--betfair-limits'],
             is_betfair=(args['--betfair']),
-            exclude=(args['--exclude'])
+            exclude=(args['--exclude']),
+            print_betfair_only=(args['--print-betfair-only'])
         )
 
 

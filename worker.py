@@ -270,6 +270,7 @@ class MatchMerger:
         self.betfair_max = None
         self.betfair_delta = None
         self.betfair_hide = None
+        self.betfair_print_only = False
 
         # Keyword --> Display Name
         # Keyword: a string with lowercase + whitespace removing
@@ -611,7 +612,7 @@ class MatchMerger:
                                         m.other_agents[i].append(pm.agents[i].strip())
 
             matches = sorted(matches_map.values())
-            if len(matches) is not 0:
+            if len(matches) is not 0 and not self.betfair_print_only:
                 output = '--- {} ---'.format(league_name)
                 empty_str = '({} pickles, empty: [{}])'.format(
                     len(pickles), empty_names.rstrip())
@@ -1533,6 +1534,7 @@ class WebWorker:
             betfair_limits=None,
             is_betfair=False,
             exclude=None,
+            print_betfair_only=False,
             ):
         def save_to(obj, filename):
             file = os.path.join(gettempdir(), filename)
@@ -1696,6 +1698,7 @@ class WebWorker:
                         match_merger.betfair_max = float(100 if limits[1] == '' else limits[1])
                         match_merger.betfair_delta = float(100 if limits[2] == '' else limits[2])
                         match_merger.betfair_hide = float(100 if limits[3] == '' else limits[3])  # noqa
+                        match_merger.betfair_print_only = print_betfair_only
                     html_file.init()
                     match_merger.merge_and_print(leagues=[l], html_file=html_file)
                     html_file.close()
