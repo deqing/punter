@@ -26,6 +26,7 @@ def main():
       --highlight=<string>      monitor one match
       --betfair-limits=<number> highlight when biggest back and lay less than
       --betfair                 including betfair back odds
+      --exclude=<websites>      excluding websites
 
     Example:
       cli.py luxbet,crownbet a
@@ -69,6 +70,7 @@ def main():
             highlight=args['--highlight'],
             betfair_limits=args['--betfair-limits'],
             is_betfair=(args['--betfair']),
+            exclude=(args['--exclude'])
         )
 
 

@@ -1532,6 +1532,7 @@ class WebWorker:
             highlight=None,
             betfair_limits=None,
             is_betfair=False,
+            exclude=None,
             ):
         def save_to(obj, filename):
             file = os.path.join(gettempdir(), filename)
@@ -1623,10 +1624,13 @@ class WebWorker:
         websites_str = websites_str if websites_str != 'all' else g_websites_str
         if betfair_limits is not None or is_betfair:
             websites_str += ',betfair'
+        exclude_websites = [] if exclude is None else exclude.split(',')
 
         websites = []
         website_map = {}
         for w in websites_str.split(','):
+            if w in exclude_websites:
+                continue
             # e.g. when w is 'tab': o = Tab(driver, wait)
             o = globals()[w.title()](self.driver, self.wait)
             websites.append(o)
