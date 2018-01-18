@@ -244,50 +244,25 @@ class BetfairMatch(Match):
         self.lays = [0, 0, 0]
 
 
-class MatchMerger:
-    def __init__(self,
-                 pickles_a,
-                 pickles_arg,
-                 pickles_eng,
-                 pickles_fra,
-                 pickles_gem,
-                 pickles_ita,
-                 pickles_liga,
-                 pickles_uefa,
-                 pickles_w,
-                 ):
-        self.pickles_a = pickles_a
-        self.pickles_arg = pickles_arg
-        self.pickles_eng = pickles_eng
-        self.pickles_fra = pickles_fra
-        self.pickles_gem = pickles_gem
-        self.pickles_ita = pickles_ita
-        self.pickles_liga = pickles_liga
-        self.pickles_uefa = pickles_uefa
-        self.pickles_w = pickles_w
-
-        self.betfair_min = None
-        self.betfair_max = None
-        self.betfair_delta = None
-        self.betfair_hide = None
-        self.betfair_print_only = False
-
+class LeagueInfo:
+    def __init__(self):
         # Keyword --> Display Name
         # Keyword: a string with lowercase + whitespace removing
         # The map need to be 1:1 as it will be used by home+away as matches key !IMPORTANT!
-        self.a_league_map = {
+        self.map = dict()
+        self.map['a'] = {
             'adelaide': 'Adelaide Utd',
             'brisbane': 'Brisbane Roar',
             'central': 'Central Coast',
             'perth': 'Perth Glory',
             'melbournecity': 'Melbourne City',
-            'melbournevictory': 'Melbourne Victory',
+            'victory': 'Melbourne Victory',
             'newcastle': 'Newcastle Jets',
             'sydneyfc': 'Sydney FC',
             'wellington': 'Wellington Phoenix',
             'westernsydney': 'Western Sydney',
         }
-        self.arg_map = {
+        self.map['arg'] = {
             'argentinos': 'Argentinos Jrs',
             'arsenal': 'Arsenal de Sarandi',
             'tucu': 'Atletico Tucuman',
@@ -317,7 +292,7 @@ class MatchMerger:
             'santa': 'Union Santa',
             'rsfield': 'Velez Sarsfield'
         }
-        self.eng_map = {
+        self.map['eng'] = {
             'arsenal': 'Arsenal',
             'bournemouth': 'Bournemouth',
             'brighton': 'Brighton',
@@ -339,7 +314,7 @@ class MatchMerger:
             'westbrom': 'West Brom',
             'westham': 'West Ham',
         }
-        self.fra_map = {
+        self.map['fra'] = {
             'amiens': 'Amiens',
             'angers': 'Angers SCO',
             'bordeaux': 'Bordeaux',
@@ -361,7 +336,7 @@ class MatchMerger:
             'toulouse': 'Toulouse FC',
             'troyes': 'Troyes AC',
         }
-        self.gem_map = {
+        self.map['gem'] = {
             'augsburg': 'Augsburg',
             'hertha': 'Hertha Berlin',
             'bremen': 'Werder Bremen',
@@ -381,7 +356,7 @@ class MatchMerger:
             'stuttgart': 'Stuttgart',
             'wolfsburg': 'Wolfsburg',
         }
-        self.ita_map = {
+        self.map['ita'] = {
             'atalanta': 'Atalanta BC',
             'benevento': 'Benevento',
             'bologna': 'Bologna',
@@ -403,7 +378,7 @@ class MatchMerger:
             'udinese': 'Udinese',
             'verona': 'Hellas Verona FC',
         }
-        self.la_liga_map = {
+        self.map['liga'] = {
             'bilbao': 'Athletic Bilbao',
             'atlmadrid': 'Atletico Madrid',
             'alav': 'Alaves',
@@ -425,7 +400,7 @@ class MatchMerger:
             'valencia': 'Valencia',
             'villarreal': 'Villarreal CF'
         }
-        self.uefa_map = {
+        self.map['uefa'] = {
             'anderlecht': 'Anderlecht',
             'apoel': 'APOEL Nicosia',
             'atleticomadrid': 'Atletico Madrid',
@@ -459,41 +434,43 @@ class MatchMerger:
             'spartak': 'Spartak Moscow',
             'tottenham': 'Tottenham Hotspur',
         }
-        self.w_map = {
+        self.map['w'] = {
             'adelaide': 'Adelaide United Women',
             'brisbane': 'Brisbane Roar Women',
             'canberra': 'Canberra United Women',
             'melbournecity': 'Melbourne City Women',
             'newcastle': 'Newcastle Jets Women',
         }
-        self.a_league_keys = list(self.a_league_map.keys())
-        self.arg_keys = list(self.arg_map.keys())
-        self.eng_keys = list(self.eng_map.keys())
-        self.fra_keys = list(self.fra_map.keys())
-        self.gem_keys = list(self.gem_map.keys())
-        self.ita_keys = list(self.ita_map.keys())
-        self.la_liga_keys = list(self.la_liga_map.keys())
-        self.uefa_keys = list(self.uefa_map.keys())
-        self.w_keys = list(self.w_map.keys())
 
-    @staticmethod
-    def get_id(team_name, keys, league_name, p_name):
+        self.league_long_names = {
+            'a': 'Australia League',
+            'arg': 'Argentina Superliga',
+            'eng': 'English Premier League',
+            'fra': 'French Ligue 1',
+            'ita': 'Italian Serie A',
+            'gem': 'German Bundesliga',
+            'liga': 'Spanish La Liga',
+            'uefa': 'UEFA Champions League',
+            'w': 'Australia W-League',
+        }
+
+    def get_id(self, team_name, league_name, pickle_name='', warning=True):
         converted_name = ''.join(team_name.lower().split())
-        if league_name == 'Spanish La Liga':
+        if league_name == 'liga':
             if 'tico' in converted_name:
                 converted_name = 'atlmadrid'
             elif 'lacoru' in converted_name:
                 converted_name = 'deportivo'
             elif 'sociedad' in converted_name:
                 converted_name = 'realsoc'
-        elif league_name == 'English Premier League':
+        elif league_name == 'eng':
             if 'mancity' == converted_name:
                 converted_name = 'manchestercity'
             elif 'manutd' == converted_name or 'manunited' == converted_name:
                 converted_name = 'manchesterunited'
             elif 'cpalace' in converted_name:
                 converted_name = 'crystal'
-        elif league_name == 'Argentina Superliga':
+        elif league_name == 'arg':
             if 'olimpo' in converted_name:
                 converted_name = 'blanca'
             elif 'velez' in converted_name:
@@ -502,7 +479,7 @@ class MatchMerger:
                 converted_name = 'lanus'
             elif 'colón' == converted_name:
                 converted_name = 'colon'
-        elif league_name == 'UEFA Champions League':
+        elif league_name == 'uefa':
             if 'manchestercity' == converted_name:
                 converted_name = 'mancity'
             elif 'lisbon' in converted_name:
@@ -518,57 +495,75 @@ class MatchMerger:
                 converted_name = 'qarabag'
             elif 'beşikta' in converted_name:
                 converted_name = 'besiktas'
-        elif league_name == 'German Bundesliga':
+        elif league_name == 'gem':
             if 'fcköln' in converted_name or 'koeln' in converted_name or \
                     'cologne' == converted_name:
                 converted_name = 'koln'
             elif 'mgladbach' == converted_name or 'bormonch' == converted_name or \
                     'gladbach' in converted_name:
                 converted_name = 'nchengladbach'
-        elif league_name == 'French Ligue 1':
+        elif league_name == 'fra':
             if converted_name == 'psg':
                 converted_name = 'paris'
-        elif league_name == 'Australia W-League':
+        elif league_name == 'w':
             if 'melbcity' in converted_name:
                 converted_name = 'melbournecity'
             elif 'newcstlejets' in converted_name:
                 converted_name = 'newcastle'
-        elif league_name == 'Australia League':
+        elif league_name == 'a':
             if converted_name == 'sydney':
                 converted_name = 'sydneyfc'
 
-        for name in keys:
+        for name in self.map[league_name].keys():
             if name in converted_name:
                 return name
-        log_and_print('WARNING: [{}] - {}[{}] is not found in the map of {}!'.format(
-            p_name, team_name, converted_name, league_name))
+        if warning:
+            log_and_print('WARNING: [{}] - {}[{}] is not found in the map of {}!'.format(
+                pickle_name, team_name, converted_name, self.league_long_names[league_name]))
         return None
+
+    def get_full_name(self, match_id, league_name):
+        return self.map[league_name][match_id]
+
+
+class MatchMerger:
+    def __init__(self,
+                 pickles_a,
+                 pickles_arg,
+                 pickles_eng,
+                 pickles_fra,
+                 pickles_gem,
+                 pickles_ita,
+                 pickles_liga,
+                 pickles_uefa,
+                 pickles_w,
+                 ):
+        self.pickles = dict()
+        self.pickles['a'] = pickles_a
+        self.pickles['arg'] = pickles_arg
+        self.pickles['eng'] = pickles_eng
+        self.pickles['fra'] = pickles_fra
+        self.pickles['gem'] = pickles_gem
+        self.pickles['ita'] = pickles_ita
+        self.pickles['liga'] = pickles_liga
+        self.pickles['uefa'] = pickles_uefa
+        self.pickles['w'] = pickles_w
+
+        self.betfair_min = None
+        self.betfair_max = None
+        self.betfair_delta = None
+        self.betfair_hide = None
+        self.betfair_print_only = False
 
     def merge_and_print(self, leagues, html_file):
         empty_count = 0
         loop = []
-        if 'a' in leagues:
-            loop.append((self.pickles_a, self.a_league_keys, self.a_league_map, 'Australia League'))
-        elif 'arg' in leagues:
-            loop.append((self.pickles_arg, self.arg_keys, self.arg_map, 'Argentina Superliga'))
-        elif 'eng' in leagues:
-            loop.append((self.pickles_eng, self.eng_keys, self.eng_map, 'English Premier League'))
-        elif 'fra' in leagues:
-            loop.append((self.pickles_fra, self.fra_keys, self.fra_map, 'French Ligue 1'))
-        elif 'gem' in leagues:
-            loop.append((self.pickles_gem, self.gem_keys, self.gem_map, 'German Bundesliga'))
-        elif 'ita' in leagues:
-            loop.append((self.pickles_ita, self.ita_keys, self.ita_map, 'Italian Serie A'))
-        elif 'liga' in leagues:
-            loop.append((self.pickles_liga, self.la_liga_keys, self.la_liga_map, 'Spanish La Liga'))
-        elif 'uefa' in leagues:
-            loop.append((self.pickles_uefa, self.uefa_keys, self.uefa_map, 'UEFA Champions League'))
-        elif 'w' in leagues:
-            loop.append((self.pickles_w, self.w_keys, self.w_map, 'Australia W-League'))
-        else:
-            log_and_print('WARNING: merge_and_print unexpected league: ' + str(leagues))
+        info = LeagueInfo()
+        for l in g_leagues:
+            if l in leagues:
+                loop.append((self.pickles[l], info.map[l], l))
 
-        for pickles, keys, league_map, league_name in loop:
+        for pickles, league_map, l in loop:
             empty_names = ''
             matches_map = {}  # hometeam and awayteam = map's key
             for p_name in pickles:
@@ -579,8 +574,8 @@ class MatchMerger:
                         empty_count += 1
                     else:
                         for pm in pickle_matches:
-                            id1 = self.get_id(pm.home_team, keys, league_name, p_name)
-                            id2 = self.get_id(pm.away_team, keys, league_name, p_name)
+                            id1 = info.get_id(pm.home_team, l, p_name)
+                            id2 = info.get_id(pm.away_team, l, p_name)
                             if id1 is None or id2 is None:
                                 continue
 
@@ -595,8 +590,8 @@ class MatchMerger:
                                 if same(m.odds[0], 0) or same(m.odds[1], 0) or same(m.odds[2], 0):
                                     continue
 
-                                m.home_team = league_map[self.get_id(pm.home_team, keys, league_name, p_name)]  # noqa
-                                m.away_team = league_map[self.get_id(pm.away_team, keys, league_name, p_name)]  # noqa
+                                m.home_team = league_map[info.get_id(pm.home_team, l, p_name)]
+                                m.away_team = league_map[info.get_id(pm.away_team, l, p_name)]
                                 matches_map[key] = m
                             else:
                                 m = matches_map[key]
@@ -613,7 +608,7 @@ class MatchMerger:
 
             matches = sorted(matches_map.values())
             if len(matches) is not 0 and not self.betfair_print_only:
-                output = '--- {} ---'.format(league_name)
+                output = '--- {} ---'.format(info.league_long_names[l])
                 empty_str = '({} pickles, empty: [{}])'.format(
                     len(pickles), empty_names.rstrip())
                 log_and_print(output + empty_str)
@@ -625,7 +620,7 @@ class MatchMerger:
                     m.display(html_file)
                 html_file.write_line('</table>')
 
-            self.merge_and_print_betfair(matches_map, keys, league_name, pickles[0])
+            self.merge_and_print_betfair(matches_map, l, pickles[0])
 
         with open('output_empty_pickles.txt', 'w') as empty_count_file:
             empty_count_file.write('({} empty pickles)'.format(empty_count))
@@ -649,16 +644,17 @@ class MatchMerger:
                 ret['liability'] = liability
         return ret
 
-    def merge_and_print_betfair(self, matches_map, keys, league_name, p_name):
+    def merge_and_print_betfair(self, matches_map, league_name, p_name):
         if self.betfair_min is None or self.betfair_max is None:
             return
         with open(os.path.join(gettempdir(), p_name.split('_')[0] + '_betfair.pkl'),
                   'rb') as pkl:
             betfair_matches = pickle.load(pkl)
             if len(betfair_matches) is not 0:
+                info = LeagueInfo()
                 for bm in betfair_matches:
-                    id1 = self.get_id(bm.home_team, keys, league_name, p_name)
-                    id2 = self.get_id(bm.away_team, keys, league_name, p_name)
+                    id1 = info.get_id(bm.home_team, league_name, p_name)
+                    id2 = info.get_id(bm.away_team, league_name, p_name)
                     if id1 is None or id2 is None:
                         continue
 
@@ -1539,6 +1535,50 @@ class WebWorker:
                     odds_lad[b.get_attribute('data-teamname')] = b.text.split('\n')[1]
         return odds_lad
 
+    @staticmethod
+    def full_name_to_id(str_contains_full_name, league_name):
+        info = LeagueInfo()
+        if '/' in str_contains_full_name:
+            team1, team2 = str_contains_full_name.split('/')
+            team1_id = info.get_id(team1, league_name, warning=False) or 'Draw'
+            team2_id = info.get_id(team2, league_name, warning=False) or 'Draw'
+            return '/'.join([team1_id, team2_id])
+        return str_contains_full_name
+
+    def odds_map_to_id(self, odds_map, league_name):
+        formatted = dict()
+        info = LeagueInfo()
+        for key, value in odds_map.items():
+            if '/' in key:
+                formatted[self.full_name_to_id(key, league_name)] = value
+            else:
+                idx = key.rfind(' ')
+                team_id = info.get_id(key[:idx], league_name, warning=False) or 'Draw'
+                score = key[idx:].strip()
+                formatted[' '.join([team_id, score])] = value
+        return formatted
+
+    @staticmethod
+    def key_expand_full_name(key, league_name):
+        info = LeagueInfo()
+        if '/' in key:
+            team1, team2 = key.split('/')
+            team1_ = 'Draw' if team1 == 'Draw' else info.get_full_name(team1, league_name)
+            team2_ = 'Draw' if team2 == 'Draw' else info.get_full_name(team2, league_name)
+            return '/'.join([team1_, team2_])
+        else:
+            idx = key.rfind(' ')
+            team = key[:idx]
+            team_ = 'Draw' if team == 'Draw' else info.get_full_name(team, league_name)
+            score = key[idx:]
+            return ' '.join([team_, score])
+
+    def id_map_to_full_name(self, odds_map, league_name):
+        formatted = dict()
+        for key, value in odds_map.items():
+            formatted[self.key_expand_full_name(key, league_name)] = value
+        return formatted
+
     def get_until_more_than(self, css_str, expect_count, max_try=10):
         count_ = 0
         while True:
@@ -1556,11 +1596,14 @@ class WebWorker:
                 loop_minutes - m, '' if loop_minutes - m == 1 else 's'))
             time.sleep(60)
 
-    def compare_lads(self, urls_str, loop_minutes=0):
-        urls = urls_str.split(',')
-        while True:
-            for url1, url2 in zip(urls[::2], urls[1::2]):
-                self.compare_lad(url1, url2)
+    def compare_lads(self, loop_minutes=0):
+        with open('ladbrokes.txt', 'r') as urls_file:
+            lines = urls_file.read().splitlines()
+        while len(lines) > 0:
+            for league_name, url_back, url_lay in zip(lines[::3], lines[1::3], lines[2::3]):
+                odds_back = self.get_ladbrokes_additional_market_odds(url_back)
+                odds_back = self.odds_map_to_id(odds_back, league_name)
+                self.compare_with_lay(odds_back, url_lay, league_name)
 
             if loop_minutes is 0 and self.driver:
                 self.driver.quit()
@@ -1568,52 +1611,51 @@ class WebWorker:
             else:
                 self.count_down(loop_minutes)
 
-    def compare_lad(self, url_lad, url_betfair):
-        odds_lad = self.get_ladbrokes_additional_market_odds(url_lad)
-        odds_betfair = {}
-
-        self.driver.get(url_betfair)
+    def compare_with_lay(self, odds_back, url_lay, league_name=''):
+        self.driver.get(url_lay)
         Betfair.login_static(self.driver, self.wait)
         self.driver.set_window_size(width=1920, height=1080)
-        self.driver.get(url_betfair)
+        self.driver.get(url_lay)
 
-        is_get_home_name = is_get_away_name = True
-        home_name = ''
-        away_name = ''
+        odds_lay = {}
+        is_get_home_id = is_get_away_id = True
+        home_id = ''
+        away_id = ''
         blocks = self.get_until_more_than('table.mv-runner-list', 10, max_try=30)
+        info = LeagueInfo()
         for b in blocks:
             if len(b.text) != 0:
                 trs = b.find_elements_by_css_selector('tr.runner-line')
                 for tr in trs:
                     div = tr.find_element_by_css_selector('h3.runner-name')
                     btn = tr.find_element_by_css_selector('button.lay-button')
-                    odds_betfair[div.text] = btn.text
-                    if is_get_home_name:
-                        is_get_home_name = False
-                        home_name = div.text
-                    elif is_get_away_name and div.text != 'The Draw':
-                        is_get_away_name = False
-                        away_name = div.text
+                    odds_lay[self.full_name_to_id(div.text, league_name)] = btn.text
+                    if is_get_home_id:
+                        is_get_home_id = False
+                        home_id = info.get_id(div.text, league_name)
+                    elif is_get_away_id and div.text != 'The Draw':
+                        is_get_away_id = False
+                        away_id = info.get_id(div.text, league_name)
 
-        def add_item_to_results(item, lay_odd, results):
-            if item in odds_lad:
-                back_odd = float(odds_lad[item])
-                lay_odd = float(lay_odd)
-                profit = (back_odd-1)*100-(lay_odd-1)*((back_odd-1)/(lay_odd-0.05)*100)
-                results.append([profit, back_odd, lay_odd, item])
+        def add_item_to_results(item, lay_odd_, results_):
+            if item in odds_back:
+                back_odd = float(odds_back[item])
+                lay_odd_ = float(lay_odd_)
+                profit = (back_odd-1)*100-(lay_odd_-1)*((back_odd-1)/(lay_odd_-0.05)*100)
+                results_.append([profit, back_odd, lay_odd_, item])
 
         # get correct score
         win_set = ('1 - 0', '2 - 0', '3 - 0', '2 - 1', '3 - 1', '3 - 2')
         draw_set = ('0 - 0', '1 - 1', '2 - 2', '3 - 3')
         lose_set = ('0 - 1', '0 - 2', '0 - 3', '1 - 2', '1 - 3', '2 - 3')
         results = []
-        for b_score, b_value in odds_betfair.items():
+        for b_score, b_value in odds_lay.items():
             if b_score in win_set:
-                score = home_name + ' ' + ''.join(b_score.split(' '))
+                score = home_id + ' ' + ''.join(b_score.split(' '))
             elif b_score in draw_set:
                 score = 'Draw ' + ''.join(b_score.split(' '))
             elif b_score in lose_set:
-                score = away_name + ' ' + ''.join(b_score.split(' ')[::-1])
+                score = away_id + ' ' + ''.join(b_score.split(' ')[::-1])
             else:
                 continue
             add_item_to_results(score, b_value.split('\n')[0], results)
@@ -1631,18 +1673,20 @@ class WebWorker:
                         continue
                     name = line.find_element_by_css_selector('h3.runner-name')
                     lay_odd = lay_box.find_element_by_css_selector('span.bet-button-price')
-                    odds_betfair[name.text] = lay_odd.text
+                    odds_lay[name.text] = lay_odd.text
 
-        for b_player, b_value in odds_betfair.items():
+        for b_player, b_value in odds_lay.items():
             add_item_to_results(b_player, b_value.split('\n')[0], results)
 
         results.sort(reverse=True)
         for res in results:
-            msg = '{:0.2f}\t{:0.2f}\t{:0.2f}\t{}'.format(res[0], res[1], res[2], res[3])
+            msg = '{:0.2f}\t{:0.2f}\t{:0.2f}\t{}'.format(
+                res[0], res[1], res[2], self.key_expand_full_name(res[3], league_name))
             if res[0] >= 75:
                 log_and_print(msg, highlight='yellow')
             else:
                 log_and_print(msg)
+        log_and_print('-----------')
 
     @staticmethod
     def calc_real_back_odd(s):
