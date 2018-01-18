@@ -28,6 +28,7 @@ def main():
       --betfair-limits=<number> highlight when biggest back and lay less than
       --betfair                 including betfair back odds
       --exclude=<websites>      excluding websites
+      --compare-lad=<urls>      compare pairs of urls for correct score and first goal of ladbrokes
 
     Example:
       cli.py luxbet,crownbet a
@@ -37,6 +38,7 @@ def main():
       cli.py a a --calc-back=4.2
       cli.py bet365 gem "Adelaide Utd,Central Coast,,3.55,1.0"   # draw > 3.55 or lost > 1.0
       cli.py bet365 eng --betfair-limits=1,2,0.05,-5  # 1 < lay odd < 2, diff <= 0.05, profit > -5
+      cli.py a a --compare-lad=https://www.ladbrokes.com.au/sports/soccer/44767425-football-england-premier-league/44766165-man-utd-vs-stoke/,https://www.betfair.com.au/exchange/plus/football/market/1.138412500
     """
     worker = False
 
@@ -58,6 +60,8 @@ def main():
         worker.calc_best_shot(float(o1), float(o2), float(o3))
     elif args['--calc-back'] is not None:
         worker.calc_real_back_odd(args['--calc-back'])
+    elif args['--compare-lad'] is not None:
+        worker.compare_lad(args['--compare-lad'])
     else:
         worker.run(
             websites_str=args['<websites>'],

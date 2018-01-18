@@ -727,14 +727,18 @@ class Website:
         for i in range(3):
             m.odds[i] = self.to_float(m.odds[i])
 
-    def get_blocks(self, css_string):
+    @staticmethod
+    def get_blocks_static(css_string, driver, wait):
         try:
-            self.wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))  # noqa
+            wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))  # noqa
         except TimeoutException:
             log_and_print('[{}] not found'.format(css_string))
             return []
-        blocks = self.driver.find_elements_by_css_selector(css_string)
+        blocks = driver.find_elements_by_css_selector(css_string)
         return blocks
+
+    def get_blocks(self, css_string):
+        return self.get_blocks_static(css_string, self.driver, self.wait)
 
     # In Pinnacle, the url that unlogined account can see is different with logined account
     def get_href_link(self, get_logined=False):
@@ -790,33 +794,37 @@ class Betfair(Website):
         self.need_login = True
         self.get_back_odd = False
 
-    def login(self):
+    @staticmethod
+    def login_static(driver, wait):
         def save_cookie(f):
             with open(f, 'wb') as cookies_file:
-                pickle.dump(self.driver.get_cookies(), cookies_file)
+                pickle.dump(driver.get_cookies(), cookies_file)
 
         def load_cookie(f):
             with open(f, 'rb') as cookies_file:
                 cookies = pickle.load(cookies_file)
                 for cookie in cookies:
-                    self.driver.add_cookie(cookie)
+                    driver.add_cookie(cookie)
 
         path = os.path.join(gettempdir(), 'betfair_cookie.pkl')
         try:
             load_cookie(path)
         except FileNotFoundError:
-            account = self.driver.find_element_by_id('ssc-liu')
-            password = self.driver.find_element_by_id('ssc-lipw')
-            login = self.driver.find_element_by_id('ssc-lis')
+            account = driver.find_element_by_id('ssc-liu')
+            password = driver.find_element_by_id('ssc-lipw')
+            login = driver.find_element_by_id('ssc-lis')
             with open('betfair.username', 'r') as username_file, \
                     open('betfair.password', 'r') as password_file:
                 account.send_keys(username_file.read().rstrip())
                 password.send_keys(password_file.read().rstrip())
             login.click()
-            self.wait.until(
+            wait.until(
                 expected_conditions.visibility_of_element_located((By.CSS_SELECTOR,
                                                                    'form.ssc-lof')))
             save_cookie(path)
+
+    def login(self):
+        self.login_static(self.driver, self.wait)
 
     def fetch(self, matches):
         blocks = self.get_blocks('table.coupon-table')
@@ -1516,10 +1524,119 @@ class WebWorker:
                     m.profit = profit
         m.display()
 
+    # TODO: merge with fetch()
+    def compare_lad(self, urls_str):
+        def compare(url_lad, url_betfair):
+            odds_lad = {}
+            odds_betfair = {}
+
+            # Get ladbrokes correct scores
+            self.driver.get(url_lad)
+            self.driver.implicitly_wait(1)
+            for code in 'twirl_4', 'twirl_9':
+                market = self.driver.find_element_by_id(code)
+                market.click()
+                self.driver.implicitly_wait(1)
+                blocks = market.find_elements_by_css_selector('tr.row')
+                for b in blocks:
+                    odds_lad[b.get_attribute('data-teamname')] = b.text.split('\n')[1]
+
+            # Get Betfair
+            self.driver.get(url_betfair)
+            Betfair.login_static(self.driver, self.wait)
+            self.driver.set_window_size(width=1920, height=1080)
+            self.driver.get(url_betfair)
+
+            count = 0
+            is_get_home_name = is_get_away_name = True
+            home_name = ''
+            away_name = ''
+            while True:
+                count += 1
+                self.driver.implicitly_wait(1)
+                blocks = self.driver.find_elements_by_css_selector('table.mv-runner-list')
+                for b in blocks:
+                    if len(b.text) != 0:
+                        trs = b.find_elements_by_css_selector('tr.runner-line')
+                        for tr in trs:
+                            div = tr.find_element_by_css_selector('h3.runner-name')
+                            btn = tr.find_element_by_css_selector('button.lay-button')
+                            odds_betfair[div.text] = btn.text
+                            if is_get_home_name:
+                                is_get_home_name = False
+                                home_name = div.text
+                            elif is_get_away_name and div.text != 'The Draw':
+                                is_get_away_name = False
+                                away_name = div.text
+                if len(odds_betfair) > 5 or count > 20:
+                    break
+
+            # get correct score
+            win_set = ('1 - 0', '2 - 0', '3 - 0', '2 - 1', '3 - 1', '3 - 2')
+            draw_set = ('0 - 0', '1 - 1', '2 - 2', '3 - 3')
+            lose_set = ('0 - 1', '0 - 2', '0 - 3', '1 - 2', '1 - 3', '2 - 3')
+            results = []
+            for b_score, b_value in odds_betfair.items():
+                b_odd = b_value.split('\n')[0]
+                if b_score in win_set:
+                    score = home_name + ' ' + ''.join(b_score.split(' '))
+                elif b_score in draw_set:
+                    score = 'Draw ' + ''.join(b_score.split(' '))
+                elif b_score in lose_set:
+                    score = away_name + ' ' + ''.join(b_score.split(' ')[::-1])
+                else:
+                    continue
+                if score in odds_lad:
+                    l_odd = odds_lad[score]
+                    results.append([float(l_odd), b_odd, float(b_odd) - float(l_odd), score])
+            results.sort()
+            for res in results:
+                print('{:0.0f}\t{} \t{:0.2f}\t{}'.format(res[0], res[1], res[2], res[3]))
+
+            # get player
+            def get_and_wait(css_str, expect_count):
+                count_ = 0
+                while True:
+                    self.driver.implicitly_wait(1)
+                    count_ += 1
+                    lines_ = self.driver.find_elements_by_css_selector(css_str)
+                    if len(lines_) > expect_count or count_ > 10:
+                        break
+                return lines_
+
+            odds_betfair.clear()
+            tabs = get_and_wait('h4.tab-label', 5)
+            for tab in tabs:
+                if tab.text == 'Player':
+                    tab.click()
+                    lines = get_and_wait('tr.runner-line', 100)
+                    for line in lines:
+                        lay_box = line.find_element_by_css_selector(
+                            'td.bet-buttons.lay-cell.first-lay-cell')
+                        if lay_box.text == '':
+                            continue
+                        name = line.find_element_by_css_selector('h3.runner-name')
+                        lay_odd = lay_box.find_element_by_css_selector('span.bet-button-price')
+                        odds_betfair[name.text] = lay_odd.text
+
+            # print player
+            results = []
+            for b_player, b_value in odds_betfair.items():
+                if b_player in odds_lad:  # TODO merge with above as a function
+                    l_odd = odds_lad[b_player]
+                    results.append([float(l_odd), b_odd, float(b_odd) - float(l_odd), b_player])
+            results.sort()
+            for res in results:
+                print('{:0.0f}\t{} \t{:0.2f}\t{}'.format(res[0], res[1], res[2], res[3]))
+
+        urls = urls_str.split(',')
+        for url1, url2 in zip(urls[::2], urls[1::2]):
+            compare(url1, url2)
+
     @staticmethod
     def calc_real_back_odd(s):
         print(real_back_odd(s))
-                    
+
     def run(self,
             websites_str,
             leagues_str,
