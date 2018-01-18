@@ -61,7 +61,10 @@ def main():
     elif args['--calc-back'] is not None:
         worker.calc_real_back_odd(args['--calc-back'])
     elif args['--compare-lad'] is not None:
-        worker.compare_lad(args['--compare-lad'])
+        worker.compare_lads(
+            urls_str=args['--compare-lad'],
+            loop_minutes=int(args['--loop'])
+        )
     else:
         worker.run(
             websites_str=args['<websites>'],

@@ -1524,114 +1524,125 @@ class WebWorker:
                     m.profit = profit
         m.display()
 
-    # TODO: merge with fetch()
-    def compare_lad(self, urls_str):
-        def compare(url_lad, url_betfair):
-            odds_lad = {}
-            odds_betfair = {}
-
-            # Get ladbrokes correct scores
-            self.driver.get(url_lad)
-            self.driver.implicitly_wait(1)
-            for code in 'twirl_4', 'twirl_9':
-                market = self.driver.find_element_by_id(code)
+    def get_ladbrokes_additional_market_odds(self, url_lad):
+        odds_lad = {}
+        self.driver.get(url_lad)
+        self.driver.implicitly_wait(1)
+        markets = self.driver.find_elements_by_css_selector('div.additional-market')
+        for market in markets:
+            desc = market.find_element_by_css_selector('div.additional-market-description')
+            if desc.text in ('Correct Score', 'First Goal Scorer', 'Half Time / Full Time'):
                 market.click()
                 self.driver.implicitly_wait(1)
                 blocks = market.find_elements_by_css_selector('tr.row')
                 for b in blocks:
                     odds_lad[b.get_attribute('data-teamname')] = b.text.split('\n')[1]
+        return odds_lad
 
-            # Get Betfair
-            self.driver.get(url_betfair)
-            Betfair.login_static(self.driver, self.wait)
-            self.driver.set_window_size(width=1920, height=1080)
-            self.driver.get(url_betfair)
+    def get_until_more_than(self, css_str, expect_count, max_try=10):
+        count_ = 0
+        while True:
+            time.sleep(1)
+            count_ += 1
+            lines_ = self.driver.find_elements_by_css_selector(css_str)
+            if len(lines_) > expect_count or count_ > max_try:
+                break
+        return lines_
 
-            count = 0
-            is_get_home_name = is_get_away_name = True
-            home_name = ''
-            away_name = ''
-            while True:
-                count += 1
-                self.driver.implicitly_wait(1)
-                blocks = self.driver.find_elements_by_css_selector('table.mv-runner-list')
-                for b in blocks:
-                    if len(b.text) != 0:
-                        trs = b.find_elements_by_css_selector('tr.runner-line')
-                        for tr in trs:
-                            div = tr.find_element_by_css_selector('h3.runner-name')
-                            btn = tr.find_element_by_css_selector('button.lay-button')
-                            odds_betfair[div.text] = btn.text
-                            if is_get_home_name:
-                                is_get_home_name = False
-                                home_name = div.text
-                            elif is_get_away_name and div.text != 'The Draw':
-                                is_get_away_name = False
-                                away_name = div.text
-                if len(odds_betfair) > 5 or count > 20:
-                    break
+    @staticmethod
+    def count_down(loop_minutes):
+        for m in range(loop_minutes):
+            log_and_print('Will rescan in {} minute{} ...'.format(
+                loop_minutes - m, '' if loop_minutes - m == 1 else 's'))
+            time.sleep(60)
 
-            # get correct score
-            win_set = ('1 - 0', '2 - 0', '3 - 0', '2 - 1', '3 - 1', '3 - 2')
-            draw_set = ('0 - 0', '1 - 1', '2 - 2', '3 - 3')
-            lose_set = ('0 - 1', '0 - 2', '0 - 3', '1 - 2', '1 - 3', '2 - 3')
-            results = []
-            for b_score, b_value in odds_betfair.items():
-                b_odd = b_value.split('\n')[0]
-                if b_score in win_set:
-                    score = home_name + ' ' + ''.join(b_score.split(' '))
-                elif b_score in draw_set:
-                    score = 'Draw ' + ''.join(b_score.split(' '))
-                elif b_score in lose_set:
-                    score = away_name + ' ' + ''.join(b_score.split(' ')[::-1])
-                else:
-                    continue
-                if score in odds_lad:
-                    l_odd = odds_lad[score]
-                    results.append([float(l_odd), b_odd, float(b_odd) - float(l_odd), score])
-            results.sort()
-            for res in results:
-                print('{:0.0f}\t{} \t{:0.2f}\t{}'.format(res[0], res[1], res[2], res[3]))
-
-            # get player
-            def get_and_wait(css_str, expect_count):
-                count_ = 0
-                while True:
-                    self.driver.implicitly_wait(1)
-                    count_ += 1
-                    lines_ = self.driver.find_elements_by_css_selector(css_str)
-                    if len(lines_) > expect_count or count_ > 10:
-                        break
-                return lines_
-
-            odds_betfair.clear()
-            tabs = get_and_wait('h4.tab-label', 5)
-            for tab in tabs:
-                if tab.text == 'Player':
-                    tab.click()
-                    lines = get_and_wait('tr.runner-line', 100)
-                    for line in lines:
-                        lay_box = line.find_element_by_css_selector(
-                            'td.bet-buttons.lay-cell.first-lay-cell')
-                        if lay_box.text == '':
-                            continue
-                        name = line.find_element_by_css_selector('h3.runner-name')
-                        lay_odd = lay_box.find_element_by_css_selector('span.bet-button-price')
-                        odds_betfair[name.text] = lay_odd.text
-
-            # print player
-            results = []
-            for b_player, b_value in odds_betfair.items():
-                if b_player in odds_lad:  # TODO merge with above as a function
-                    l_odd = odds_lad[b_player]
-                    results.append([float(l_odd), b_odd, float(b_odd) - float(l_odd), b_player])
-            results.sort()
-            for res in results:
-                print('{:0.0f}\t{} \t{:0.2f}\t{}'.format(res[0], res[1], res[2], res[3]))
-
+    def compare_lads(self, urls_str, loop_minutes=0):
         urls = urls_str.split(',')
-        for url1, url2 in zip(urls[::2], urls[1::2]):
-            compare(url1, url2)
+        while True:
+            for url1, url2 in zip(urls[::2], urls[1::2]):
+                self.compare_lad(url1, url2)
+
+            if loop_minutes is 0 and self.driver:
+                self.driver.quit()
+                break
+            else:
+                self.count_down(loop_minutes)
+
+    def compare_lad(self, url_lad, url_betfair):
+        odds_lad = self.get_ladbrokes_additional_market_odds(url_lad)
+        odds_betfair = {}
+
+        self.driver.get(url_betfair)
+        Betfair.login_static(self.driver, self.wait)
+        self.driver.set_window_size(width=1920, height=1080)
+        self.driver.get(url_betfair)
+
+        is_get_home_name = is_get_away_name = True
+        home_name = ''
+        away_name = ''
+        blocks = self.get_until_more_than('table.mv-runner-list', 10, max_try=30)
+        for b in blocks:
+            if len(b.text) != 0:
+                trs = b.find_elements_by_css_selector('tr.runner-line')
+                for tr in trs:
+                    div = tr.find_element_by_css_selector('h3.runner-name')
+                    btn = tr.find_element_by_css_selector('button.lay-button')
+                    odds_betfair[div.text] = btn.text
+                    if is_get_home_name:
+                        is_get_home_name = False
+                        home_name = div.text
+                    elif is_get_away_name and div.text != 'The Draw':
+                        is_get_away_name = False
+                        away_name = div.text
+
+        def add_item_to_results(item, lay_odd, results):
+            if item in odds_lad:
+                back_odd = float(odds_lad[item])
+                lay_odd = float(lay_odd)
+                profit = (back_odd-1)*100-(lay_odd-1)*((back_odd-1)/(lay_odd-0.05)*100)
+                results.append([profit, back_odd, lay_odd, item])
+
+        # get correct score
+        win_set = ('1 - 0', '2 - 0', '3 - 0', '2 - 1', '3 - 1', '3 - 2')
+        draw_set = ('0 - 0', '1 - 1', '2 - 2', '3 - 3')
+        lose_set = ('0 - 1', '0 - 2', '0 - 3', '1 - 2', '1 - 3', '2 - 3')
+        results = []
+        for b_score, b_value in odds_betfair.items():
+            if b_score in win_set:
+                score = home_name + ' ' + ''.join(b_score.split(' '))
+            elif b_score in draw_set:
+                score = 'Draw ' + ''.join(b_score.split(' '))
+            elif b_score in lose_set:
+                score = away_name + ' ' + ''.join(b_score.split(' ')[::-1])
+            else:
+                continue
+            add_item_to_results(score, b_value.split('\n')[0], results)
+
+        # get player
+        tabs = self.get_until_more_than('h4.tab-label', 5)
+        for tab in tabs:
+            if tab.text == 'Player':
+                tab.click()
+                lines = self.get_until_more_than('tr.runner-line', 100)
+                for line in lines:
+                    lay_box = line.find_element_by_css_selector(
+                        'td.bet-buttons.lay-cell.first-lay-cell')
+                    if lay_box.text == '':
+                        continue
+                    name = line.find_element_by_css_selector('h3.runner-name')
+                    lay_odd = lay_box.find_element_by_css_selector('span.bet-button-price')
+                    odds_betfair[name.text] = lay_odd.text
+
+        for b_player, b_value in odds_betfair.items():
+            add_item_to_results(b_player, b_value.split('\n')[0], results)
+
+        results.sort(reverse=True)
+        for res in results:
+            msg = '{:0.2f}\t{:0.2f}\t{:0.2f}\t{}'.format(res[0], res[1], res[2], res[3])
+            if res[0] >= 75:
+                log_and_print(msg, highlight='yellow')
+            else:
+                log_and_print(msg)
 
     @staticmethod
     def calc_real_back_odd(s):
@@ -1835,8 +1846,5 @@ class WebWorker:
                 if self.driver and not self.keep_driver_alive:
                     self.driver.quit()
                 break
-
-            for m in range(loop_minutes):
-                log_and_print('Will rescan in {} minute{} ...'.format(
-                    loop_minutes-m, '' if loop_minutes-m == 1 else 's'))
-                time.sleep(60)
+            else:
+                self.count_down(loop_minutes)
