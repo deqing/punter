@@ -71,6 +71,11 @@ def log_and_print(s, highlight=None):
         logging.getLogger().info(s)
 
 
+# e.g. 'Both to Score' -> 'bothtoscore'
+def squash_string(name):
+    return ''.join(name.lower().split())
+
+
 def real_back_odd(odd):
     return ((odd - 1) * 95 + 100) / 100
 
@@ -242,6 +247,38 @@ class BetfairMatch(Match):
     def __init__(self):
         Match.__init__(self)
         self.lays = [0, 0, 0]
+
+
+class MarketNames:
+    def __init__(self):
+        self.desc = {
+            'both score': 'Both teams to Score?',
+            'correct score': 'Correct Score',
+            '1st scorer': 'First Goal Scorer',
+            'first 0.5': 'First Half Goals 0.5',
+            'first 1.5': 'First Half Goals 1.5',
+            'half full': 'Half Time / Full Time',
+            '+- 0.5': 'Over/Under 0.5 Goals',
+            '+- 1.5': 'Over/Under 1.5 Goals',
+            '+- 2.5': 'Over/Under 2.5 Goals',
+            '+- 3.5': 'Over/Under 3.5 Goals',
+            '+- 4.5': 'Over/Under 4.5 Goals',
+        }
+
+    def desc(self, key):
+        return self.desc[key]
+
+    def key(self, name):
+        if name == 'Half Time':
+            return None
+        if 'Over/Under Total Goals' in name:
+            name = name.replace('Total Goals ', '')
+        converted_name = squash_string(name)
+        for key, value in self.desc.items():
+            value = squash_string(value)
+            if converted_name in value:
+                return key
+        return None
 
 
 class LeagueInfo:
@@ -456,7 +493,7 @@ class LeagueInfo:
         }
 
     def get_id(self, team_name, league_name, pickle_name=''):
-        converted_name = ''.join(team_name.lower().split())
+        converted_name = squash_string(team_name)
         if converted_name == 'draw' or league_name not in self.map:
             return team_name
 
@@ -1528,18 +1565,30 @@ class WebWorker:
         m.display()
 
     def get_ladbrokes_additional_market_odds(self, url_lad):
-        odds_lad = {}
+        market_names = MarketNames()
+        odds_lad = dict()
+        for key, _ in market_names.desc.items():
+            odds_lad[key] = dict()
+
         self.driver.get(url_lad)
         self.driver.implicitly_wait(1)
         markets = self.driver.find_elements_by_css_selector('div.additional-market')
         for market in markets:
             desc = market.find_element_by_css_selector('div.additional-market-description')
-            if desc.text in ('Correct Score', 'First Goal Scorer', 'Half Time / Full Time'):
+            key = market_names.key(desc.text)
+            if key in odds_lad.keys():
                 market.click()
                 self.driver.implicitly_wait(1)
                 blocks = market.find_elements_by_css_selector('tr.row')
                 for b in blocks:
-                    odds_lad[b.get_attribute('data-teamname')] = b.text.split('\n')[1]
+                    name = b.get_attribute('data-teamname')
+                    if 'Over (' in name:
+                        name = name.replace('Over (', 'Over ')
+                        name = name.replace(')', ' Goals')
+                    elif 'Under (' in name:
+                        name = name.replace('Under (', 'Under ')
+                        name = name.replace(')', ' Goals')
+                    odds_lad[key][squash_string(name)] = b.text.split('\n')[1]
         return odds_lad
 
     @staticmethod
@@ -1552,17 +1601,22 @@ class WebWorker:
             return '/'.join([team1_id, team2_id])
         return str_contains_full_name
 
+    # Convert team name to id for further matching
     def odds_map_to_id(self, odds_map, league_name):
         formatted = dict()
         info = LeagueInfo()
-        for key, value in odds_map.items():
-            if '/' in key:
-                formatted[self.full_name_to_id(key, league_name)] = value
-            else:
-                idx = key.rfind(' ')
-                team_id = info.get_id(key[:idx], league_name)
-                score = key[idx:].strip()
-                formatted[' '.join([team_id, score])] = value
+        for key, market_map in odds_map.items():
+            formatted[key] = dict()
+            for name, value in market_map.items():
+                if '/' in name:
+                    formatted[key][self.full_name_to_id(name, league_name)] = value
+                elif '-' in name:
+                    idx = name.find('-')-1
+                    team_id = info.get_id(name[:idx], league_name)
+                    score = name[idx:]
+                    formatted[key][team_id + score] = value
+                else:
+                    formatted[key][name] = value
         return formatted
 
     @staticmethod
@@ -1573,12 +1627,21 @@ class WebWorker:
             team1_ = 'Draw' if team1 == 'Draw' else info.get_full_name(team1, league_name)
             team2_ = 'Draw' if team2 == 'Draw' else info.get_full_name(team2, league_name)
             return '/'.join([team1_, team2_])
-        else:
+        elif ' ' in key:
             idx = key.rfind(' ')
             team = key[:idx].strip()
             team_ = 'Draw' if team == 'Draw' else info.get_full_name(team, league_name)
             score = key[idx:].strip()
             return ' '.join([team_, score])
+        elif 'over' in key or 'under' in key:
+            idx = key.find('.')-1
+            word = list()
+            word.append(key[:idx])
+            word.append(key[idx:idx+3])
+            word.append(key[idx+3:])
+            return ' '.join(word)
+        else:
+            return key
 
     def id_map_to_full_name(self, odds_map, league_name):
         formatted = dict()
@@ -1626,52 +1689,90 @@ class WebWorker:
         self.driver.set_window_size(width=1920, height=1080)
         self.driver.get(url_lay)
 
-        odds_lay = {}
-        is_get_home_id = is_get_away_id = True
-        home_id = ''
-        away_id = ''
-        blocks = self.get_until_more_than('table.mv-runner-list', 10, max_try=30)
-        info = LeagueInfo()
-        for b in blocks:
-            if len(b.text) != 0:
-                trs = b.find_elements_by_css_selector('tr.runner-line')
-                for tr in trs:
-                    div = tr.find_element_by_css_selector('h3.runner-name')
-                    btn = tr.find_element_by_css_selector('button.lay-button')
-                    odds_lay[self.full_name_to_id(div.text, league_name)] = btn.text
-                    if is_get_home_id:
-                        is_get_home_id = False
-                        home_id = info.get_id(div.text, league_name)
-                    elif is_get_away_id and div.text != 'The Draw':
-                        is_get_away_id = False
-                        away_id = info.get_id(div.text, league_name)
+        market_names = MarketNames()
+        odds_lay = dict()
+        for key, _ in market_names.desc.items():
+            odds_lay[key] = dict()
 
-        def add_item_to_results(item, lay_odd_, results_):
-            if item in odds_back and lay_odd_ is not '':
-                back_odd = float(odds_back[item])
+        is_get_home_id = is_get_away_id = True
+        home_id = away_id = ''
+        home_name = away_name = ''
+        info = LeagueInfo()
+
+        # get popular markets
+        blocks = self.get_until_more_than('div.mini-mv', 10)
+        for b in blocks:
+            key = market_names.key(b.find_element_by_css_selector('span.market-name-label').text)
+            trs = b.find_elements_by_css_selector('tr.runner-line')
+            for tr in trs:
+                div = tr.find_element_by_css_selector('h3.runner-name')
+                btn = tr.find_element_by_css_selector('button.lay-button')
+                if key is not None:
+                    odds_lay[key][squash_string(self.full_name_to_id(div.text, league_name))] \
+                        = btn.text
+                if is_get_home_id:
+                    is_get_home_id = False
+                    home_id = info.get_id(div.text, league_name)
+                    home_name = div.text
+                elif is_get_away_id and div.text != 'The Draw':
+                    is_get_away_id = False
+                    away_id = info.get_id(div.text, league_name)
+                    away_name = div.text
+
+        def add_item_to_results(item, key_, lay_odd_, results_, display_):
+            if item in odds_back[key_] and lay_odd_ is not '':
+                back_odd = float(odds_back[key_][item])
                 lay_odd_ = float(lay_odd_)
                 profit = (back_odd-1)*100-(lay_odd_-1)*((back_odd-1)/(lay_odd_-0.05)*100)
-                results_.append([profit, back_odd, lay_odd_, item])
+                results_.append([profit, back_odd, lay_odd_, item, display_])
 
-        # get correct score
-        win_set = ('1 - 0', '2 - 0', '3 - 0', '2 - 1', '3 - 1', '3 - 2')
-        draw_set = ('0 - 0', '1 - 1', '2 - 2', '3 - 3')
-        lose_set = ('0 - 1', '0 - 2', '0 - 3', '1 - 2', '1 - 3', '2 - 3')
+        # get correct score from popular markets
+        win_set = ('1-0', '2-0', '3-0', '2-1', '3-1', '3-2')
+        draw_set = ('0-0', '1-1', '2-2', '3-3')
+        lose_set = ('0-1', '0-2', '0-3', '1-2', '1-3', '2-3')
         results = []
-        for b_score, b_value in odds_lay.items():
+        correct_score_key = market_names.key('Correct Score')
+        for b_score, b_value in odds_lay[correct_score_key].items():
             # Convert score in lay --> score in back
             if b_score in win_set:
-                score = home_id.strip() + ' ' + ''.join(b_score.split(' '))
+                score = home_id.strip() + b_score
+                display = home_name + ' ' + b_score
             elif b_score in draw_set:
-                score = 'Draw ' + ''.join(b_score.split(' '))
+                score = 'draw' + b_score
+                display = 'Draw ' + b_score
             elif b_score in lose_set:
-                score = away_id.strip() + ' ' + ''.join(b_score.split(' ')[::-1])
+                reverse_score = '-'.join(b_score.split('-')[::-1])
+                score = away_id.strip() + reverse_score
+                display = away_name + ' ' + b_score
             else:
                 continue
-            add_item_to_results(score, b_value.split('\n')[0], results)
+            add_item_to_results(score, correct_score_key, b_value.split('\n')[0], results, display)
+
+        # get half full from popular markets
+        half_full_key = market_names.key('Half Time / Full Time')
+        for b_half_full, b_value in odds_lay[half_full_key].items():
+            add_item_to_results(b_half_full, half_full_key,
+                                b_value.split('\n')[0], results,
+                                self.key_expand_full_name(b_half_full, league_name))
+
+        # get both score from popular markets
+        both_score_key = market_names.key('Both teams to Score')
+        for b_yes_no, b_value in odds_lay[both_score_key].items():
+            add_item_to_results(b_yes_no, both_score_key,
+                                b_value.split('\n')[0], results,
+                                'Both teams to Score: ' + b_yes_no)
+
+        # get over under from popular markets
+        for goals in '0.5', '1.5', '2.5', '3.5', '4.5':
+            title = 'Over/Under ' + goals + ' Goals'
+            over_under_key = market_names.key(title)
+            for b_over_under, b_value in odds_lay[over_under_key].items():
+                add_item_to_results(b_over_under, over_under_key,
+                                    b_value.split('\n')[0], results, b_over_under)
 
         # get player
         tabs = self.get_until_more_than('h4.tab-label', 5)
+        first_scorer_key = market_names.key('First Goalscorer')
         for tab in tabs:
             if tab.text == 'Player':
                 tab.click()
@@ -1687,10 +1788,11 @@ class WebWorker:
                                 continue
                             name = line.find_element_by_css_selector('h3.runner-name')
                             lay_odd = lay_box.find_element_by_css_selector('span.bet-button-price')
-                            odds_lay[name.text] = lay_odd.text
+                            odds_lay[first_scorer_key][name.text] = lay_odd.text
 
-        for b_player, b_value in odds_lay.items():
-            add_item_to_results(b_player, b_value.split('\n')[0], results)
+        for b_player, b_value in odds_lay[first_scorer_key].items():
+            add_item_to_results(b_player, first_scorer_key, b_value.split('\n')[0], results,
+                                b_player)
 
         count = 0
         results.sort(reverse=True)
@@ -1702,7 +1804,7 @@ class WebWorker:
         for res in results:
             # 0 profit, 1 back, 2 lay, 3 info
             msg = '{:0.2f}\t{:0.2f}\t{:0.2f}\t{}'.format(
-                res[0], res[1], res[2], self.key_expand_full_name(res[3], league_name))
+                res[0], res[1], res[2], self.key_expand_full_name(res[4], league_name))
             if res[0] >= yellow_profit and (res[1] > res[2] or res[1] < biggest_back):
                 if res[0] >= red_profit or res[1] > res[2]:
                     log_and_print(msg, highlight='red')
