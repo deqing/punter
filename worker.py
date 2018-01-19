@@ -319,6 +319,7 @@ class LeagueInfo:
             'angers': 'Angers SCO',
             'bordeaux': 'Bordeaux',
             'caen': 'Caen',
+            'clermont': 'Clermont Foot',
             'dijon': 'Dijon',
             'tienne': 'St Etienne',
             'guingamp': 'Guingamp',
@@ -454,8 +455,11 @@ class LeagueInfo:
             'w': 'Australia W-League',
         }
 
-    def get_id(self, team_name, league_name, pickle_name='', warning=True):
+    def get_id(self, team_name, league_name, pickle_name=''):
         converted_name = ''.join(team_name.lower().split())
+        if converted_name == 'draw' or league_name not in self.map:
+            return team_name
+
         if league_name == 'liga':
             if 'tico' in converted_name:
                 converted_name = 'atlmadrid'
@@ -517,12 +521,15 @@ class LeagueInfo:
         for name in self.map[league_name].keys():
             if name in converted_name:
                 return name
-        if warning:
+        if False:  # TODO remove (pickle_name can be removed too)
             log_and_print('WARNING: [{}] - {}[{}] is not found in the map of {}!'.format(
                 pickle_name, team_name, converted_name, self.league_long_names[league_name]))
-        return None
+        return team_name
 
     def get_full_name(self, match_id, league_name):
+        # so we can support other leagues that doesn't have map yet
+        if league_name not in self.map or match_id not in self.map[league_name]:
+            return match_id
         return self.map[league_name][match_id]
 
 
@@ -576,7 +583,7 @@ class MatchMerger:
                         for pm in pickle_matches:
                             id1 = info.get_id(pm.home_team, l, p_name)
                             id2 = info.get_id(pm.away_team, l, p_name)
-                            if id1 is None or id2 is None:
+                            if id1 == 'Draw' or id2 == 'Draw':
                                 continue
 
                             key = id1 + id2
@@ -655,7 +662,7 @@ class MatchMerger:
                 for bm in betfair_matches:
                     id1 = info.get_id(bm.home_team, league_name, p_name)
                     id2 = info.get_id(bm.away_team, league_name, p_name)
-                    if id1 is None or id2 is None:
+                    if id1 == 'Draw' or id2 == 'Draw':
                         continue
 
                     key = id1 + id2
@@ -1540,8 +1547,8 @@ class WebWorker:
         info = LeagueInfo()
         if '/' in str_contains_full_name:
             team1, team2 = str_contains_full_name.split('/')
-            team1_id = info.get_id(team1, league_name, warning=False) or 'Draw'
-            team2_id = info.get_id(team2, league_name, warning=False) or 'Draw'
+            team1_id = info.get_id(team1, league_name)
+            team2_id = info.get_id(team2, league_name)
             return '/'.join([team1_id, team2_id])
         return str_contains_full_name
 
@@ -1553,7 +1560,7 @@ class WebWorker:
                 formatted[self.full_name_to_id(key, league_name)] = value
             else:
                 idx = key.rfind(' ')
-                team_id = info.get_id(key[:idx], league_name, warning=False) or 'Draw'
+                team_id = info.get_id(key[:idx], league_name)
                 score = key[idx:].strip()
                 formatted[' '.join([team_id, score])] = value
         return formatted
@@ -1568,9 +1575,9 @@ class WebWorker:
             return '/'.join([team1_, team2_])
         else:
             idx = key.rfind(' ')
-            team = key[:idx]
+            team = key[:idx].strip()
             team_ = 'Draw' if team == 'Draw' else info.get_full_name(team, league_name)
-            score = key[idx:]
+            score = key[idx:].strip()
             return ' '.join([team_, score])
 
     def id_map_to_full_name(self, odds_map, league_name):
@@ -1579,12 +1586,13 @@ class WebWorker:
             formatted[self.key_expand_full_name(key, league_name)] = value
         return formatted
 
-    def get_until_more_than(self, css_str, expect_count, max_try=10):
+    def get_until_more_than(self, css_str, expect_count, max_try=10, element=None):
+        element = self.driver if element is None else element
         count_ = 0
         while True:
             time.sleep(1)
             count_ += 1
-            lines_ = self.driver.find_elements_by_css_selector(css_str)
+            lines_ = element.find_elements_by_css_selector(css_str)
             if len(lines_) > expect_count or count_ > max_try:
                 break
         return lines_
@@ -1600,10 +1608,11 @@ class WebWorker:
         with open('ladbrokes.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
         while len(lines) > 0:
-            for league_name, url_back, url_lay in zip(lines[::3], lines[1::3], lines[2::3]):
+            for l, match_info, url_back, url_lay in \
+                    zip(lines[::4], lines[1::4], lines[2::4], lines[3::4]):
                 odds_back = self.get_ladbrokes_additional_market_odds(url_back)
-                odds_back = self.odds_map_to_id(odds_back, league_name)
-                self.compare_with_lay(odds_back, url_lay, league_name)
+                odds_back = self.odds_map_to_id(odds_back, l)
+                self.compare_with_lay(odds_back, url_lay, l, match_info)
 
             if loop_minutes is 0 and self.driver:
                 self.driver.quit()
@@ -1611,7 +1620,7 @@ class WebWorker:
             else:
                 self.count_down(loop_minutes)
 
-    def compare_with_lay(self, odds_back, url_lay, league_name=''):
+    def compare_with_lay(self, odds_back, url_lay, league_name='', match_info=''):
         self.driver.get(url_lay)
         Betfair.login_static(self.driver, self.wait)
         self.driver.set_window_size(width=1920, height=1080)
@@ -1638,7 +1647,7 @@ class WebWorker:
                         away_id = info.get_id(div.text, league_name)
 
         def add_item_to_results(item, lay_odd_, results_):
-            if item in odds_back:
+            if item in odds_back and lay_odd_ is not '':
                 back_odd = float(odds_back[item])
                 lay_odd_ = float(lay_odd_)
                 profit = (back_odd-1)*100-(lay_odd_-1)*((back_odd-1)/(lay_odd_-0.05)*100)
@@ -1650,12 +1659,13 @@ class WebWorker:
         lose_set = ('0 - 1', '0 - 2', '0 - 3', '1 - 2', '1 - 3', '2 - 3')
         results = []
         for b_score, b_value in odds_lay.items():
+            # Convert score in lay --> score in back
             if b_score in win_set:
-                score = home_id + ' ' + ''.join(b_score.split(' '))
+                score = home_id.strip() + ' ' + ''.join(b_score.split(' '))
             elif b_score in draw_set:
                 score = 'Draw ' + ''.join(b_score.split(' '))
             elif b_score in lose_set:
-                score = away_id + ' ' + ''.join(b_score.split(' ')[::-1])
+                score = away_id.strip() + ' ' + ''.join(b_score.split(' ')[::-1])
             else:
                 continue
             add_item_to_results(score, b_value.split('\n')[0], results)
@@ -1665,28 +1675,44 @@ class WebWorker:
         for tab in tabs:
             if tab.text == 'Player':
                 tab.click()
-                lines = self.get_until_more_than('tr.runner-line', 100)
-                for line in lines:
-                    lay_box = line.find_element_by_css_selector(
-                        'td.bet-buttons.lay-cell.first-lay-cell')
-                    if lay_box.text == '':
-                        continue
-                    name = line.find_element_by_css_selector('h3.runner-name')
-                    lay_odd = lay_box.find_element_by_css_selector('span.bet-button-price')
-                    odds_lay[name.text] = lay_odd.text
+                blocks = self.get_until_more_than('div.mini-mv', 10)
+                for b in blocks:
+                    label = b.find_element_by_css_selector('span.market-name-label')
+                    if label.text == 'First Goalscorer':
+                        lines = self.get_until_more_than('tr.runner-line', 100, element=b)
+                        for line in lines:
+                            lay_box = line.find_element_by_css_selector(
+                                'td.bet-buttons.lay-cell.first-lay-cell')
+                            if lay_box.text == '':
+                                continue
+                            name = line.find_element_by_css_selector('h3.runner-name')
+                            lay_odd = lay_box.find_element_by_css_selector('span.bet-button-price')
+                            odds_lay[name.text] = lay_odd.text
 
         for b_player, b_value in odds_lay.items():
             add_item_to_results(b_player, b_value.split('\n')[0], results)
 
+        count = 0
         results.sort(reverse=True)
+        log_and_print('----------- ' + match_info + ' -------------')
+        yellow_profit = 75
+        red_profit = 80
+        biggest_back = 19  # if back odd is too big, we might not have enough money to lay it
+        top_results = 5
         for res in results:
+            # 0 profit, 1 back, 2 lay, 3 info
             msg = '{:0.2f}\t{:0.2f}\t{:0.2f}\t{}'.format(
                 res[0], res[1], res[2], self.key_expand_full_name(res[3], league_name))
-            if res[0] >= 75:
-                log_and_print(msg, highlight='yellow')
+            if res[0] >= yellow_profit and (res[1] > res[2] or res[1] < biggest_back):
+                if res[0] >= red_profit or res[1] > res[2]:
+                    log_and_print(msg, highlight='red')
+                else:
+                    log_and_print(msg, highlight='yellow')
             else:
                 log_and_print(msg)
-        log_and_print('-----------')
+            count += 1
+            if count > top_results:
+                break
 
     @staticmethod
     def calc_real_back_odd(s):
