@@ -1820,8 +1820,8 @@ class WebWorker:
         count = 0
         results.sort(reverse=True)
         log_and_print('----------- ' + match_info + ' -------------')
-        yellow_profit = -17
-        red_profit = 80
+        yellow_profit = -17 if results[0] < 0 else 75
+        red_profit = -16 if results[0] < 0 else 80
         biggest_back = 17.9  # if back odd is too big, we might not have enough money to lay it
         top_results = 3
         for res in results:
