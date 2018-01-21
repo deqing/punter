@@ -769,14 +769,22 @@ class Website:
             m.odds[i] = self.to_float(m.odds[i])
 
     @staticmethod
+    def get_element_static(css_string, driver, wait):
+        try:
+            wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))  # noqa
+        except TimeoutException:
+            log_and_print('[{}] not found'.format(css_string))
+            return None
+        return driver.find_element_by_css_selector(css_string)
+
+    @staticmethod
     def get_blocks_static(css_string, driver, wait):
         try:
             wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))  # noqa
         except TimeoutException:
             log_and_print('[{}] not found'.format(css_string))
             return []
-        blocks = driver.find_elements_by_css_selector(css_string)
-        return blocks
+        return driver.find_elements_by_css_selector(css_string)
 
     def get_blocks(self, css_string):
         return self.get_blocks_static(css_string, self.driver, self.wait)
@@ -1689,16 +1697,18 @@ class WebWorker:
     def compare_lads(self, loop_minutes=0):
         with open('ladbrokes.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
+        bet_type = lines[0]
+        lines.pop(0)
         target_markets = lines[0]
         lines.pop(0)
         while len(lines) > 0:
+            log_and_print('_'*120)
             for l, match_info, url_back, url_lay in \
                     zip(lines[::4], lines[1::4], lines[2::4], lines[3::4]):
-                odds_back, home, away = \
-                    self.get_ladbrokes_markets_odd(url_back, target_markets)
+                odds_back, home, away = self.get_ladbrokes_markets_odd(url_back, target_markets)
                 odds_back = self.odds_map_to_id(odds_back, l)
-                self.compare_with_lay(
-                    home, away, odds_back, url_back, url_lay, l, match_info, target_markets)
+                self.compare_with_lay(home, away, odds_back, url_back, url_lay, l,
+                                      match_info, target_markets, bet_type)
 
             if loop_minutes is 0 and self.driver:
                 self.driver.quit()
@@ -1707,7 +1717,7 @@ class WebWorker:
                 self.count_down(loop_minutes)
 
     def compare_with_lay(self, home_name, away_name, odds_back, url_back, url_lay,
-                         league_name, match_info, target_markets):
+                         league_name, match_info, target_markets, bet_type):
         info = LeagueInfo()
         home_id = info.get_id(home_name, league_name)
         away_id = info.get_id(away_name, league_name)
@@ -1719,6 +1729,17 @@ class WebWorker:
 
         market_names = MarketNames()
         odds_lay = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
+
+        # get main market
+        if 'main' in odds_lay:
+            main = Website.get_element_static('div.bf-row.main-mv-container',
+                                              self.driver, self.wait)
+            team_names = main.find_elements_by_css_selector('td.new-runner-info')
+            lay_odds = main.find_elements_by_css_selector(
+                'button.lay.mv-bet-button.lay-button.lay-selection-button')
+            odds_lay['main'][team_names[0].text] = lay_odds[0].text.split('\n')[0]
+            odds_lay['main'][team_names[1].text] = lay_odds[1].text.split('\n')[0]
+            odds_lay['main']['Draw'] = lay_odds[2].text.split('\n')[0]
 
         # get popular markets
         blocks = self.get_until_more_than('div.mini-mv', 10)
@@ -1736,10 +1757,13 @@ class WebWorker:
             if item in odds_back[key_] and lay_odd_ is not '':
                 back_odd = float(odds_back[key_][item])
                 lay_odd_ = float(lay_odd_)
-                if len(odds_back) > 3:
+                if bet_type == 'snr':
                     profit = (back_odd-1)*100-(lay_odd_-1)*((back_odd-1)/(lay_odd_-0.05)*100)
-                else:  # meaning this is for boost bet which using qualifying only
+                elif bet_type == 'q' or bet_type == 'boost':
                     profit = (back_odd/(lay_odd_-0.05)*100)*0.95 - 100
+                else:
+                    log_and_print('unexpected bet type: ' + bet_type)
+                    return
                 results_.append([profit, back_odd, lay_odd_, item, display_])
 
         # get correct score from popular markets
@@ -1819,21 +1843,35 @@ class WebWorker:
 
         count = 0
         results.sort(reverse=True)
-        log_and_print('----------- ' + match_info + ' -------------')
-        yellow_profit = -17 if results[0] < 0 else 75
-        red_profit = -16 if results[0] < 0 else 80
+        log_and_print('----------- (' + str(len(results)) + ') ' + match_info + ' -------------')
+        if len(results) is 0:
+            return
+
+        if bet_type == 'boost':
+            yellow_profit = -17
+            red_profit = -14
+        elif bet_type == 'q':
+            yellow_profit = -10
+            red_profit = -5
+        else:  # bonus
+            yellow_profit = 76
+            red_profit = 80
+
         biggest_back = 17.9  # if back odd is too big, we might not have enough money to lay it
         top_results = 3
+
+        if results[0][0] >= yellow_profit and results[0][1] < biggest_back:
+            log_and_print(url_back)
+            log_and_print(url_lay)
+
         for res in results:
             if res[1] >= biggest_back:
                 continue
             # 0 profit, 1 back, 2 lay, 3 info
             msg = '{:0.2f}\t{:0.2f}\t{:0.2f}\t{}'.format(
                 res[0], res[1], res[2], self.key_expand_full_name(res[4], league_name))
-            if res[0] >= yellow_profit or res[1] > res[2]:
-                log_and_print(url_back)
-                log_and_print(url_lay)
-                if res[0] >= red_profit or res[1] > res[2]:
+            if res[0] >= yellow_profit:
+                if res[0] >= red_profit:
                     log_and_print(msg, highlight='red')
                 else:
                     log_and_print(msg, highlight='yellow')
