@@ -1803,6 +1803,20 @@ class WebWorker:
         market_names = MarketNames()
         odds_lay = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
 
+        def add_item_to_results(item, key_, lay_odd_, results_, display_):
+            if item in odds_back[key_] and lay_odd_ is not '':
+                back_odd = float(odds_back[key_][item])
+                lay_odd_ = float(lay_odd_)
+                if bet_type == 'snr':  # SNR
+                    profit = (back_odd-1)*100-(lay_odd_-1)*((back_odd-1)/(lay_odd_-0.05)*100)
+                elif bet_type == 'q' or bet_type == 'boost':  # qualifying
+                    profit = (back_odd/(lay_odd_-0.05)*100)*0.95 - 100
+                else:
+                    log_and_print('unexpected bet type: ' + bet_type)
+                    return
+                results_.append([profit, back_odd, lay_odd_, item, display_])
+        results = []
+
         # get main market
         if 'main' in odds_lay:
             main = Website.get_element_static('div.bf-row.main-mv-container',
@@ -1810,9 +1824,14 @@ class WebWorker:
             team_names = main.find_elements_by_css_selector('td.new-runner-info')
             lay_odds = main.find_elements_by_css_selector(
                 'button.lay.mv-bet-button.lay-button.lay-selection-button')
-            odds_lay['main'][team_names[0].text] = lay_odds[0].text.split('\n')[0]
-            odds_lay['main'][team_names[1].text] = lay_odds[1].text.split('\n')[0]
+            odds_lay['main'][home_name] = lay_odds[0].text.split('\n')[0]
+            odds_lay['main'][away_name] = lay_odds[1].text.split('\n')[0]
             odds_lay['main']['Draw'] = lay_odds[2].text.split('\n')[0]
+            add_item_to_results(home_name, 'main', odds_lay['main'][home_name], results,
+                                'Main: ' + home_name + ' win')
+            add_item_to_results(away_name, 'main', odds_lay['main'][away_name], results,
+                                'Main: ' + away_name + ' win')
+            add_item_to_results('Draw', 'main', odds_lay['main']['Draw'], results, 'Main: Draw')
 
         # get popular markets
         blocks = self.get_until_more_than('div.mini-mv', 10)
@@ -1826,24 +1845,10 @@ class WebWorker:
                     odds_lay[key][squash_string(self.full_name_to_id(div.text, league_name))] \
                         = btn.text
 
-        def add_item_to_results(item, key_, lay_odd_, results_, display_):
-            if item in odds_back[key_] and lay_odd_ is not '':
-                back_odd = float(odds_back[key_][item])
-                lay_odd_ = float(lay_odd_)
-                if bet_type == 'snr':  # SNR
-                    profit = (back_odd-1)*100-(lay_odd_-1)*((back_odd-1)/(lay_odd_-0.05)*100)
-                elif bet_type == 'q' or bet_type == 'boost':  # qualifying
-                    profit = (back_odd/(lay_odd_-0.05)*100)*0.95 - 100
-                else:
-                    log_and_print('unexpected bet type: ' + bet_type)
-                    return
-                results_.append([profit, back_odd, lay_odd_, item, display_])
-
         # get correct score from popular markets
         win_set = ('1-0', '2-0', '3-0', '2-1', '3-1', '3-2')
         draw_set = ('0-0', '1-1', '2-2', '3-3')
         lose_set = ('0-1', '0-2', '0-3', '1-2', '1-3', '2-3')
-        results = []
         correct_score_key = market_names.key('Correct Score')
         if correct_score_key in odds_lay:
             for b_score, b_value in odds_lay[correct_score_key].items():
