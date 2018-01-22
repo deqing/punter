@@ -4,6 +4,7 @@ from tempfile import gettempdir
 from flask import Flask
 from flask import jsonify
 from flask import request
+from flask import render_template
 from worker import WebWorker
 
 app = Flask(__name__)
@@ -30,6 +31,19 @@ def reply():
 @app.route('/please_tell_me_if_you_are_up')
 def ping():
     return 'yes'
+
+
+@app.route('/upload')
+def upload_file():
+    return render_template('upload.html')
+
+
+@app.route('/uploader', methods=['GET', 'POST'])
+def upload_file():
+    if request.method == 'POST':
+        f = request.files['file']
+        f.save(f.filename)
+        return 'file uploaded successfully'
 
 
 if __name__ == '__main__':

@@ -1715,18 +1715,26 @@ class WebWorker:
         main_lines = Website.get_element_static('table.MatchTable',
                                                 self.driver, self.wait).text.split('\n')
 
-        # e.g. 'Swansea City 10.25 5.30 +0.5@3.45 Over 2.5 1.61'
-        homes = main_lines[1].split('@')[0].split(' ')  # [Swansea, City, 10.25, 5.30, +0.5]
-        aways = main_lines[2].split('@')[0].split(' ')
-        homes.pop()
-        aways.pop()
+        # e.g. 1. 'Swansea City 10.25 5.30 +0.5@3.45 Over 2.5 1.61'
+        #   or 1. 'Swansea City 10.25 5.30 Over 2.5 1.61'
+        #
+        #      2. 'Chelsea 10.25 +0.5@3.45 Under 2.5 1.61'
+        #   or 2. 'Chelsea 10.25 Under 2.5 1.61'
+        info = main_lines[1].split(' ')
+        _, _, _ = info.pop(), info.pop(), info.pop()  # 'Over 2.5 1.61'
+        
+        draw_odd = info.pop()
+        if '@' in draw_odd:
+            draw_odd = info.pop()
+        home_odd = info.pop()
+        home_name = ' '.join(info)
 
-        draw_odd = homes.pop()
-        home_odd = homes.pop()
-        home_name = ' '.join(homes)
-
-        away_odd = aways.pop()
-        away_name = ' '.join(aways)
+        info = main_lines[1].split(' ')
+        _, _, _ = info.pop(), info.pop(), info.pop()  # 'Under 2.5 1.61'
+        away_odd = info.pop()
+        if '@' in away_odd:
+            away_odd = info.pop()
+        away_name = ' '.join(info)
 
         if 'main' in odds_back:
             odds_back['main'][home_name] = home_odd
@@ -1737,20 +1745,23 @@ class WebWorker:
         self.driver.find_element_by_partial_link_text('additional markets').click()
 
         def get_odds(market_str):
-            Website.wait(market_str, self.wait, 'partial')
+            try:
+                Website.wait(market_str, self.wait, 'partial')
+            except TimeoutException:
+                return
             self.driver.find_element_by_partial_link_text(market_str).click()
 
             css_str = 'dd.active'
             Website.wait(css_str, self.wait)
             lines = self.driver.find_element_by_css_selector(css_str).text.split('\n')
             for line in lines:
-                info = line.split(' ')
-                if len(info) < 4:
+                info_ = line.split(' ')
+                if len(info_) < 4:
                     continue
-                odd = info[-1]
-                info.pop()
-                info.pop()
-                odds_back[market_names.key(market_str)][squash_string(''.join(info))] = odd
+                odd = info_[-1]
+                info_.pop()
+                info_.pop()
+                odds_back[market_names.key(market_str)][squash_string(''.join(info_))] = odd
             self.driver.find_element_by_partial_link_text(market_str).click()
 
         get_odds('Correct Score')
@@ -1817,11 +1828,10 @@ class WebWorker:
                 results_.append([profit, back_odd, lay_odd_, item, display_])
         results = []
 
-        # get main market
+        # ------- get main market
         if 'main' in odds_lay:
             main = Website.get_element_static('div.bf-row.main-mv-container',
                                               self.driver, self.wait)
-            team_names = main.find_elements_by_css_selector('td.new-runner-info')
             lay_odds = main.find_elements_by_css_selector(
                 'button.lay.mv-bet-button.lay-button.lay-selection-button')
             odds_lay['main'][home_name] = lay_odds[0].text.split('\n')[0]
@@ -1833,7 +1843,7 @@ class WebWorker:
                                 'Main: ' + away_name + ' win')
             add_item_to_results('Draw', 'main', odds_lay['main']['Draw'], results, 'Main: Draw')
 
-        # get popular markets
+        # ------- get popular markets
         blocks = self.get_until_more_than('div.mini-mv', 10)
         for b in blocks:
             key = market_names.key(b.find_element_by_css_selector('span.market-name-label').text)
