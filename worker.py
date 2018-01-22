@@ -56,7 +56,7 @@ def log_init():
     print('Log file: ' + log_file_name)
 
 
-def log_and_print(s, highlight=None):
+def log_and_print(s, highlight=None, same_line=False):
     def color_print(msg, foreground='black', background='white'):
         fground = foreground.upper()
         bground = background.upper()
@@ -65,6 +65,8 @@ def log_and_print(s, highlight=None):
 
     if highlight is not None:
         color_print(s, background=highlight)
+    elif same_line:
+        print('\r' + s, end='')
     else:
         print(s)
     if log_to_file:
@@ -769,9 +771,18 @@ class Website:
             m.odds[i] = self.to_float(m.odds[i])
 
     @staticmethod
+    def wait(s, wait, type_='css'):
+        if type_ == 'css':
+            wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, s)))
+        elif type_ == 'partial':
+            wait.until(expected_conditions.visibility_of_element_located((By.PARTIAL_LINK_TEXT, s)))
+        else:
+            log_and_print('Unexpected type: ' + type_)
+
+    @staticmethod
     def get_element_static(css_string, driver, wait):
         try:
-            wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))  # noqa
+            Website.wait(css_string, wait)
         except TimeoutException:
             log_and_print('[{}] not found'.format(css_string))
             return None
@@ -780,7 +791,7 @@ class Website:
     @staticmethod
     def get_blocks_static(css_string, driver, wait):
         try:
-            wait.until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, css_string)))  # noqa
+            Website.wait(css_string, wait)
         except TimeoutException:
             log_and_print('[{}] not found'.format(css_string))
             return []
@@ -867,9 +878,7 @@ class Betfair(Website):
                 account.send_keys(username_file.read().rstrip())
                 password.send_keys(password_file.read().rstrip())
             login.click()
-            wait.until(
-                expected_conditions.visibility_of_element_located((By.CSS_SELECTOR,
-                                                                   'form.ssc-lof')))
+            Website.wait('form.ssc-lof', wait)
             save_cookie(path)
 
     def login(self):
@@ -1691,11 +1700,75 @@ class WebWorker:
     def count_down(loop_minutes):
         for m in range(loop_minutes):
             log_and_print('Will rescan in {} minute{} ...'.format(
-                loop_minutes - m, '' if loop_minutes - m == 1 else 's'))
+                loop_minutes - m, '' if loop_minutes - m == 1 else 's'),
+                same_line=(loop_minutes-m != 1)
+            )
             time.sleep(60)
 
-    def compare_lads(self, loop_minutes=0):
-        with open('ladbrokes.txt', 'r') as urls_file:
+    def get_classicbet_markets_odd(self, url_back, target_markets):
+        market_names = MarketNames()
+        odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
+
+        self.driver.get(url_back)
+
+        # -------- Get main
+        main_lines = Website.get_element_static('table.MatchTable',
+                                                self.driver, self.wait).text.split('\n')
+
+        # e.g. 'Swansea City 10.25 5.30 +0.5@3.45 Over 2.5 1.61'
+        homes = main_lines[1].split('@')[0].split(' ')  # [Swansea, City, 10.25, 5.30, +0.5]
+        aways = main_lines[2].split('@')[0].split(' ')
+        homes.pop()
+        aways.pop()
+
+        draw_odd = homes.pop()
+        home_odd = homes.pop()
+        home_name = ' '.join(homes)
+
+        away_odd = aways.pop()
+        away_name = ' '.join(aways)
+
+        if 'main' in odds_back:
+            odds_back['main'][home_name] = home_odd
+            odds_back['main'][away_name] = away_odd
+            odds_back['main']['Draw'] = draw_odd
+
+        # -------- Get additional markets
+        self.driver.find_element_by_partial_link_text('additional markets').click()
+
+        def get_odds(market_str):
+            Website.wait(market_str, self.wait, 'partial')
+            self.driver.find_element_by_partial_link_text(market_str).click()
+
+            css_str = 'dd.active'
+            Website.wait(css_str, self.wait)
+            lines = self.driver.find_element_by_css_selector(css_str).text.split('\n')
+            for line in lines:
+                info = line.split(' ')
+                if len(info) < 4:
+                    continue
+                odd = info[-1]
+                info.pop()
+                info.pop()
+                odds_back[market_names.key(market_str)][squash_string(''.join(info))] = odd
+            self.driver.find_element_by_partial_link_text(market_str).click()
+
+        get_odds('Correct Score')
+        get_odds('First Goalscorer')
+
+        return odds_back, home_name, away_name
+
+    def compare_back_and_lay(self, back_site, loop_minutes):
+        file_name = back_site + '.txt'
+        if back_site == 'ladbrokes':
+            get_func = self.get_ladbrokes_markets_odd
+        elif back_site == 'classicbet':
+            get_func = self.get_classicbet_markets_odd
+        else:
+            log_and_print('unexpected bet site: ' + back_site)
+            return
+
+        with open(file_name, 'r') as urls_file:
             lines = urls_file.read().splitlines()
         bet_type = lines[0]
         lines.pop(0)
@@ -1705,7 +1778,7 @@ class WebWorker:
             log_and_print('_'*120)
             for l, match_info, url_back, url_lay in \
                     zip(lines[::4], lines[1::4], lines[2::4], lines[3::4]):
-                odds_back, home, away = self.get_ladbrokes_markets_odd(url_back, target_markets)
+                odds_back, home, away = get_func(url_back, target_markets)
                 odds_back = self.odds_map_to_id(odds_back, l)
                 self.compare_with_lay(home, away, odds_back, url_back, url_lay, l,
                                       match_info, target_markets, bet_type)
@@ -1757,9 +1830,9 @@ class WebWorker:
             if item in odds_back[key_] and lay_odd_ is not '':
                 back_odd = float(odds_back[key_][item])
                 lay_odd_ = float(lay_odd_)
-                if bet_type == 'snr':
+                if bet_type == 'snr':  # SNR
                     profit = (back_odd-1)*100-(lay_odd_-1)*((back_odd-1)/(lay_odd_-0.05)*100)
-                elif bet_type == 'q' or bet_type == 'boost':
+                elif bet_type == 'q' or bet_type == 'boost':  # qualifying
                     profit = (back_odd/(lay_odd_-0.05)*100)*0.95 - 100
                 else:
                     log_and_print('unexpected bet type: ' + bet_type)
