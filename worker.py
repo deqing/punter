@@ -1705,15 +1705,17 @@ class WebWorker:
             )
             time.sleep(60)
 
-    def get_classicbet_markets_odd(self, url_back, target_markets):
+    def get_classicbet_markets_odd(self, with_url_back, target_markets):
         market_names = MarketNames()
         odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
 
+        url_back, url_number = with_url_back.split(' ')
         self.driver.get(url_back)
+        url_number = int(url_number)
 
         # -------- Get main
-        main_lines = Website.get_element_static('table.MatchTable',
-                                                self.driver, self.wait).text.split('\n')
+        main_lines = Website.get_blocks_static('table.MatchTable',
+                                               self.driver, self.wait)[url_number].text.split('\n')
 
         # e.g. 1. 'Swansea City 10.25 5.30 +0.5@3.45 Over 2.5 1.61'
         #   or 1. 'Swansea City 10.25 5.30 Over 2.5 1.61'
@@ -1729,7 +1731,7 @@ class WebWorker:
         home_odd = info.pop()
         home_name = ' '.join(info)
 
-        info = main_lines[1].split(' ')
+        info = main_lines[2].split(' ')
         _, _, _ = info.pop(), info.pop(), info.pop()  # 'Under 2.5 1.61'
         away_odd = info.pop()
         if '@' in away_odd:
@@ -1742,7 +1744,7 @@ class WebWorker:
             odds_back['main']['Draw'] = draw_odd
 
         # -------- Get additional markets
-        self.driver.find_element_by_partial_link_text('additional markets').click()
+        self.driver.find_elements_by_partial_link_text('additional markets')[url_number].click()
 
         def get_odds(market_str):
             try:
@@ -1756,16 +1758,21 @@ class WebWorker:
             lines = self.driver.find_element_by_css_selector(css_str).text.split('\n')
             for line in lines:
                 info_ = line.split(' ')
-                if len(info_) < 4:
+                if 'Straight' not in line:
                     continue
                 odd = info_[-1]
                 info_.pop()
                 info_.pop()
-                odds_back[market_names.key(market_str)][squash_string(''.join(info_))] = odd
+                if market_str == 'HT/FT Double':
+                    key = 'Half Time/Full Time'
+                else:
+                    key = market_str
+                odds_back[market_names.key(key)][squash_string(''.join(info_))] = odd
             self.driver.find_element_by_partial_link_text(market_str).click()
 
         get_odds('Correct Score')
         get_odds('First Goalscorer')
+        get_odds('HT/FT Double')
 
         return odds_back, home_name, away_name
 
@@ -1820,7 +1827,10 @@ class WebWorker:
                 lay_odd_ = float(lay_odd_)
                 if bet_type == 'snr':  # SNR
                     profit = (back_odd-1)*100-(lay_odd_-1)*((back_odd-1)/(lay_odd_-0.05)*100)
-                elif bet_type == 'q' or bet_type == 'boost':  # qualifying
+                elif 'boost' in bet_type or 'q' in bet_type:  # qualifying
+                    bet_type_, min_odd = bet_type.split(' ')
+                    if back_odd < float(min_odd):
+                        back_odd = 0
                     profit = (back_odd/(lay_odd_-0.05)*100)*0.95 - 100
                 else:
                     log_and_print('unexpected bet type: ' + bet_type)
