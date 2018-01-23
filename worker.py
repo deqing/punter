@@ -1969,6 +1969,84 @@ class WebWorker:
             if count > top_results:
                 break
 
+    def compare_with_race(self):
+        # Unfortunately Betfair is not able to get latest odds
+        with open('race.txt', 'r') as urls_file:
+            lines = urls_file.read().splitlines()
+
+        url_back = lines[0]
+        self.driver.get(url_back)
+        Website.get_element_static('td.competitorCell', self.driver, self.wait)
+
+        def to_number(text):
+            try:
+                return True, float(text)
+            except ValueError:
+                return False, 0
+
+        def get_back_odds():
+            odds_ = dict()
+            try:
+                lines_ = Website.get_element_static('table.racing',
+                                                    self.driver, self.wait).text.split('\n')
+            except StaleElementReferenceException:
+                return odds_
+
+            race_no = 1
+            while len(lines_) is not 0:
+                line = lines_.pop(0)
+                if line.startswith(str(race_no) + '.'):
+                    line = lines_.pop(0)
+                    texts = line.split(' ')
+                    first_number_found = False
+                    while len(texts) is not 0:
+                        text = texts.pop()
+                        is_number, odd = to_number(text)
+                        if is_number:
+                            if not first_number_found:
+                                first_number_found = True  # This is the place odd
+                            else:
+                                odds_[race_no] = odd
+                                break
+                    race_no += 1
+            return odds_
+
+        def get_style(foreground, background):
+            fground = foreground.upper()
+            bground = background.upper()
+            style_ = getattr(Fore, fground) + getattr(Back, bground)
+            return style_
+        green = get_style(foreground='white', background='black')
+        yellow = get_style(foreground='black', background='green')
+
+        def color_it(text, style):
+            return '{}{}{}'.format(style, text, Style.RESET_ALL)
+
+        log_and_print('>>>>')
+        back_odds = get_back_odds()
+        count = 1
+        while True:
+            old_odds = back_odds.copy()
+            back_odds = get_back_odds()
+            if len(back_odds) is not 0:
+                msg = ''
+                same_line = True
+                for key, back_odd in back_odds.items():
+                    if back_odd == old_odds[key]:
+                        msg += '[{} {}] '.format(key, back_odd)
+                    elif back_odd > old_odds[key]:
+                        msg += '[{} {}] '.format(color_it(key, green), color_it(back_odd, green))
+                        same_line = False
+                    else:
+                        msg += '[{} {}] '.format(color_it(key, yellow), color_it(back_odd, yellow))
+                        same_line = False
+                if same_line:
+                    log_and_print(msg + str(count), same_line=True)
+                else:
+                    log_and_print('\n' + msg + str(count), same_line=False)
+            count += 1
+            time.sleep(3)
+
     @staticmethod
     def calc_real_back_odd(s):
         print(real_back_odd(s))

@@ -30,6 +30,7 @@ def main():
       --exclude=<websites>      excluding websites
       --compare-ladbrokes       read urls from ladbrokes.txt, compare with betfair and print
       --compare-classicbet      read urls from classicbet.txt, compare with betfair and print
+      --compare-race            read urls from race.txt and compare
 
     Example:
       cli.py luxbet,crownbet a
@@ -65,6 +66,8 @@ def main():
         worker.compare_back_and_lay('ladbrokes', int(args['--loop']))
     elif args['--compare-classicbet']:
         worker.compare_back_and_lay('classicbet', int(args['--loop']))
+    elif args['--compare-race']:
+        worker.compare_with_race()
     else:
         worker.run(
             websites_str=args['<websites>'],

@@ -3,11 +3,16 @@ import os
 from tempfile import gettempdir
 from flask import Flask
 from flask import jsonify
-from flask import request
+from flask import request, redirect, url_for
 from flask import render_template
 from worker import WebWorker
+from werkzeug.utils import secure_filename
+
+
+UPLOAD_FOLDER = gettempdir()
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 worker = WebWorker(is_get_data=True, keep_driver_alive=True)
 
 
@@ -33,17 +38,24 @@ def ping():
     return 'yes'
 
 
-@app.route('/upload')
-def upload_file():
-    return render_template('upload.html')
-
-
-@app.route('/uploader', methods=['GET', 'POST'])
-def upload_file():
+@app.route("/upload", methods=['GET', 'POST'])
+def index():
     if request.method == 'POST':
-        f = request.files['file']
-        f.save(f.filename)
-        return 'file uploaded successfully'
+        file = request.files['file']
+        if file:
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            return redirect(url_for('index'))
+    return """
+    <!doctype html>
+    <title>Upload new File</title>
+    <h1>Upload new File</h1>
+    <form action="" method=post enctype=multipart/form-data>
+      <p><input type=file name=file>
+         <input type=submit value=Upload>
+    </form>
+    <p>%s</p>
+    """ % "<br>".join(os.listdir(app.config['UPLOAD_FOLDER'],))
 
 
 if __name__ == '__main__':
