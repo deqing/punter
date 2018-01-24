@@ -271,16 +271,15 @@ class MarketNames:
     def desc(self, key):
         return self.desc[key]
 
-    def key(self, name):
-        if name == 'Half Time':
+    def key(self, market_str):
+        if market_str == 'Half Time':
             return None
-        if 'Over/Under Total Goals' in name:
-            name = name.replace('Total Goals ', '')
-        converted_name = squash_string(name)
-        for key, value in self.desc.items():
-            value = squash_string(value)
-            if converted_name in value:
-                return key
+        if 'Over/Under Total Goals' in market_str:
+            market_str = market_str.replace('Total Goals ', '')
+        squashed_market_str = squash_string(market_str)
+        for desc_key, desc_value in self.desc.items():
+            if squashed_market_str in squash_string(desc_value):
+                return desc_key
         return None
 
 
@@ -1746,6 +1745,15 @@ class WebWorker:
         # -------- Get additional markets
         self.driver.find_elements_by_partial_link_text('additional markets')[url_number].click()
 
+        def get_key(market_str):
+            if market_str == 'HT/FT Double':
+                return 'Half Time/Full Time'
+            elif 'First Half Over/Under' in market_str:
+                key = market_str.replace('Goals', '')
+                return key.replace('First Half Over/Under', 'First Half Goals')
+            else:
+                return market_str
+
         def get_odds(market_str):
             try:
                 Website.wait(market_str, self.wait, 'partial')
@@ -1763,16 +1771,18 @@ class WebWorker:
                 odd = info_[-1]
                 info_.pop()
                 info_.pop()
-                if market_str == 'HT/FT Double':
-                    key = 'Half Time/Full Time'
-                else:
-                    key = market_str
-                odds_back[market_names.key(key)][squash_string(''.join(info_))] = odd
+                odds_back[market_names.key(get_key(market_str))][squash_string(''.join(info_))] \
+                    = odd
             self.driver.find_element_by_partial_link_text(market_str).click()
 
         get_odds('Correct Score')
         get_odds('First Goalscorer')
         get_odds('HT/FT Double')
+        get_odds('Both Teams To Score')
+        for goals in '0.5', '1.5':
+            get_odds('First Half Over/Under ' + goals + ' Goals')
+        for goals in '0.5', '1.5', '2.5', '3.5', '4.5':
+            get_odds('Over/Under ' + goals + ' Goals')
 
         return odds_back, home_name, away_name
 
