@@ -31,6 +31,9 @@ def main():
       --compare-ladbrokes       read urls from ladbrokes.txt, compare with betfair and print
       --compare-classicbet      read urls from classicbet.txt, compare with betfair and print
       --compare-race            read urls from race.txt and compare
+      --compare                 read urls from compare.txt which contains many backs and one lay
+      --get-urls                get urls and write to compare.txt
+      --test                    test functionality which underdevelopment
 
     Example:
       cli.py luxbet,crownbet a
@@ -62,6 +65,12 @@ def main():
         worker.calc_best_shot(float(o1), float(o2), float(o3))
     elif args['--calc-back'] is not None:
         worker.calc_real_back_odd(args['--calc-back'])
+    elif args['--test']:
+        worker.generate_compare_urls_file()
+    elif args['--get-urls']:
+        worker.generate_compare_urls_file()
+    elif args['--compare']:
+        worker.compare_multiple_sites(int(args['--loop']))
     elif args['--compare-ladbrokes']:
         worker.compare_back_and_lay('ladbrokes', int(args['--loop']))
     elif args['--compare-classicbet']:
