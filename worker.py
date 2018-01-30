@@ -795,11 +795,12 @@ class Website:
             log_and_print('Unexpected type: ' + type_)
 
     @staticmethod
-    def get_element_static(css_string, driver, wait):
+    def get_element_static(css_string, driver, wait, silent=False):
         try:
             Website.wait(css_string, wait)
         except TimeoutException:
-            log_and_print('[{}] not found'.format(css_string))
+            if not silent:
+                log_and_print('[{}] not found'.format(css_string))
             return None
         return driver.find_element_by_css_selector(css_string)
 
@@ -1478,6 +1479,7 @@ class WebWorker:
             self.driver = webdriver.Chrome(chrome_options=chrome_options)
             self.driver.implicitly_wait(10)
             self.wait = WebDriverWait(self.driver, 10)
+            self.wait2 = WebDriverWait(self.driver, 2)
         self.is_get_data = is_get_data
         self.keep_driver_alive = keep_driver_alive
         global log_to_file
@@ -1613,11 +1615,20 @@ class WebWorker:
         odds_lad = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
 
         self.driver.get(url_lad)
-        self.driver.implicitly_wait(1)
+        try:
+            home = Website.get_element_static('twirl_element_1', self.driver, self.wait)
+        except NoSuchElementException:
+            log_and_print('ladbroke has no match info:\n' + url_lad)
+            raise
 
-        home_name, home_odd = self.driver.find_element_by_id('twirl_element_1').text.split('\n')
-        away_name, away_odd = self.driver.find_element_by_id('twirl_element_2').text.split('\n')
-        _, draw_odd = self.driver.find_element_by_id('twirl_element_3').text.split('\n')
+        home_text = home.text
+        away_text = Website.get_element_static('twirl_element_2', self.driver, self.wait).text
+        draw_text = Website.get_element_static('twirl_element_3', self.driver, self.wait).text
+
+        home_name, home_odd = home_text.split('\n')
+        away_name, away_odd = away_text.split('\n')
+        _, draw_odd = draw_text.split('\n')
+
         if 'main' in odds_lad:
             odds_lad['main'][home_name] = home_odd
             odds_lad['main'][away_name] = away_odd
@@ -1641,6 +1652,56 @@ class WebWorker:
                         name = name.replace(')', ' Goals')
                     odds_lad[key][squash_string(name)] = b.text.split('\n')[1]
         return odds_lad, home_name, away_name
+
+    def get_william_markets_odd(self, url_back, target_markets):
+        market_names = MarketNames()
+        odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
+
+        self.driver.get(url_back)
+        blocks = Website.get_blocks_static('div.table.teams', self.driver, self.wait)
+        if len(blocks) < 3:
+            log_and_print('Looks like no info in:\n' + url_back)
+            return odds_back, '', ''
+
+        home_name, home_odd = blocks[0].text.split('\n')
+        away_name, away_odd = blocks[2].text.split('\n')
+        _, draw_odd = blocks[1].text.split('\n')
+        if 'main' in odds_back:
+            odds_back['main'][home_name] = home_odd
+            odds_back['main'][away_name] = away_odd
+            odds_back['main']['Draw'] = draw_odd
+
+        if 'correct score' in odds_back:
+            try:
+                Website.wait('Correct Score', self.wait, type_='link')
+                has_correct_score = True
+            except TimeoutException:
+                has_correct_score = False
+
+            if has_correct_score:
+                win_set, draw_set, _ = self.get_correct_score_sets()
+                correct_score_key = market_names.key('Correct Score')
+
+                scores = []
+                scores.extend(win_set)
+                scores.extend(draw_set)
+
+                self.driver.find_element_by_link_text('Correct Score').click()
+                blocks = Website.get_blocks_static('div.table.teams', self.driver, self.wait)
+                for b in blocks:
+                    if b.text == '':
+                        continue
+                    title, odd = b.text.split('\n')
+                    team = title.split(' ')
+                    if team.pop() in scores:
+                        team_name = ' '.join(team)
+                        if team_name == home_name \
+                                or team_name == away_name \
+                                or team_name == 'Draw':
+                            odds_back[correct_score_key][squash_string(title)] = odd
+                        else:
+                            log_and_print('unexpected team name: ' + team_name)
+        return odds_back, home_name, away_name
 
     @staticmethod
     def full_name_to_id(str_contains_full_name, league_name):
@@ -1912,7 +1973,7 @@ class WebWorker:
                         write_url(info_ladbrokes)
                         write_file(betfair_url)
 
-    def get_classicbet_markets_odd(self, with_url_back, target_markets):
+    def get_classicbet_markets_odd(self, with_url_back, target_markets, league):
         market_names = MarketNames()
         odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
 
@@ -1972,8 +2033,6 @@ class WebWorker:
             has_additional = False
 
         if has_additional:
-            self.driver.find_elements_by_partial_link_text('additional markets')[url_number].click()
-
             def get_key(market_str):
                 if market_str == 'HT/FT Double':
                     return 'Half Time/Full Time'
@@ -1991,15 +2050,23 @@ class WebWorker:
                     func_ = self.driver.find_element_by_partial_link_text
                     type_ = 'partial'
 
-                try:
-                    Website.wait(market_str, self.wait, type_=type_)
-                except TimeoutException:
-                    return
-
+                Website.wait(market_str, self.wait, type_=type_)
                 func_(market_str).click()
-                css_str = 'dd.active'
-                Website.wait(css_str, self.wait)
-                lines = self.driver.find_element_by_css_selector(css_str).text.split('\n')
+
+                active = Website.get_element_static('dd.active', self.driver, self.wait2,
+                                                    silent=True)
+                if active is None:
+                    self.driver.get(url_back)
+                    Website.wait('additional markets', self.wait, type_='partial')
+                    self.driver.find_elements_by_partial_link_text('additional markets')[
+                        url_number].click()
+                    Website.wait(market_str, self.wait, type_=type_)
+                    func_(market_str).click()
+                    active = Website.get_element_static('dd.active', self.driver, self.wait)
+                    if active is None:
+                        log_and_print('failed to get ' + market_str)
+                        return
+                lines = active.text.split('\n')
                 for line in lines:
                     info_ = line.split(' ')
                     if 'Straight' not in line:
@@ -2009,12 +2076,13 @@ class WebWorker:
                     info_.pop()
                     odds_back[market_names.key(get_key(
                         market_str))][squash_string(''.join(info_))] = odd
-                self.driver.find_element_by_partial_link_text(market_str).click()
 
-            get_odds('Correct Score')
-            get_odds('First Goalscorer')
+            self.driver.find_elements_by_partial_link_text('additional markets')[url_number].click()
+            if league != 'a':
+                get_odds('Correct Score')
+                get_odds('First Goalscorer')
+                get_odds('Both Teams To Score')
             get_odds('HT/FT Double')
-            get_odds('Both Teams To Score')
             for goals in '0.5', '1.5':
                 get_odds('First Half Over/Under ' + goals + ' Goals')
             for goals in '0.5', '1.5', '2.5', '3.5', '4.5':
@@ -2049,9 +2117,10 @@ class WebWorker:
                     league = l.split(' ')[1]
                     odds_back = dict()
                     home, away = '', ''
-                    if url_classic != '.':
+                    if False and url_classic != '.':
                         odds_classic, home, away = self.get_classicbet_markets_odd(url_classic,
-                                                                                   target_markets)
+                                                                                   target_markets,
+                                                                                   league)
                         odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
                         odds_back = self.merge_back_odds(odds_classic, odds_back)
                     if url_ladbrokes != '.':
@@ -2064,7 +2133,7 @@ class WebWorker:
                         self.compare_with_lay(home, away, odds_back, back_urls, url_lay, league,
                                               match_info, target_markets, bet_type)
             except Exception as e:
-                log_and_print('Exception: ' + str(e))
+                log_and_print('Exception: [' + str(e) + ']')
                 loop_minutes = 0
             finally:
                 if loop_minutes is 0 and self.driver:
@@ -2079,6 +2148,8 @@ class WebWorker:
             get_func = self.get_ladbrokes_markets_odd
         elif back_site == 'classicbet':
             get_func = self.get_classicbet_markets_odd
+        elif back_site == 'william':
+            get_func = self.get_william_markets_odd
         else:
             log_and_print('unexpected bet site: ' + back_site)
             return
@@ -2104,6 +2175,13 @@ class WebWorker:
                 break
             else:
                 self.count_down(loop_minutes)
+
+    @staticmethod
+    def get_correct_score_sets():
+        win_set = ('1-0', '2-0', '3-0', '2-1', '3-1', '3-2')
+        draw_set = ('0-0', '1-1', '2-2', '3-3')
+        lose_set = ('0-1', '0-2', '0-3', '1-2', '1-3', '2-3')
+        return win_set, draw_set, lose_set
 
     def compare_with_lay(self, home_name, away_name, odds_back, url_back, url_lay,
                          league_name, match_info, target_markets, bet_type):
@@ -2165,9 +2243,7 @@ class WebWorker:
                         = btn.text
 
         # get correct score from popular markets
-        win_set = ('1-0', '2-0', '3-0', '2-1', '3-1', '3-2')
-        draw_set = ('0-0', '1-1', '2-2', '3-3')
-        lose_set = ('0-1', '0-2', '0-3', '1-2', '1-3', '2-3')
+        win_set, draw_set, lose_set = self.get_correct_score_sets()
         correct_score_key = market_names.key('Correct Score')
         if correct_score_key in odds_lay:
             for b_score, b_value in odds_lay[correct_score_key].items():

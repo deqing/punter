@@ -28,8 +28,7 @@ def main():
       --betfair-limits=<number> highlight when biggest back and lay less than
       --betfair                 including betfair back odds
       --exclude=<websites>      excluding websites
-      --compare-ladbrokes       read urls from ladbrokes.txt, compare with betfair and print
-      --compare-classicbet      read urls from classicbet.txt, compare with betfair and print
+      --compare-one=<website>   read urls from <website>.txt, compare with betfair and print
       --compare-race            read urls from race.txt and compare
       --compare                 read urls from compare.txt which contains many backs and one lay
       --get-urls                get urls and write to compare.txt
@@ -43,7 +42,7 @@ def main():
       cli.py a a --calc-back=4.2
       cli.py bet365 gem "Adelaide Utd,Central Coast,,3.55,1.0"   # draw > 3.55 or lost > 1.0
       cli.py bet365 eng --betfair-limits=1,2,0.05,-5  # 1 < lay odd < 2, diff <= 0.05, profit > -5
-      cli.py a a --compare-ladbrokes
+      cli.py a a --compare-one=ladbrokes  # or: classicbet, william
     """
     worker = False
 
@@ -71,10 +70,8 @@ def main():
         worker.generate_compare_urls_file()
     elif args['--compare']:
         worker.compare_multiple_sites(int(args['--loop']))
-    elif args['--compare-ladbrokes']:
-        worker.compare_back_and_lay('ladbrokes', int(args['--loop']))
-    elif args['--compare-classicbet']:
-        worker.compare_back_and_lay('classicbet', int(args['--loop']))
+    elif args['--compare-one'] is not None:
+        worker.compare_back_and_lay(args['--compare-one'], int(args['--loop']))
     elif args['--compare-race']:
         worker.compare_with_race()
     else:
