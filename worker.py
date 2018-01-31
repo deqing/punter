@@ -1651,7 +1651,7 @@ class WebWorker:
                                                                                'twirl_element_1')))
         except TimeoutException:
             log_and_print('ladbroke has no match info:\n' + url_back)
-            raise
+            return dict()
 
         if has_main:
             home_text = self.driver.find_element_by_id('twirl_element_1').text
@@ -2020,23 +2020,22 @@ class WebWorker:
         try:
             self.driver.get(url_back)
         except TimeoutException:
-            return odds_back, '', ''
+            return dict()
         url_number = int(url_number)
 
         # -------- Get general info
         tables = self.get_until_more_than('table.MatchTable', url_number+1)
         if len(tables) <= url_number:
-            return odds_back, '', ''
+            return dict()
         main_lines = tables[url_number].text.split('\n')
 
-        # TODO remove this comment -------- Get additional markets
         try:
             Website.wait('additional markets', self.wait2, type_='partial')
             a_text = tables[url_number].find_element_by_tag_name('a').get_attribute('onclick')
             market_number = a_text.split('(')[1].split(')')[0].split(',')[2].replace('\'', '')
             if not market_number.isdigit():
-                log_and_print('market number wrong: ' + with_url_back)
-                return odds_back, '', ''
+                log_and_print('Looks like no additional markets in: ' + with_url_back)
+                raise TimeoutException
             has_additional = True
         except TimeoutException:
             has_additional = False
@@ -2062,7 +2061,7 @@ class WebWorker:
             draw_odd = info.pop()
             is_odd_ready, _ = self.to_number(draw_odd)
             if not is_odd_ready:
-                return odds_back, '', ''
+                return dict()
 
             home_odd = info.pop()
             home_name = ' '.join(info)
@@ -2086,12 +2085,12 @@ class WebWorker:
                         a.click()
                         break
                 else:
-                    log_and_print('market number not found in link: ' + with_url_back)
+                    log_and_print('Looks like no additional markets in: ' + with_url_back)
                     return False
                 try:
                     Website.wait('Correct Score', self.wait2, type_='partial')
                 except TimeoutException:
-                    log_and_print('additional market failed to expend: ' + with_url_back)
+                    log_and_print('Looks like no additional markets expanded: ' + with_url_back)
                     return False
                 return True
 
@@ -2111,7 +2110,8 @@ class WebWorker:
                 if active is None:
                     self.driver.get(url_back)
                     Website.wait('additional markets', self.wait2, type_='partial')
-                    click_additional_market(market_number)
+                    if not click_additional_market(market_number):
+                        return
                     Website.wait(market_str_, self.wait, type_='link')
                     self.driver.find_element_by_link_text(market_str_).click()
                     active = Website.get_element_static('dd.active', self.driver, self.wait2)
@@ -2129,7 +2129,7 @@ class WebWorker:
                     odds_back[key_][squash_string(''.join(info_))] = odd
 
             if not click_additional_market(market_number):
-                return odds_back, '', ''
+                return odds_back
 
             full_text = self.driver.find_element_by_id('pageContent').text.split('\n')
             vs_str = ''
@@ -2183,14 +2183,16 @@ class WebWorker:
                         odds_classic = self.get_classicbet_markets_odd(url_classic,
                                                                        target_markets,
                                                                        odds_lay)
-                        odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
-                        odds_back = self.merge_back_odds(odds_classic, odds_back)
+                        if len(odds_classic) is not 0:
+                            odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
+                            odds_back = self.merge_back_odds(odds_classic, odds_back)
                     if url_ladbrokes != '.':
                         odds_lad = self.get_ladbrokes_markets_odd(url_ladbrokes,
                                                                   target_markets,
                                                                   odds_lay)
-                        odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
-                        odds_back = self.merge_back_odds(odds_lad, odds_back)
+                        if len(odds_lad) is not 0:
+                            odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
+                            odds_back = self.merge_back_odds(odds_lad, odds_back)
                     if len(odds_back) is not 0:
                         back_urls = url_classic + '\n' + url_ladbrokes
                         self.compare_with_lay(home, away, odds_back, back_urls, url_lay, league,
