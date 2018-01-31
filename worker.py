@@ -1008,6 +1008,33 @@ class Ladbrokes(Website):  # BetStar (and Bookmarker?) are the same
         self.liga_url = 'https://www.ladbrokes.com.au/sports/soccer/40962944-football-spain-spanish-la-liga/'  # noqa
         self.uefa_url = 'https://www.ladbrokes.com.au/sports/soccer/43625772-football-uefa-club-competitions-uefa-champions-league/'  # noqa
 
+    @staticmethod
+    def login_static(driver, wait):
+        def save_cookie(f):
+            with open(f, 'wb') as cookies_file:
+                pickle.dump(driver.get_cookies(), cookies_file)
+
+        def load_cookie(f):
+            with open(f, 'rb') as cookies_file:
+                cookies = pickle.load(cookies_file)
+                for cookie in cookies:
+                    driver.add_cookie(cookie)
+
+        path = os.path.join(gettempdir(), 'ladbrokes_cookie.pkl')
+        try:
+            load_cookie(path)
+        except FileNotFoundError:
+            account = driver.find_element_by_id('userauth_username')
+            password = driver.find_element_by_id('userauth_password')
+            login = driver.find_element_by_css_selector('input.logbut')
+            with open('ladbrokes.username', 'r') as username_file, \
+                    open('ladbrokes.password', 'r') as password_file:
+                account.send_keys(username_file.read().rstrip())
+                password.send_keys(password_file.read().rstrip())
+            login.click()
+            Website.wait('div.welcome', wait)
+            save_cookie(path)
+
     def fetch(self, matches):
         blocks = self.get_blocks('table.bettype-group.listings.odds.sports.match.soccer')
         for b in blocks:
@@ -1610,19 +1637,23 @@ class WebWorker:
             odds[key] = dict()
         return odds
 
-    def get_ladbrokes_markets_odd(self, url_lad, target_markets, odds_lay):
+    def get_ladbrokes_markets_odd(self, url_back, target_markets, odds_lay):
         market_names = MarketNames()
-        odds_lad = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
+        odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
 
-        self.driver.get(url_lad)
+        has_main = self.has_value(odds_lay, 'main') and 'main' in odds_back
+        self.driver.get(url_back)
+        if not has_main:  # Very likely it is for boost, so login to get real odd
+            Ladbrokes.login_static(self.driver, self.wait)
+            self.driver.get(url_back)
         try:
             self.wait.until(expected_conditions.visibility_of_element_located((By.ID,
                                                                                'twirl_element_1')))
         except TimeoutException:
-            log_and_print('ladbroke has no match info:\n' + url_lad)
+            log_and_print('ladbroke has no match info:\n' + url_back)
             raise
 
-        if self.has_value(odds_lay, 'main') and 'main' in odds_lad:
+        if has_main:
             home_text = self.driver.find_element_by_id('twirl_element_1').text
             away_text = self.driver.find_element_by_id('twirl_element_2').text
             draw_text = self.driver.find_element_by_id('twirl_element_3').text
@@ -1631,9 +1662,9 @@ class WebWorker:
             away_name, away_odd = away_text.split('\n')
             _, draw_odd = draw_text.split('\n')
 
-            odds_lad['main'][home_name] = home_odd
-            odds_lad['main'][away_name] = away_odd
-            odds_lad['main']['Draw'] = draw_odd
+            odds_back['main'][home_name] = home_odd
+            odds_back['main'][away_name] = away_odd
+            odds_back['main']['Draw'] = draw_odd
 
         markets = self.driver.find_elements_by_css_selector('div.additional-market')
         for market in markets:
@@ -1641,20 +1672,21 @@ class WebWorker:
             if 'Over/Under First Half' in desc:
                 desc = desc.replace('Over/Under First Half', 'First Half Goals')
             key = market_names.key(desc)
-            if key in odds_lad and self.has_value(odds_lay, key):
+            if key in odds_back and self.has_value(odds_lay, key):
                 market.click()
                 self.driver.implicitly_wait(1)
                 blocks = market.find_elements_by_css_selector('tr.row')
                 for b in blocks:
                     name = b.get_attribute('data-teamname')
+                    odd = b.get_attribute('data-winoddsboost')
                     if 'Over (' in name:
                         name = name.replace('Over (', 'Over ')
                         name = name.replace(')', ' Goals')
                     elif 'Under (' in name:
                         name = name.replace('Under (', 'Under ')
                         name = name.replace(')', ' Goals')
-                    odds_lad[key][squash_string(name)] = b.text.split('\n')[1]
-        return odds_lad
+                    odds_back[key][squash_string(name)] = odd
+        return odds_back
 
     def get_william_markets_odd(self, url_back, target_markets):
         market_names = MarketNames()
@@ -2194,10 +2226,10 @@ class WebWorker:
             for l, match_info, url_back, url_lay in \
                     zip(lines[::4], lines[1::4], lines[2::4], lines[3::4]):
                 league = l.split(' ')[1]
-                odds_lay = self.get_lay(url_lay, league, target_markets)
-                odds_back, home, away = get_func(url_back, target_markets)
+                odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
                 if home == '':
                     continue
+                odds_back = get_func(url_back, target_markets, odds_lay)
                 odds_back = self.odds_map_to_id(odds_back, league, back_site)
                 self.compare_with_lay(home, away, odds_back, url_back, url_lay, league,
                                       match_info, bet_type, odds_lay)
@@ -2374,8 +2406,8 @@ class WebWorker:
             return
 
         if bet_type == 'boost':
-            yellow_profit = -17
-            red_profit = -14
+            yellow_profit = -5
+            red_profit = 0
         elif bet_type == 'q':
             yellow_profit = -5
             red_profit = -1
@@ -2394,7 +2426,7 @@ class WebWorker:
             if res[1] >= biggest_back:
                 continue
             # 0 profit, 1 back, 2 agent, 3 lay, 4 lay amount, 5 original item text, 6 pretty display
-            msg = '{:0.2f}\t{:0.2f} {}\t{:0.2f}({})\t{}'.format(
+            msg = '{:0.2f}\t{:0.2f} {}\t{:0.2f} ({})\t{}'.format(
                 res[0], res[1], res[2], res[3], res[4],
                 self.key_expand_full_name(res[6], league))
             if res[0] >= yellow_profit:
