@@ -791,6 +791,8 @@ class Website:
             wait.until(expected_conditions.visibility_of_element_located((By.PARTIAL_LINK_TEXT, s)))
         elif type_ == 'link':
             wait.until(expected_conditions.visibility_of_element_located((By.LINK_TEXT, s)))
+        elif type_ == 'id':
+            wait.until(expected_conditions.visibility_of_element_located((By.ID, s)))
         else:
             log_and_print('Unexpected type: ' + type_)
 
@@ -886,6 +888,7 @@ class Betfair(Website):
         try:
             load_cookie(path)
         except FileNotFoundError:
+            Website.wait('ssc-liu', wait, type_='id')
             account = driver.find_element_by_id('ssc-liu')
             password = driver.find_element_by_id('ssc-lipw')
             login = driver.find_element_by_id('ssc-lis')
@@ -1696,7 +1699,7 @@ class WebWorker:
         blocks = Website.get_blocks_static('div.table.teams', self.driver, self.wait)
         if len(blocks) < 3:
             log_and_print('Looks like no info in:\n' + url_back)
-            return odds_back, '', ''
+            return odds_back
 
         home_name, home_odd = blocks[0].text.split('\n')
         away_name, away_odd = blocks[2].text.split('\n')
@@ -1736,7 +1739,7 @@ class WebWorker:
                             odds_back[correct_score_key][squash_string(title)] = odd
                         else:
                             log_and_print('unexpected team name: ' + team_name)
-        return odds_back, home_name, away_name
+        return odds_back
 
     @staticmethod
     def full_name_to_id(str_contains_full_name, league_name):
@@ -1781,13 +1784,6 @@ class WebWorker:
             team_ = 'Draw' if team == 'Draw' else info.get_full_name(team, league_name)
             score = key[idx:].strip()
             return ' '.join([team_, score])
-        elif 'over' in key or 'under' in key:
-            idx = key.find('.')-1
-            word = list()
-            word.append(key[:idx])
-            word.append(key[idx:idx+3])
-            word.append(key[idx+3:])
-            return ' '.join(word)
         else:
             return key
 
@@ -1929,9 +1925,10 @@ class WebWorker:
         info = self.init_league_info(**urls)
 
         for key in urls.keys():
+            self.driver.set_window_size(width=1920, height=1080)
             self.driver.get(urls[key])
             Betfair.login_static(self.driver, self.wait)
-            self.driver.set_window_size(width=1920, height=1080)
+            self.driver.get(urls[key])
             break
 
         def get_date(i_):
@@ -2177,7 +2174,6 @@ class WebWorker:
                         zip(lines[::5], lines[1::5], lines[2::5], lines[3::5], lines[4::5]):
                     league = l.split(' ')[1]
                     odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
-
                     odds_back = dict()
                     if url_classic != '.':
                         odds_classic = self.get_classicbet_markets_odd(url_classic,
@@ -2366,14 +2362,18 @@ class WebWorker:
                                          odds_back, bet_type, 'Both teams to Score: ' + b_yes_no)
 
         # get over under from popular markets
-        # TODO first 0.5 1.5??
+        titles = []
+        for goals in '0.5', '1.5':
+            titles.append('First Half Goals ' + goals)
         for goals in '0.5', '1.5', '2.5', '3.5', '4.5':
-            title = 'Over/Under ' + goals + ' Goals'
+            titles.append('Over/Under ' + goals + ' Goals')
+        for title in titles:
             over_under_key = market_names.key(title)
             if self.has_value(odds_lay, over_under_key):
                 for b_over_under, b_value in odds_lay[over_under_key].items():
                     self.add_item_to_results(b_over_under, over_under_key, b_value,
-                                             results, odds_back, bet_type, b_over_under)
+                                             results, odds_back, bet_type,
+                                             title + ': ' + b_over_under.split('.')[0][:-1])
 
         # get player
         first_scorer_key = market_names.key('First Goalscorer')
