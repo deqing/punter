@@ -2208,7 +2208,7 @@ class WebWorker:
         self.driver.get('https://www.betfair.com.au/exchange/plus/')
         Betfair.login_static(self.driver, self.wait)
 
-        time_it = TimeIt(top=True, bottom=False)
+        time_it = TimeIt(top=False, bottom=False)
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
             try:
@@ -2481,6 +2481,7 @@ class WebWorker:
         results.sort(reverse=True)
         log_and_print('----------- (' + str(len(results)) + ') ' + match_info + ' -------------')
         if len(results) is 0:
+            log_and_print('if this is boost, maybe there is no lay odds in correct score yet')
             return
 
         if bet_type == 'boost':
