@@ -13,27 +13,28 @@ Don't do:
 - add neds.com.au (not easy to get by css)
 """
 
-import re
+import logging
+import os
 import pickle
+import re
+import requests
+import smtplib
+import sys
+import time
+import traceback
 from colorama import Fore, Back, Style
+from datetime import datetime
+from email.mime.text import MIMEText
+from logging.handlers import RotatingFileHandler
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, \
-    StaleElementReferenceException
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
-import time
-import requests
-import traceback
+from selenium.webdriver.support.ui import WebDriverWait
 from tempfile import gettempdir
-import os
-import smtplib
-from email.mime.text import MIMEText
-import sys
-from datetime import datetime
-import logging
-from logging.handlers import RotatingFileHandler
 
 
 HEAD = '<html lang="en">\n'
