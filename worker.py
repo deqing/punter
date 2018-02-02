@@ -2195,7 +2195,7 @@ class WebWorker:
                     'target_markets': target_markets,
                     'lay_markets_str': ','.join(lay_markets).replace(' ', '_')
                     }).json()
-        self.save_to(odds, 'ladbrokes_odds.pkl')
+        self.save_to(odds, 'ladbrokes_odds.pkl', silent=True)
 
     def compare_multiple_sites(self, loop_minutes):
         with open('compare.txt', 'r') as urls_file:
@@ -2208,7 +2208,7 @@ class WebWorker:
         self.driver.get('https://www.betfair.com.au/exchange/plus/')
         Betfair.login_static(self.driver, self.wait)
 
-        time_it = TimeIt(top=True, bottom=True)
+        time_it = TimeIt(top=True, bottom=False)
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
             try:
@@ -2602,14 +2602,15 @@ class WebWorker:
         print(real_back_odd(s))
 
     @staticmethod
-    def save_to(obj, filename):
+    def save_to(obj, filename, silent=False):
         file = os.path.join(gettempdir(), filename)
         with open(file, 'wb') as pkl:
             pickle.dump(obj, pkl)
-            if len(obj) == 0:
-                log_and_print('WARNING: ' + filename + ' will be truncated.')
-            else:
-                log_and_print(filename + ' saved.')
+            if not silent:
+                if len(obj) == 0:
+                    log_and_print('WARNING: ' + filename + ' will be truncated.')
+                else:
+                    log_and_print(filename + ' saved.')
 
     def run(self,
             websites_str,
