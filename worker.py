@@ -103,6 +103,29 @@ class MonitorMatch:
 g_monitor_match = MonitorMatch()
 
 
+class TimeIt:
+    def __init__(self, top=False, bottom=False):
+        self.top_start_time, self.bottom_start_time = None, None
+        self.top = top
+        self.bottom = bottom
+
+    def reset(self):
+        if self.bottom:
+            self.bottom_start_time = datetime.now()
+
+    def reset_top(self):
+        if self.top:
+            self.top_start_time = datetime.now()
+
+    def log(self, s):
+        if self.bottom:
+            log_and_print(s + ': {}'.format(datetime.now() - self.bottom_start_time))
+
+    def top_log(self, s):
+        if self.top:
+            log_and_print(s + ': {}'.format(datetime.now() - self.top_start_time))
+
+
 class WriteToHtmlFile:
     def __init__(self):
         self.file, self.title, self.urls = None, None, None
@@ -1507,7 +1530,7 @@ class WebWorker:
             chrome_options = Options()
             chrome_options.add_argument("--headless")
             self.driver = webdriver.Chrome(chrome_options=chrome_options)
-            self.driver.implicitly_wait(10)
+            self.driver.implicitly_wait(2)
             self.wait = WebDriverWait(self.driver, 10)
             self.wait2 = WebDriverWait(self.driver, 2)
         self.is_get_data = is_get_data
@@ -2078,6 +2101,7 @@ class WebWorker:
             def click_additional_market(market_number_):
                 a_links = self.driver.find_elements_by_partial_link_text('additional markets')
                 for a in a_links:
+                    # Maybe some matches don't have additional markets
                     if market_number_ in a.get_attribute('onclick'):
                         a.click()
                         break
@@ -2102,8 +2126,7 @@ class WebWorker:
 
             def get_odds(market_str_, key_):
                 self.driver.find_element_by_link_text(market_str_).click()
-                active = Website.get_element_static('dd.active', self.driver, self.wait2,
-                                                    silent=True)
+                active = Website.get_element_static('dd.active', self.driver, self.wait2)
                 if active is None:
                     self.driver.get(url_back)
                     Website.wait('additional markets', self.wait2, type_='partial')
@@ -2116,6 +2139,7 @@ class WebWorker:
                         log_and_print('failed to get ' + market_str_)
                         return
                 lines = active.text.split('\n')
+                self.driver.find_element_by_link_text(market_str_).click()
                 for line in lines:
                     info_ = line.split(' ')
                     if 'Straight' not in line:
@@ -2140,12 +2164,12 @@ class WebWorker:
                 markets.append('First Half Over/Under ' + goals + ' Goals')
             for goals in '0.5', '1.5', '2.5', '3.5', '4.5':
                 markets.append('Over/Under ' + goals + ' Goals')
+
             for m in markets:
                 market_str = m + ' - ' + vs_str
                 key = market_names.key(get_key(m))
                 if market_str in full_text and self.has_value(odds_lay, key):
                     get_odds(market_str, key)
-
         return odds_back
 
     @staticmethod
@@ -2167,32 +2191,47 @@ class WebWorker:
             lines = urls_file.read().splitlines()
         bet_type = lines.pop(0).split(' ')[1]
         target_markets = lines.pop(0).split(':')[1]
+        time_it = TimeIt(top=False, bottom=True)
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
             try:
                 for l, match_info, url_classic, url_ladbrokes, url_lay in \
                         zip(lines[::5], lines[1::5], lines[2::5], lines[3::5], lines[4::5]):
+                    time_it.reset_top()
                     league = l.split(' ')[1]
+
+                    time_it.reset()
                     odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
+                    time_it.log('betfair')
+
                     odds_back = dict()
                     if url_classic != '.':
+                        time_it.reset()
                         odds_classic = self.get_classicbet_markets_odd(url_classic,
                                                                        target_markets,
                                                                        odds_lay)
+                        time_it.log('classicbet')
+
                         if len(odds_classic) is not 0:
                             odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
                             odds_back = self.merge_back_odds(odds_classic, odds_back)
+
                     if url_ladbrokes != '.':
+                        time_it.reset()
                         odds_lad = self.get_ladbrokes_markets_odd(url_ladbrokes,
                                                                   target_markets,
                                                                   odds_lay)
+                        time_it.log('ladbrokes')
                         if len(odds_lad) is not 0:
                             odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
                             odds_back = self.merge_back_odds(odds_lad, odds_back)
+
                     if len(odds_back) is not 0:
                         back_urls = url_classic + '\n' + url_ladbrokes
                         self.compare_with_lay(home, away, odds_back, back_urls, url_lay, league,
                                               match_info, bet_type, odds_lay)
+                    time_it.top_log('match scan time')
+
             except Exception as e:
                 log_and_print('Exception: [' + str(e) + ']')
                 loop_minutes = 0
@@ -2296,7 +2335,8 @@ class WebWorker:
             odds_lay['main']['Draw'] = get_text(bs[2], 'td.bet-buttons.lay-cell.first-lay-cell')
 
         # ------- get popular markets
-        blocks = self.get_until_more_than('div.mini-mv', 10)
+        Website.wait('section.mod-tabs', self.wait)
+        blocks = Website.get_blocks_static('div.mini-mv', self.driver, self.wait)
         for b in blocks:
             key = market_names.key(b.find_element_by_css_selector('span.market-name-label').text)
             if key is not None and key in odds_lay:
