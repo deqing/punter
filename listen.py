@@ -4,7 +4,6 @@ from tempfile import gettempdir
 from flask import Flask
 from flask import jsonify
 from flask import request, redirect, url_for
-from flask import render_template
 from worker import WebWorker
 from werkzeug.utils import secure_filename
 
@@ -33,7 +32,17 @@ def reply():
         return jsonify(matches=[m.serialize() for m in matches])
 
 
-@app.route('/please_tell_me_if_you_are_up')
+@app.route('/get_ladbrokes')
+def get_ladbrokes():
+    url = request.args.get('url')
+    target_markets = request.args.get('target_markets')  # usually it is 'all'
+    lay_markets = request.args.get('lay_markets_str').replace('_', ' ').split(',')
+
+    odds = worker.get_ladbrokes_markets_odd(url, target_markets, lay_markets)
+    return jsonify(odds)
+
+
+@app.route('/ping')
 def ping():
     return 'yes'
 

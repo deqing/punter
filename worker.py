@@ -20,6 +20,7 @@ import re
 import requests
 import smtplib
 import sys
+import threading
 import time
 import traceback
 from colorama import Fore, Back, Style
@@ -1664,15 +1665,15 @@ class WebWorker:
             odds[key] = dict()
         return odds
 
-    def get_ladbrokes_markets_odd(self, url_back, target_markets, odds_lay):
+    def get_ladbrokes_markets_odd(self, url_back, target_markets, lay_markets):
         market_names = MarketNames()
         odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
 
-        has_main = self.has_value(odds_lay, 'main') and 'main' in odds_back
         self.driver.get(url_back)
-        if not has_main:  # Very likely it is for boost, so login to get real odd
+        if 'main' not in lay_markets:  # Very likely it is for boost, so login to get real odd
             Ladbrokes.login_static(self.driver, self.wait)
             self.driver.get(url_back)
+
         try:
             self.wait.until(expected_conditions.visibility_of_element_located((By.ID,
                                                                                'twirl_element_1')))
@@ -1680,7 +1681,7 @@ class WebWorker:
             log_and_print('ladbroke has no match info:\n' + url_back)
             return dict()
 
-        if has_main:
+        if 'main' in lay_markets:
             home_text = self.driver.find_element_by_id('twirl_element_1').text
             away_text = self.driver.find_element_by_id('twirl_element_2').text
             draw_text = self.driver.find_element_by_id('twirl_element_3').text
@@ -1699,7 +1700,7 @@ class WebWorker:
             if 'Over/Under First Half' in desc:
                 desc = desc.replace('Over/Under First Half', 'First Half Goals')
             key = market_names.key(desc)
-            if key in odds_back and self.has_value(odds_lay, key):
+            if key in lay_markets:
                 market.click()
                 self.driver.implicitly_wait(1)
                 blocks = market.find_elements_by_css_selector('tr.row')
@@ -2033,7 +2034,7 @@ class WebWorker:
     def has_value(d, key):
         return key in d and len(d[key]) != 0
 
-    def get_classicbet_markets_odd(self, with_url_back, target_markets, odds_lay):
+    def get_classicbet_markets_odd(self, with_url_back, target_markets, lay_markets):
         market_names = MarketNames()
         odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
 
@@ -2063,7 +2064,7 @@ class WebWorker:
             market_number = None
 
         # -------- Get main
-        if self.has_value(odds_lay, 'main') and 'main' in odds_back:
+        if 'main' in lay_markets:
             # e.g. 1. 'Swansea City 10.25 5.30 +0.5@3.45 Over 2.5 1.61'
             #   or 1. 'Swansea City 10.25 5.30 Over 2.5 1.61'
             #
@@ -2169,7 +2170,7 @@ class WebWorker:
             for m in markets:
                 market_str = m + ' - ' + vs_str
                 key = market_names.key(get_key(m))
-                if market_str in full_text and self.has_value(odds_lay, key):
+                if market_str in full_text and key in lay_markets:
                     get_odds(market_str, key)
         return odds_back
 
@@ -2187,12 +2188,27 @@ class WebWorker:
                         odds[item][key] = value
         return odds
 
+    def thread_get_ladbrokes(self, aws_ip, url, target_markets, lay_markets):
+        odds = requests.get(
+            'http://{}:5000/get_ladbrokes'.format(aws_ip),
+            params={'url': url,
+                    'target_markets': target_markets,
+                    'lay_markets_str': ','.join(lay_markets).replace(' ', '_')
+                    }).json()
+        self.save_to(odds, 'ladbrokes_odds.pkl')
+
     def compare_multiple_sites(self, loop_minutes):
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
+
+        aws_ip = lines.pop(0).split(' ')[1]
         bet_type = lines.pop(0).split(' ')[1]
         target_markets = lines.pop(0).split(':')[1]
-        time_it = TimeIt(top=False, bottom=True)
+
+        self.driver.get('https://www.betfair.com.au/exchange/plus/')
+        Betfair.login_static(self.driver, self.wait)
+
+        time_it = TimeIt(top=True, bottom=True)
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
             try:
@@ -2205,12 +2221,33 @@ class WebWorker:
                     odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
                     time_it.log('betfair')
 
+                    lay_markets = []
+                    for key in odds_lay.keys():
+                        if len(odds_lay[key]) != 0:
+                            lay_markets.append(key)
+
                     odds_back = dict()
+                    thread_lad, odds_lad = None, None
+                    if url_ladbrokes != '.':
+                        time_it.reset()
+                        if aws_ip == 'none':
+                            odds_lad = self.get_ladbrokes_markets_odd(url_ladbrokes,
+                                                                      target_markets,
+                                                                      lay_markets)
+                        else:
+                            thread_lad = threading.Thread(target=self.thread_get_ladbrokes,
+                                                          args=(aws_ip,
+                                                                url_ladbrokes,
+                                                                target_markets,
+                                                                lay_markets))
+                            thread_lad.start()
+                        time_it.log('ladbrokes')
+
                     if url_classic != '.':
                         time_it.reset()
                         odds_classic = self.get_classicbet_markets_odd(url_classic,
                                                                        target_markets,
-                                                                       odds_lay)
+                                                                       lay_markets)
                         time_it.log('classicbet')
 
                         if len(odds_classic) is not 0:
@@ -2218,11 +2255,11 @@ class WebWorker:
                             odds_back = self.merge_back_odds(odds_classic, odds_back)
 
                     if url_ladbrokes != '.':
-                        time_it.reset()
-                        odds_lad = self.get_ladbrokes_markets_odd(url_ladbrokes,
-                                                                  target_markets,
-                                                                  odds_lay)
-                        time_it.log('ladbrokes')
+                        if aws_ip != 'none':
+                            thread_lad.join()
+                            with open(os.path.join(gettempdir(), 'ladbrokes_odds.pkl'),
+                                      'rb') as pkl:
+                                odds_lad = pickle.load(pkl)
                         if len(odds_lad) is not 0:
                             odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
                             odds_back = self.merge_back_odds(odds_lad, odds_back)
@@ -2312,8 +2349,6 @@ class WebWorker:
 
     def get_lay(self, url_lay, league_name, target_markets):
         self.driver.set_window_size(width=1920, height=1080)
-        self.driver.get(url_lay)
-        Betfair.login_static(self.driver, self.wait)
         self.driver.get(url_lay)
 
         market_names = MarketNames()
@@ -2566,6 +2601,16 @@ class WebWorker:
     def calc_real_back_odd(s):
         print(real_back_odd(s))
 
+    @staticmethod
+    def save_to(obj, filename):
+        file = os.path.join(gettempdir(), filename)
+        with open(file, 'wb') as pkl:
+            pickle.dump(obj, pkl)
+            if len(obj) == 0:
+                log_and_print('WARNING: ' + filename + ' will be truncated.')
+            else:
+                log_and_print(filename + ' saved.')
+
     def run(self,
             websites_str,
             leagues_str,
@@ -2582,15 +2627,6 @@ class WebWorker:
             exclude=None,
             print_betfair_only=False,
             ):
-        def save_to(obj, filename):
-            file = os.path.join(gettempdir(), filename)
-            with open(file, 'wb') as pkl:
-                pickle.dump(obj, pkl)
-                if len(obj) == 0:
-                    log_and_print('WARNING: ' + filename + ' will be truncated.')
-                else:
-                    log_and_print(filename + ' saved.')
-
         def prepare_email():
             with open('output.html', 'r') as file, \
                     open('output_title.txt', 'r') as t_file, \
@@ -2662,12 +2698,12 @@ class WebWorker:
                             time.sleep(10)
                         website.current_league = league
                         website.fetch(matches)
-                save_to(matches, pkl_name)
+                self.save_to(matches, pkl_name)
             except Exception as e:
                 logging.exception(e)
                 _, _, eb = sys.exc_info()
                 traceback.print_tb(eb)
-                save_to([], pkl_name)
+                self.save_to([], pkl_name)
 
         websites_str = websites_str if websites_str != 'all' else g_websites_str
         if betfair_limits is not None or is_betfair:
