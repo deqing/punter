@@ -8,7 +8,7 @@ from worker import WebWorker
 from werkzeug.utils import secure_filename
 
 
-UPLOAD_FOLDER = gettempdir()
+UPLOAD_FOLDER = '/home/ubuntu/snj/'  # FIXME: should be an better path like: gettempdir()
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
