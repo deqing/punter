@@ -2201,7 +2201,7 @@ class WebWorker:
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
 
-        aws_ip = lines.pop(0).split(' ')[1]
+        use_aws = True
         bet_type = lines.pop(0).split(' ')[1]
         target_markets = lines.pop(0).split(':')[1]
 
@@ -2230,13 +2230,13 @@ class WebWorker:
                     thread_lad, odds_lad = None, None
                     if url_ladbrokes != '.':
                         time_it.reset()
-                        if aws_ip == 'none':
+                        if use_aws:
                             odds_lad = self.get_ladbrokes_markets_odd(url_ladbrokes,
                                                                       target_markets,
                                                                       lay_markets)
                         else:
                             thread_lad = threading.Thread(target=self.thread_get_ladbrokes,
-                                                          args=(aws_ip,
+                                                          args=('deqing.cf',
                                                                 url_ladbrokes,
                                                                 target_markets,
                                                                 lay_markets))
@@ -2255,7 +2255,7 @@ class WebWorker:
                             odds_back = self.merge_back_odds(odds_classic, odds_back)
 
                     if url_ladbrokes != '.':
-                        if aws_ip != 'none':
+                        if use_aws:
                             thread_lad.join()
                             with open(os.path.join(gettempdir(), 'ladbrokes_odds.pkl'),
                                       'rb') as pkl:
