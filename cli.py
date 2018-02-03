@@ -31,6 +31,8 @@ def main():
       --compare-one=<website>   read urls from <website>.txt, compare with betfair and print
       --compare-race            read urls from race.txt and compare
       --compare                 read urls from compare.txt which contains many backs and one lay
+      --get-lay-markets         get lay markets and store to a temp file
+      --get-lay-markets-new     get lay markets and store to a temp file
       --get-urls                get urls and write to compare.txt
       --test                    test functionality which underdevelopment
 
@@ -68,6 +70,10 @@ def main():
         worker.generate_compare_urls_file()
     elif args['--get-urls']:
         worker.generate_compare_urls_file()
+    elif args['--get-lay-markets']:
+        worker.get_lay_markets()
+    elif args['--get-lay-markets-new']:
+        worker.get_lay_markets(new=True)
     elif args['--compare']:
         worker.compare_multiple_sites(int(args['--loop']))
     elif args['--compare-one'] is not None:

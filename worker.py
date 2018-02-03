@@ -2189,13 +2189,63 @@ class WebWorker:
         return odds
 
     def thread_get_ladbrokes(self, aws_ip, url, target_markets, lay_markets):
-        odds = requests.get(
-            'http://{}:5000/get_ladbrokes'.format(aws_ip),
-            params={'url': url,
-                    'target_markets': target_markets,
-                    'lay_markets_str': ','.join(lay_markets).replace(' ', '_')
-                    }).json()
+        if len(lay_markets) is 0:
+            odds = dict()
+        else:
+            odds = requests.get(
+                'http://{}:5000/get_ladbrokes'.format(aws_ip),
+                params={'url': url,
+                        'target_markets': target_markets,
+                        'lay_markets_str': ','.join(lay_markets).replace(' ', '_')
+                        }).json()
         self.save_to(odds, 'ladbrokes_odds.pkl', silent=True)
+
+    def get_lay_markets(self, new=False):
+        pkl_name = 'lay_markets.pkl'
+        if new:
+            match_to_markets = dict()
+        else:
+            with open(os.path.join(gettempdir(), pkl_name), 'rb') as pkl:
+                match_to_markets = pickle.load(pkl)
+
+        with open('compare.txt', 'r') as urls_file:
+            lines = urls_file.read().splitlines()
+        _ = lines.pop(0)  # bet type
+        target_markets = lines.pop(0).split(':')[1]
+
+        self.driver.get('https://www.betfair.com.au/exchange/plus/')
+        Betfair.login_static(self.driver, self.wait)
+
+        time_it = TimeIt(top=False, bottom=False)
+        time_it.reset_top()
+        while len(lines) > 0:
+            count = 0
+            try:
+                for l, match_info, _, _, url_lay in \
+                        zip(lines[::5], lines[1::5], lines[2::5], lines[3::5], lines[4::5]):
+                    time_it.reset()
+                    if new or (match_info not in match_to_markets) \
+                            or len(match_to_markets[match_info]) is 0:
+                        league = l.split(' ')[1]
+                        odds_lay, _, _ = self.get_lay(url_lay, league, target_markets)
+
+                        lay_markets = []
+                        for key in odds_lay.keys():
+                            if len(odds_lay[key]) != 0:
+                                lay_markets.append(key)
+                        if len(lay_markets) is not 0:
+                            match_to_markets[match_info] = lay_markets
+                    time_it.log('{} of {} ({})'.format(count, int(len(lines)/5), match_info))
+                    count += 1
+
+            except Exception as e:
+                log_and_print('Exception: [' + str(e) + ']')
+            finally:
+                if self.driver:
+                    self.driver.quit()
+                    break
+        self.save_to(match_to_markets, pkl_name)
+        time_it.top_log('get lay markets')
 
     def compare_multiple_sites(self, loop_minutes):
         with open('compare.txt', 'r') as urls_file:
@@ -2205,44 +2255,42 @@ class WebWorker:
         bet_type = lines.pop(0).split(' ')[1]
         target_markets = lines.pop(0).split(':')[1]
 
+        with open(os.path.join(gettempdir(), 'lay_markets.pkl'), 'rb') as pkl:
+            match_to_markets = pickle.load(pkl)
+
         self.driver.get('https://www.betfair.com.au/exchange/plus/')
         Betfair.login_static(self.driver, self.wait)
 
-        time_it = TimeIt(top=False, bottom=False)
+        time_it = TimeIt(top=True, bottom=True)
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
             try:
                 for l, match_info, url_classic, url_ladbrokes, url_lay in \
                         zip(lines[::5], lines[1::5], lines[2::5], lines[3::5], lines[4::5]):
+                    lay_markets = match_to_markets[match_info]
+
                     time_it.reset_top()
                     league = l.split(' ')[1]
 
-                    time_it.reset()
-                    odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
-                    time_it.log('betfair')
-
-                    lay_markets = []
-                    for key in odds_lay.keys():
-                        if len(odds_lay[key]) != 0:
-                            lay_markets.append(key)
-
+                    # get ladbrokes
                     odds_back = dict()
                     thread_lad, odds_lad = None, None
                     if url_ladbrokes != '.':
-                        time_it.reset()
                         if use_aws:
-                            odds_lad = self.get_ladbrokes_markets_odd(url_ladbrokes,
-                                                                      target_markets,
-                                                                      lay_markets)
-                        else:
                             thread_lad = threading.Thread(target=self.thread_get_ladbrokes,
                                                           args=('deqing.cf',
                                                                 url_ladbrokes,
                                                                 target_markets,
                                                                 lay_markets))
                             thread_lad.start()
-                        time_it.log('ladbrokes')
+                        else:
+                            time_it.reset()
+                            odds_lad = self.get_ladbrokes_markets_odd(url_ladbrokes,
+                                                                      target_markets,
+                                                                      lay_markets)
+                            time_it.log('ladbrokes')
 
+                    # get classicbet
                     if url_classic != '.':
                         time_it.reset()
                         odds_classic = self.get_classicbet_markets_odd(url_classic,
@@ -2254,9 +2302,17 @@ class WebWorker:
                             odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
                             odds_back = self.merge_back_odds(odds_classic, odds_back)
 
+                    # get betfair
+                    time_it.reset()
+                    odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
+                    time_it.log('betfair')
+
+                    # merge the results
                     if url_ladbrokes != '.':
                         if use_aws:
+                            time_it.reset()
                             thread_lad.join()
+                            time_it.log('ladbrokes')
                             with open(os.path.join(gettempdir(), 'ladbrokes_odds.pkl'),
                                       'rb') as pkl:
                                 odds_lad = pickle.load(pkl)
@@ -2495,7 +2551,7 @@ class WebWorker:
             red_profit = 80
 
         biggest_back = 17.9  # if back odd is too big, we might not have enough money to lay it
-        top_results = 3
+        top_results = 1
 
         if results[0][0] >= yellow_profit and results[0][1] < biggest_back:
             log_and_print(url_back)
@@ -2604,8 +2660,7 @@ class WebWorker:
 
     @staticmethod
     def save_to(obj, filename, silent=False):
-        file = os.path.join(gettempdir(), filename)
-        with open(file, 'wb') as pkl:
+        with open(os.path.join(gettempdir(), filename), 'wb') as pkl:
             pickle.dump(obj, pkl)
             if not silent:
                 if len(obj) == 0:
