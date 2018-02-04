@@ -1723,7 +1723,7 @@ class WebWorker:
                     odds_back[key][squash_string(name)] = odd
         return odds_back
 
-    def get_william_markets_odd(self, url_back, target_markets):
+    def get_william_markets_odd(self, url_back, target_markets, lay_markets):
         market_names = MarketNames()
         odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
 
@@ -1736,12 +1736,12 @@ class WebWorker:
         home_name, home_odd = blocks[0].text.split('\n')
         away_name, away_odd = blocks[2].text.split('\n')
         _, draw_odd = blocks[1].text.split('\n')
-        if 'main' in odds_back:
+        if 'main' in lay_markets:
             odds_back['main'][home_name] = home_odd
             odds_back['main'][away_name] = away_odd
             odds_back['main']['Draw'] = draw_odd
 
-        if 'correct score' in odds_back:
+        if 'correct score' in lay_markets:
             try:
                 Website.wait('Correct Score', self.wait, type_='link')
                 has_correct_score = True
@@ -2256,8 +2256,9 @@ class WebWorker:
         self.save_to(match_to_markets, pkl_name)
         time_it.top_log('get lay markets')
 
-    def compare_multiple_sites(self, loop_minutes=0, get_ladbrokes=True, get_betfair=True,
-                               run_id=None):
+    def scan_match(self, get_ladbrokes, get_classic, get_william, get_betfair,
+                   league, match_info, url_classic, url_lad, url_william, url_lay,
+                   run_id, use_aws, bet_type, target_markets, lay_markets, time_it):
         def wait_exists(filename):
             filename = os.path.join(gettempdir(), filename)
             for _ in range(10):
@@ -2268,6 +2269,80 @@ class WebWorker:
                     time.sleep(1)
             return False
 
+        # get ladbrokes
+        odds_back = dict()
+        thread_lad, odds_lad = None, dict()
+        if get_ladbrokes and url_lad != '.':
+            if use_aws:
+                thread_lad = threading.Thread(target=self.thread_get_ladbrokes,
+                                              args=('deqing.cf', url_lad, target_markets, lay_markets))  # noqa
+                thread_lad.start()
+            else:
+                time_it.reset()
+                odds_lad = self.get_ladbrokes_markets_odd(url_lad, target_markets, lay_markets)
+                time_it.log('ladbrokes')
+
+        # get classicbet
+        if get_classic and url_classic != '.':
+            time_it.reset()
+            odds_classic = self.get_classicbet_markets_odd(url_classic, target_markets, lay_markets)
+            time_it.log('classicbet')
+
+            if len(odds_classic) is not 0:
+                odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
+                odds_back = self.merge_back_odds(odds_classic, odds_back)
+
+        # get william
+        if get_william and url_william != '.':
+            time_it.reset()
+            odds_william = self.get_william_markets_odd(url_william, target_markets, lay_markets)
+            time_it.log('william')
+
+            if len(odds_william) is not 0:
+                odds_william = self.odds_map_to_id(odds_william, league, 'william')
+                odds_back = self.merge_back_odds(odds_william, odds_back)
+
+        # get betfair
+        if get_betfair:
+            time_it.reset()
+            odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
+            time_it.log('betfair')
+        else:
+            odds_lay, home, away = dict(), '', ''
+
+        # merge the results
+        if url_lad != '.':
+            pkl_name = '{}_ladbrokes_{}.pkl'.format(run_id, squash_string(match_info)) \
+                if run_id is not None else None
+
+            if get_ladbrokes and use_aws:
+                time_it.reset()
+                thread_lad.join()
+                time_it.log('ladbrokes')
+                odds_lad = self.get_from_pickle('ladbrokes_odds_from_thread.pkl')
+
+            if not get_ladbrokes and (run_id is not None):  # in main process
+                if not wait_exists(pkl_name):
+                    raise Exception('ladbrokes is not generated from another process')
+                odds_lad = self.get_from_pickle(pkl_name)
+
+            if len(odds_lad) is not 0:
+                if get_ladbrokes and (run_id is not None):  # in worker process
+                    self.save_to(odds_lad, pkl_name, silent=True)
+                odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
+                odds_back = self.merge_back_odds(odds_lad, odds_back)
+
+        if get_betfair and len(odds_back) is not 0:
+            back_urls = url_classic + '\n' + url_lad
+            self.compare_with_lay(home, away, odds_back, back_urls, url_lay, league,
+                                  match_info, bet_type, odds_lay)
+        time_it.top_log('match scan time')
+
+    def compare_multiple_sites(self, loop_minutes=0,
+                               get_ladbrokes=True,
+                               get_betfair=True,
+                               get_william=True,
+                               run_id=None):
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
 
@@ -2287,89 +2362,28 @@ class WebWorker:
         time_it = TimeIt(top=True, bottom=True)
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
-            try:
-                for l, match_info, url_classic, url_ladbrokes, url_lay in \
-                        zip(lines[::5], lines[1::5], lines[2::5], lines[3::5], lines[4::5]):
-                    lay_markets = match_to_markets[match_info]
+            for l, match_info, url_classic, url_lad, url_william, url_lay in \
+                    zip(lines[::6], lines[1::6], lines[2::6],
+                        lines[3::6], lines[4::6], lines[5::6]):
+                lay_markets = match_to_markets[match_info]
 
-                    time_it.reset_top()
-                    league = l.split(' ')[1]
+                time_it.reset_top()
+                league = l.split(' ')[1]
 
-                    # get ladbrokes
-                    odds_back = dict()
-                    thread_lad, odds_lad = None, dict()
-                    if get_ladbrokes and url_ladbrokes != '.':
-                        if use_aws:
-                            thread_lad = threading.Thread(target=self.thread_get_ladbrokes,
-                                                          args=('deqing.cf',
-                                                                url_ladbrokes,
-                                                                target_markets,
-                                                                lay_markets))
-                            thread_lad.start()
-                        else:
-                            time_it.reset()
-                            odds_lad = self.get_ladbrokes_markets_odd(url_ladbrokes,
-                                                                      target_markets,
-                                                                      lay_markets)
-                            time_it.log('ladbrokes')
+                try:
+                    self.scan_match(get_ladbrokes, get_classic, get_william, get_betfair,
+                                    league, match_info, url_classic, url_lad, url_william,
+                                    url_lay, run_id, use_aws, bet_type, target_markets,
+                                    lay_markets, time_it)
+                except Exception as e:
+                    log_and_print('Exception: [' + str(e) + ']')
 
-                    # get classicbet
-                    if get_classic and url_classic != '.':
-                        time_it.reset()
-                        odds_classic = self.get_classicbet_markets_odd(url_classic,
-                                                                       target_markets,
-                                                                       lay_markets)
-                        time_it.log('classicbet')
-
-                        if len(odds_classic) is not 0:
-                            odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
-                            odds_back = self.merge_back_odds(odds_classic, odds_back)
-
-                    # get betfair
-                    if get_betfair:
-                        time_it.reset()
-                        odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
-                        time_it.log('betfair')
-                    else:
-                        odds_lay, home, away = dict(), '', ''
-
-                    # merge the results
-                    if url_ladbrokes != '.':
-                        pkl_name = '{}_ladbrokes_{}.pkl'.format(run_id, squash_string(match_info)) \
-                            if run_id is not None else None
-
-                        if get_ladbrokes and use_aws:
-                            time_it.reset()
-                            thread_lad.join()
-                            time_it.log('ladbrokes')
-                            odds_lad = self.get_from_pickle('ladbrokes_odds_from_thread.pkl')
-
-                        if not get_ladbrokes and (run_id is not None):  # in main process
-                            if not wait_exists(pkl_name):
-                                raise Exception('ladbrokes is not generated from another process')
-                            odds_lad = self.get_from_pickle(pkl_name)
-
-                        if len(odds_lad) is not 0:
-                            if get_ladbrokes and (run_id is not None):  # in worker process
-                                self.save_to(odds_lad, pkl_name, silent=True)
-                            odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
-                            odds_back = self.merge_back_odds(odds_lad, odds_back)
-
-                    if get_betfair and len(odds_back) is not 0:
-                        back_urls = url_classic + '\n' + url_ladbrokes
-                        self.compare_with_lay(home, away, odds_back, back_urls, url_lay, league,
-                                              match_info, bet_type, odds_lay)
-                    time_it.top_log('match scan time')
-
-            except Exception as e:
-                log_and_print('Exception: [' + str(e) + ']')
-                loop_minutes = 0
-            finally:
-                if loop_minutes is 0 and self.driver:
+            if loop_minutes is 0:
+                if self.driver:
                     self.driver.quit()
-                    break
-                else:
-                    self.count_down(loop_minutes)
+                break
+            else:
+                self.count_down(loop_minutes)
 
     def compare_back_and_lay(self, back_site, loop_minutes):
         file_name = back_site + '.txt'
@@ -2421,6 +2435,8 @@ class WebWorker:
                 agent = '(C)'
             elif agent == 'ladbrokes':
                 agent = '(L)'
+            elif agent == 'william':
+                agent = '(W)'
 
             lay_odd_, lay_amount = lay_odd_.split('\n')
 
