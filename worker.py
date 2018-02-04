@@ -1542,6 +1542,13 @@ class WebWorker:
         if log_to_file:
             log_init()
 
+    def get_website(self, worker_id, run_id, website_str):
+        log_and_print('[{}] id: {} - will get {}'.format(worker_id, run_id, website_str))
+        if website_str == 'ladbrokes':
+            self.compare_multiple_sites(get_ladbrokes=True, get_betfair=False, run_id=run_id)
+        elif website_str == 'betfair':
+            self.compare_multiple_sites(get_ladbrokes=False, get_betfair=True, run_id=run_id)
+
     @staticmethod
     def calc_bonus_profit(websites_str, website='pinnacle', stake=100, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
         maxp, bmh, bma, bpb, bi, bj, bp1, bp2, ba1, ba2, bob, bo1, bo2\
@@ -2200,7 +2207,7 @@ class WebWorker:
                         'target_markets': target_markets,
                         'lay_markets_str': ','.join(lay_markets).replace(' ', '_')
                         }).json()
-        self.save_to(odds, 'ladbrokes_odds.pkl', silent=True)
+        self.save_to(odds, 'ladbrokes_odds_from_thread.pkl', silent=True)
 
     def get_lay_markets(self, new=False):
         pkl_name = 'lay_markets.pkl'
@@ -2249,22 +2256,35 @@ class WebWorker:
         self.save_to(match_to_markets, pkl_name)
         time_it.top_log('get lay markets')
 
-    def compare_multiple_sites(self, loop_minutes):
+    def compare_multiple_sites(self, loop_minutes=0, get_ladbrokes=True, get_betfair=True,
+                               run_id=None):
+        def wait_exists(filename):
+            filename = os.path.join(gettempdir(), filename)
+            for _ in range(10):
+                log_and_print('DEBUG: checking {} exists'.format(filename))
+                if os.path.isfile(filename):
+                    return True
+                else:
+                    time.sleep(1)
+            return False
+
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
 
         get_classic = False
-        use_aws = True
+        use_aws = False
+
         bet_type = lines.pop(0).split(' ')[1]
         target_markets = lines.pop(0).split(':')[1]
 
         with open(os.path.join(gettempdir(), 'lay_markets.pkl'), 'rb') as pkl:
             match_to_markets = pickle.load(pkl)
 
-        self.driver.get('https://www.betfair.com.au/exchange/plus/')
-        Betfair.login_static(self.driver, self.wait)
+        if get_betfair:
+            self.driver.get('https://www.betfair.com.au/exchange/plus/')
+            Betfair.login_static(self.driver, self.wait)
 
-        time_it = TimeIt(top=False, bottom=False)
+        time_it = TimeIt(top=True, bottom=True)
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
             try:
@@ -2277,8 +2297,8 @@ class WebWorker:
 
                     # get ladbrokes
                     odds_back = dict()
-                    thread_lad, odds_lad = None, None
-                    if url_ladbrokes != '.':
+                    thread_lad, odds_lad = None, dict()
+                    if get_ladbrokes and url_ladbrokes != '.':
                         if use_aws:
                             thread_lad = threading.Thread(target=self.thread_get_ladbrokes,
                                                           args=('deqing.cf',
@@ -2306,24 +2326,36 @@ class WebWorker:
                             odds_back = self.merge_back_odds(odds_classic, odds_back)
 
                     # get betfair
-                    time_it.reset()
-                    odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
-                    time_it.log('betfair')
+                    if get_betfair:
+                        time_it.reset()
+                        odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
+                        time_it.log('betfair')
+                    else:
+                        odds_lay, home, away = dict(), '', ''
 
                     # merge the results
                     if url_ladbrokes != '.':
-                        if use_aws:
+                        pkl_name = '{}_ladbrokes_{}.pkl'.format(run_id, squash_string(match_info)) \
+                            if run_id is not None else None
+
+                        if get_ladbrokes and use_aws:
                             time_it.reset()
                             thread_lad.join()
                             time_it.log('ladbrokes')
-                            with open(os.path.join(gettempdir(), 'ladbrokes_odds.pkl'),
-                                      'rb') as pkl:
-                                odds_lad = pickle.load(pkl)
+                            odds_lad = self.get_from_pickle('ladbrokes_odds_from_thread.pkl')
+
+                        if not get_ladbrokes and (run_id is not None):  # in main process
+                            if not wait_exists(pkl_name):
+                                raise Exception('ladbrokes is not generated from another process')
+                            odds_lad = self.get_from_pickle(pkl_name)
+
                         if len(odds_lad) is not 0:
+                            if get_ladbrokes and (run_id is not None):  # in worker process
+                                self.save_to(odds_lad, pkl_name, silent=True)
                             odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
                             odds_back = self.merge_back_odds(odds_lad, odds_back)
 
-                    if len(odds_back) is not 0:
+                    if get_betfair and len(odds_back) is not 0:
                         back_urls = url_classic + '\n' + url_ladbrokes
                         self.compare_with_lay(home, away, odds_back, back_urls, url_lay, league,
                                               match_info, bet_type, odds_lay)
@@ -2670,6 +2702,11 @@ class WebWorker:
                     log_and_print('WARNING: ' + filename + ' will be truncated.')
                 else:
                     log_and_print(filename + ' saved.')
+
+    @staticmethod
+    def get_from_pickle(filename):
+        with open(os.path.join(gettempdir(), filename), 'rb') as pkl:
+            return pickle.load(pkl)
 
     def run(self,
             websites_str,

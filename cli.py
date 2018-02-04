@@ -2,6 +2,26 @@ import signal
 import sys
 from docopt import docopt
 from worker import WebWorker
+from multiprocessing import Process
+import string
+import random
+
+
+def random_string(length):
+    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
+
+
+def process_worker(worker_id, run_id, website_str):
+    worker = WebWorker(is_get_data=True, keep_driver_alive=False)
+    worker.get_website(worker_id, run_id, website_str)
+
+
+def multiple_processes():
+    run_id = random_string(10)
+    p1 = Process(name='p1', target=process_worker, args=(1, run_id, 'betfair'))
+    p2 = Process(name='p2', target=process_worker, args=(2, run_id, 'ladbrokes'))
+    p1.start()
+    p2.start()
 
 
 def main():
@@ -56,47 +76,48 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     args = docopt(str(main.__doc__))
-    worker = WebWorker(is_get_data=not args['--print'] and not args['--print-betfair-only'],
-                       keep_driver_alive=False)
-
-    if args['--bonus']:
-        worker.calc_bonus_profit(args['<websites>'])
-    elif args['--calc-best'] is not None:
-        o1, o2, o3 = args['--calc-best'].split(',')
-        worker.calc_best_shot(float(o1), float(o2), float(o3))
-    elif args['--calc-back'] is not None:
-        worker.calc_real_back_odd(args['--calc-back'])
-    elif args['--test']:
-        worker.generate_compare_urls_file()
-    elif args['--get-urls']:
-        worker.generate_compare_urls_file()
-    elif args['--get-lay-markets']:
-        worker.get_lay_markets()
-    elif args['--get-lay-markets-new']:
-        worker.get_lay_markets(new=True)
-    elif args['--compare']:
-        worker.compare_multiple_sites(int(args['--loop']))
-    elif args['--compare-one'] is not None:
-        worker.compare_back_and_lay(args['--compare-one'], int(args['--loop']))
-    elif args['--compare-race']:
-        worker.compare_with_race()
+    if args['--test']:
+        multiple_processes()
     else:
-        worker.run(
-            websites_str=args['<websites>'],
-            leagues_str=args['<leagues>'],
-            is_get_only=args['--get-only'],
-            is_send_email_api=args['--send-email-api'],
-            is_send_email_smtp=args['--send-email-smtp'],
-            is_send_email_when_found=args['--send-email-when-found'],
-            loop_minutes=int(args['--loop']),
-            ask_gce=args['--ask-gce'],
-            gce_ip=args['--gce-ip'],
-            highlight=args['--highlight'],
-            betfair_limits=args['--betfair-limits'],
-            is_betfair=(args['--betfair']),
-            exclude=(args['--exclude']),
-            print_betfair_only=(args['--print-betfair-only'])
-        )
+        worker = WebWorker(is_get_data=not args['--print'] and not args['--print-betfair-only'],
+                           keep_driver_alive=False)
+
+        if args['--bonus']:
+            worker.calc_bonus_profit(args['<websites>'])
+        elif args['--calc-best'] is not None:
+            o1, o2, o3 = args['--calc-best'].split(',')
+            worker.calc_best_shot(float(o1), float(o2), float(o3))
+        elif args['--calc-back'] is not None:
+            worker.calc_real_back_odd(args['--calc-back'])
+        elif args['--get-urls']:
+            worker.generate_compare_urls_file()
+        elif args['--get-lay-markets']:
+            worker.get_lay_markets()
+        elif args['--get-lay-markets-new']:
+            worker.get_lay_markets(new=True)
+        elif args['--compare']:
+            worker.compare_multiple_sites(int(args['--loop']))
+        elif args['--compare-one'] is not None:
+            worker.compare_back_and_lay(args['--compare-one'], int(args['--loop']))
+        elif args['--compare-race']:
+            worker.compare_with_race()
+        else:
+            worker.run(
+                websites_str=args['<websites>'],
+                leagues_str=args['<leagues>'],
+                is_get_only=args['--get-only'],
+                is_send_email_api=args['--send-email-api'],
+                is_send_email_smtp=args['--send-email-smtp'],
+                is_send_email_when_found=args['--send-email-when-found'],
+                loop_minutes=int(args['--loop']),
+                ask_gce=args['--ask-gce'],
+                gce_ip=args['--gce-ip'],
+                highlight=args['--highlight'],
+                betfair_limits=args['--betfair-limits'],
+                is_betfair=(args['--betfair']),
+                exclude=(args['--exclude']),
+                print_betfair_only=(args['--print-betfair-only'])
+            )
 
 
 if __name__ == "__main__":
