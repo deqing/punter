@@ -2251,6 +2251,7 @@ class WebWorker:
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
 
+        get_classic = False
         use_aws = True
         bet_type = lines.pop(0).split(' ')[1]
         target_markets = lines.pop(0).split(':')[1]
@@ -2261,7 +2262,7 @@ class WebWorker:
         self.driver.get('https://www.betfair.com.au/exchange/plus/')
         Betfair.login_static(self.driver, self.wait)
 
-        time_it = TimeIt(top=True, bottom=True)
+        time_it = TimeIt(top=False, bottom=False)
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
             try:
@@ -2291,7 +2292,7 @@ class WebWorker:
                             time_it.log('ladbrokes')
 
                     # get classicbet
-                    if url_classic != '.':
+                    if get_classic and url_classic != '.':
                         time_it.reset()
                         odds_classic = self.get_classicbet_markets_odd(url_classic,
                                                                        target_markets,
