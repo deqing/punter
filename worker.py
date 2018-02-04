@@ -1963,8 +1963,10 @@ class WebWorker:
 
         def get_tables():
             tables_ = Website.get_blocks_static('table.coupon-table', self.driver, self.wait)
-            if tables_[0].text.split('\n')[0] == 'In-Play':
-                tables_.pop(0)
+            if len(tables_) is not 0:
+                matches = tables_[0].text.split('\n')
+                if len(matches) is not 0 and matches[0] == 'In-Play':
+                    tables_.pop(0)
             return tables_
 
         def get_rows(id_):
