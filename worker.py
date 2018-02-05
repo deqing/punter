@@ -1,6 +1,9 @@
 """
 TODO
 
+output in one line
+urls to half for two processes
+
 restarting aws:
 https://aws.amazon.com/premiumsupport/knowledge-center/start-stop-lambda-cloudwatch/
 http://boto3.readthedocs.io/en/latest/reference/services/ec2.html?highlight=start_instances#EC2.Client.reboot_instances
@@ -283,22 +286,38 @@ class MarketNames:
             'both score': 'Both teams to Score?',
             'correct score': 'Correct Score',
             '1st scorer': 'First Goal Scorer',
+            'anytime scorer': 'Anytime Scorer',
             'first 0.5': 'First Half Goals 0.5',
             'first 1.5': 'First Half Goals 1.5',
+            'half time': 'Half Time',
             'half full': 'Half Time / Full Time',
             '+- 0.5': 'Over/Under 0.5 Goals',
             '+- 1.5': 'Over/Under 1.5 Goals',
             '+- 2.5': 'Over/Under 2.5 Goals',
             '+- 3.5': 'Over/Under 3.5 Goals',
             '+- 4.5': 'Over/Under 4.5 Goals',
+            '+- 5.5': 'Over/Under 5.5 Goals',
+            '+- 6.5': 'Over/Under 6.5 Goals',
+            '+- 7.5': 'Over/Under 7.5 Goals',
+            '+- 8.5': 'Over/Under 8.5 Goals',
+            'handicap home +1': 'Handicap Home +1',
+            'handicap home +2': 'Handicap Home +2',
+            'handicap home +3': 'Handicap Home +3',
+            'handicap away +1': 'Handicap Away +1',
+            'handicap away +2': 'Handicap Away +2',
+            'handicap away +3': 'Handicap Away +3',
+            'home +- 0.5': 'Home Over/Under 0.5 Goals',
+            'home +- 1.5': 'Home Over/Under 1.5 Goals',
+            'home +- 2.5': 'Home Over/Under 2.5 Goals',
+            'away +- 0.5': 'Away Over/Under 0.5 Goals',
+            'away +- 1.5': 'Away Over/Under 1.5 Goals',
+            'away +- 2.5': 'Away Over/Under 2.5 Goals',
         }
 
     def desc(self, key):
         return self.desc[key]
 
     def key(self, market_str):
-        if market_str == 'Half Time':
-            return None
         if 'Over/Under Total Goals' in market_str:
             market_str = market_str.replace('Total Goals ', '')
         squashed_market_str = squash_string(market_str)
@@ -836,12 +855,15 @@ class Website:
 
     @staticmethod
     def get_blocks_static(css_string, driver, wait):
-        try:
-            Website.wait(css_string, wait)
-        except TimeoutException:
-            log_and_print('[{}] not found'.format(css_string))
-            return []
-        return driver.find_elements_by_css_selector(css_string)
+        blocks_ = driver.find_elements_by_css_selector(css_string)
+        if len(blocks_) is 0:
+            try:
+                Website.wait(css_string, wait)
+                blocks_ = driver.find_elements_by_css_selector(css_string)
+            except TimeoutException:
+                log_and_print('[{}] not found'.format(css_string))
+                return []
+        return blocks_
 
     def get_blocks(self, css_string):
         return self.get_blocks_static(css_string, self.driver, self.wait)
@@ -2600,20 +2622,49 @@ class WebWorker:
             odds_lay['main'][home_name] = get_text(bs[0], 'td.bet-buttons.lay-cell.first-lay-cell')
             odds_lay['main'][away_name] = get_text(bs[1], 'td.bet-buttons.lay-cell.first-lay-cell')
             odds_lay['main']['Draw'] = get_text(bs[2], 'td.bet-buttons.lay-cell.first-lay-cell')
+            
+        def betfair_to_market(key_):
+            if key_ == 'To Score':
+                key_ = 'anytime scorer'
+            else:
+                for team, name in (home_name, 'home'), (away_name, 'away'):
+                    for goals in '1', '2', '3':
+                        if key_ == team + ' +' + goals:
+                            key_ = 'handicap ' + name + ' +' + goals
+                    for goals in '0.5', '1.5', '2.5':
+                        if key_ == team + ' Over/Under ' + goals + ' Goals':
+                            key_ = name + ' Over/Under ' + goals + ' Goals'
+            return key_
+        
+        def get_odds():
+            blocks = Website.get_blocks_static('div.mini-mv', self.driver, self.wait)
+            for b in blocks:
+                key = market_names.key(
+                    b.find_element_by_css_selector('span.market-name-label').text)
+                key = betfair_to_market(key)
+
+                if key is not None and key in odds_lay:
+                    trs = b.find_elements_by_css_selector('tr.runner-line')
+                    for tr in trs:
+                        div = tr.find_element_by_css_selector('h3.runner-name')
+                        btn = tr.find_element_by_css_selector('button.lay-button')
+                        if btn.text != '' and float(btn.text.split('\n')[0]) < 100:
+                            odds_lay[key][
+                                squash_string(self.full_name_to_id(div.text, league_name))] \
+                                = btn.text
 
         # ------- get popular markets
         Website.wait('section.mod-tabs', self.wait)
-        blocks = Website.get_blocks_static('div.mini-mv', self.driver, self.wait)
-        for b in blocks:
-            key = market_names.key(b.find_element_by_css_selector('span.market-name-label').text)
-            if key is not None and key in odds_lay:
-                trs = b.find_elements_by_css_selector('tr.runner-line')
-                for tr in trs:
-                    div = tr.find_element_by_css_selector('h3.runner-name')
-                    btn = tr.find_element_by_css_selector('button.lay-button')
-                    if btn.text != '':
-                        odds_lay[key][squash_string(self.full_name_to_id(div.text, league_name))] \
-                            = btn.text
+        get_odds()
+
+        # ------- get other markets
+        tabs = self.driver.find_elements_by_css_selector('h4.tab-label')
+        for t in tabs:
+            if t.text in ('Goals', 'Handicap', 'Half Time', 'Team', 'Player'):
+                t.click()
+                time.sleep(0.5)
+                get_odds()
+
         return odds_lay, home_name, away_name
 
     def compare_with_lay(self, home_name, away_name, odds_back, url_back, url_lay,
