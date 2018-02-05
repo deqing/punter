@@ -357,17 +357,20 @@ class LeagueInfo:
             'rsfield': 'Velez Sarsfield'
         }
         self.map['bel'] = {
-            'charleroi': 'Royal Charleroi',
+            'anderlecht': 'Anderlecht',
             'antwerp': 'Royal Antwerp',
-            'kortrijk': 'KV Kortrijk',
-            'waasland': 'Waasland Beveren',
-            'zulte': 'Zulte Waregem',
+            'brugge': 'Brugge',
+            'charleroi': 'Royal Charleroi',
             'genk': 'Racing Genk',
-            'truidense': 'Sint-Truidense',
             'gent': 'KAA Gent',
+            'kortrijk': 'KV Kortrijk',
+            'mechelen': 'KV Mechelen',
             'standard': 'Standard Liege',
+            'truidense': 'Sint-Truidense',
             'oostende': 'KV Oostende',
             'lokeren': 'KSC Lokeren',
+            'waasland': 'Waasland Beveren',
+            'zulte': 'Zulte Waregem',
         }
         self.map['eng'] = {
             'arsenal': 'Arsenal',
@@ -1544,10 +1547,12 @@ class WebWorker:
 
     def get_website(self, worker_id, run_id, website_str):
         log_and_print('[{}] id: {} - will get {}'.format(worker_id, run_id, website_str))
-        if website_str == 'ladbrokes':
-            self.compare_multiple_sites(get_ladbrokes=True, get_betfair=False, run_id=run_id)
+        if website_str == 'william':
+            self.compare_multiple_sites(  # Helper process get william only
+                get_william=True, get_ladbrokes=False, get_betfair=False, run_id=run_id)
         elif website_str == 'betfair':
-            self.compare_multiple_sites(get_ladbrokes=False, get_betfair=True, run_id=run_id)
+            self.compare_multiple_sites(  # Main process get lad and lay
+                get_william=False, get_ladbrokes=True, get_betfair=True, run_id=run_id)
 
     @staticmethod
     def calc_bonus_profit(websites_str, website='pinnacle', stake=100, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
@@ -1741,36 +1746,82 @@ class WebWorker:
             odds_back['main'][away_name] = away_odd
             odds_back['main']['Draw'] = draw_odd
 
-        if 'correct score' in lay_markets:
+        # -- get additional markets
+        # TODO first half
+        def has(market):
+            market_s = 'Half Time/Full Time' if market == 'HT/FT Double' else market
+            if market_names.key(market_s) not in lay_markets:
+                return False
             try:
-                Website.wait('Correct Score', self.wait, type_='link')
-                has_correct_score = True
-            except TimeoutException:
-                has_correct_score = False
+                self.driver.find_element_by_link_text(market)
+            except NoSuchElementException:
+                return False
+            return True
 
-            if has_correct_score:
-                win_set, draw_set, _ = self.get_correct_score_sets()
-                correct_score_key = market_names.key('Correct Score')
+        has_correct_score = has('Correct Score')
+        has_both = has('Both Teams To Score')
+        has_half_full = has('HT/FT Double')
 
-                scores = []
-                scores.extend(win_set)
-                scores.extend(draw_set)
+        def get_full_texts():
+            see_correct_score = see_both = see_half_full = False
+            for _ in range(5):
+                texts_ = []
+                for b_ in Website.get_blocks_static('div.table.teams', self.driver, self.wait):
+                    if b_.text != '':
+                        texts_.append(b_.text)
+                        first_, _ = b_.text.split('\n')
+                        if first_ == 'Draw/Draw':
+                            see_half_full = True
+                        elif first_ == 'Draw 0-0':
+                            see_correct_score = True
+                        elif first_ == 'Yes':
+                            see_both = True
+                if has_correct_score and not see_correct_score:
+                    self.driver.find_element_by_link_text('Correct Score').click()
+                    self.driver.implicitly_wait(3)
+                    continue
+                if has_both and not see_both:
+                    self.driver.find_element_by_link_text('Both Teams To Score').click()
+                    self.driver.implicitly_wait(3)
+                    continue
+                if has_half_full and not see_half_full:
+                    self.driver.find_element_by_link_text('HT/FT Double').click()
+                    self.driver.implicitly_wait(3)
+                    continue
+                return texts_
 
-                self.driver.find_element_by_link_text('Correct Score').click()
-                blocks = Website.get_blocks_static('div.table.teams', self.driver, self.wait)
-                for b in blocks:
-                    if b.text == '':
-                        continue
-                    title, odd = b.text.split('\n')
-                    team = title.split(' ')
-                    if team.pop() in scores:
-                        team_name = ' '.join(team)
-                        if team_name == home_name \
-                                or team_name == away_name \
-                                or team_name == 'Draw':
-                            odds_back[correct_score_key][squash_string(title)] = odd
-                        else:
-                            log_and_print('unexpected team name: ' + team_name)
+        win_set, draw_set, _ = self.get_correct_score_sets()
+        scores_set = []
+        scores_set.extend(win_set)
+        scores_set.extend(draw_set)
+
+        half_full_set = (
+            home_name + '/' + home_name,
+            home_name + '/' + away_name,
+            away_name + '/' + away_name,
+            away_name + '/' + home_name,
+            home_name + '/Draw',
+            away_name + '/Draw',
+            'Draw/Draw',
+        )
+
+        texts = get_full_texts()
+
+        for t in texts:
+            first, second = t.split('\n')
+            if first == 'Over' or first == 'Under':
+                for goals in '0.5', '1.5', '2.5', '3.5', '4.5':
+                    if '(' + goals + ')' in second:
+                        key = 'Over/Under ' + goals + ' Goals'
+                        odd = second.split(' ').pop()
+                        odds_back[market_names.key(key)][squash_string(first)] = odd
+            elif first == 'Yes' or first == 'No':
+                odds_back['both score'][squash_string(first)] = second
+            elif first in half_full_set:
+                odds_back['half full'][squash_string(first)] = second
+            elif first.split(' ').pop() in scores_set:
+                odds_back['correct score'][squash_string(first)] = second
+
         return odds_back
 
     @staticmethod
@@ -1937,8 +1988,45 @@ class WebWorker:
                 home, away = title.get_attribute('title').split(' - ')[-1].split(' v ')
 
                 t = times[i].find_elements_by_css_selector('div.startingtime')
-                date_ = datetime.strptime(t[0].text, '%a %d/%m/%Y').strftime('%a %d %b ')
+                date_ = '{dt:%a} {dt.day} {dt:%b} '.format(
+                    dt=datetime.strptime(t[0].text, '%a %d/%m/%Y'))
                 time_ = datetime.strptime(t[1].text, '%I:%M %p').strftime('%H:%M')
+                info[league][date_ + time_ + ' - ' + self.get_vs(home, away, league)] = match_url
+        return info
+
+    def get_william_match_info(self):
+        urls = dict(
+            a='https://www.williamhill.com.au/sports/soccer/australia/a-league-matches',
+            arg='https://www.williamhill.com.au/sports/soccer/americas/argentine-primera-division-matches',  # noqa
+            bel='https://www.williamhill.com.au/sports/soccer/europe/belgian-first-division-a-matches',  # noqa
+            eng='https://www.williamhill.com.au/sports/soccer/british-irish/english-premier-league-matches',  # noqa
+            fra='https://www.williamhill.com.au/sports/soccer/europe/french-ligue-1-matches',
+            gem='https://www.williamhill.com.au/sports/soccer/europe/german-bundesliga-matches',
+            ita='https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches',
+            liga='https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
+        )
+        info = self.init_league_info(**urls)
+        for league, url in urls.items():
+            self.driver.get(url)
+            titles = Website.get_blocks_static('div.EventBlock_title_T9p', self.driver, self.wait)
+            times = Website.get_blocks_static('div.EventBlock_eventTime_2fz', self.driver, self.wait)  # noqa
+            if len(times) < len(titles):
+                log_and_print('maybe there is no match in:\n' + url)
+            for i in range(len(times)):
+                try:
+                    title = titles[i].find_element_by_tag_name('a')
+                except NoSuchElementException:
+                    continue
+                match_url = title.get_attribute('href')
+
+                home, away = title.text.split(' VS ')
+                home.replace('.', '')
+                away.replace('.', '')
+
+                date_, time_ = times[i].text.split(', ')
+                date_ = '{dt:%a} {dt.day} {dt:%b} '.format(dt=datetime.strptime(date_, '%d %b'))
+                time_ = time_.split(' ')[0]
+
                 info[league][date_ + time_ + ' - ' + self.get_vs(home, away, league)] = match_url
         return info
 
@@ -2006,37 +2094,51 @@ class WebWorker:
             urls_file.write(s + '\n')
         
         def write_url(info):
-            if title in info[league]:
+            if league in info and title in info[league]:
                 write_file(info[league][title])
             else:
                 write_file('.')
 
         file = os.path.join(gettempdir(), 'punter-test.pkl')
-        is_write = True
+        is_write = True  # False for debug
         if is_write:
             try:
-                info_classicbet = self.get_classicbet_match_info()
+                # log_and_print('getting classicbet')
+                info_classicbet = dict()  # self.get_classicbet_match_info()
+
+                log_and_print('getting ladbrokes')
                 info_ladbrokes = self.get_ladbrokes_match_info()
+
+                log_and_print('getting william')
+                info_william = self.get_william_match_info()
+
+                log_and_print('getting betfair')
                 info_betfair = self.get_betfair_match_info()
             finally:
                 self.driver.quit()
 
             with open(file, 'wb') as pkl:
-                pickle.dump((info_classicbet, info_ladbrokes, info_betfair), pkl)
+                pickle.dump((info_classicbet,
+                             info_ladbrokes,
+                             info_william,
+                             info_betfair), pkl)
         else:
             with open(file, 'rb') as pkl:
-                info_classicbet, info_ladbrokes, info_betfair = pickle.load(pkl)
+                info_classicbet, info_ladbrokes, info_william, info_betfair = pickle.load(pkl)
 
         with open('compare.txt', 'w') as urls_file:
             write_file('==bet_type== q')
             write_file('==markets===:all')
             for league, matches in info_betfair.items():
                 for title, betfair_url in matches.items():
-                    if title in info_ladbrokes[league] or title in info_classicbet[league]:
+                    if league in info_ladbrokes and title in info_ladbrokes[league] \
+                            or league in info_classicbet and title in info_classicbet[league] \
+                            or league in info_william and title in info_william[league]:
                         write_file('-- ' + league)
                         write_file(title)
                         write_url(info_classicbet)
                         write_url(info_ladbrokes)
+                        write_url(info_william)
                         write_file(betfair_url)
 
     @staticmethod
@@ -2225,13 +2327,13 @@ class WebWorker:
         self.driver.get('https://www.betfair.com.au/exchange/plus/')
         Betfair.login_static(self.driver, self.wait)
 
-        time_it = TimeIt(top=False, bottom=False)
+        time_it = TimeIt(top=True, bottom=True)
         time_it.reset_top()
         while len(lines) > 0:
             count = 0
             try:
-                for l, match_info, _, _, url_lay in \
-                        zip(lines[::5], lines[1::5], lines[2::5], lines[3::5], lines[4::5]):
+                for l, match_info, _, _, _, url_lay in zip(lines[::6], lines[1::6], lines[2::6],
+                                                           lines[3::6], lines[4::6], lines[5::6]):
                     time_it.reset()
                     if new or (match_info not in match_to_markets) \
                             or len(match_to_markets[match_info]) is 0:
@@ -2262,7 +2364,7 @@ class WebWorker:
         def wait_exists(filename):
             filename = os.path.join(gettempdir(), filename)
             for _ in range(10):
-                log_and_print('DEBUG: checking {} exists'.format(filename))
+                # log_and_print('DEBUG: checking {} exists'.format(filename))
                 if os.path.isfile(filename):
                     return True
                 else:
@@ -2270,8 +2372,7 @@ class WebWorker:
             return False
 
         # get ladbrokes
-        odds_back = dict()
-        thread_lad, odds_lad = None, dict()
+        thread_lad, odds_classic, odds_lad, odds_william = None, dict(), dict(), dict()
         if get_ladbrokes and url_lad != '.':
             if use_aws:
                 thread_lad = threading.Thread(target=self.thread_get_ladbrokes,
@@ -2288,19 +2389,17 @@ class WebWorker:
             odds_classic = self.get_classicbet_markets_odd(url_classic, target_markets, lay_markets)
             time_it.log('classicbet')
 
-            if len(odds_classic) is not 0:
-                odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
-                odds_back = self.merge_back_odds(odds_classic, odds_back)
-
+        helper_process_pkl = '{}_william_{}.pkl'.format(run_id, squash_string(match_info)) \
+            if run_id is not None else None
         # get william
         if get_william and url_william != '.':
             time_it.reset()
             odds_william = self.get_william_markets_odd(url_william, target_markets, lay_markets)
             time_it.log('william')
 
-            if len(odds_william) is not 0:
-                odds_william = self.odds_map_to_id(odds_william, league, 'william')
-                odds_back = self.merge_back_odds(odds_william, odds_back)
+            if run_id is not None:  # multi-process
+                self.save_to(odds_william, helper_process_pkl, silent=True)
+                return
 
         # get betfair
         if get_betfair:
@@ -2310,27 +2409,32 @@ class WebWorker:
         else:
             odds_lay, home, away = dict(), '', ''
 
-        # merge the results
-        if url_lad != '.':
-            pkl_name = '{}_ladbrokes_{}.pkl'.format(run_id, squash_string(match_info)) \
-                if run_id is not None else None
+        # wait ladbrokes from thread
+        if url_lad != '.' and get_ladbrokes and use_aws:
+            time_it.reset()
+            thread_lad.join()
+            time_it.log('ladbrokes')
+            odds_lad = self.get_from_pickle('ladbrokes_odds_from_thread.pkl')
 
-            if get_ladbrokes and use_aws:
-                time_it.reset()
-                thread_lad.join()
-                time_it.log('ladbrokes')
-                odds_lad = self.get_from_pickle('ladbrokes_odds_from_thread.pkl')
+        # merge results
+        odds_back = dict()
 
-            if not get_ladbrokes and (run_id is not None):  # in main process
-                if not wait_exists(pkl_name):
-                    raise Exception('ladbrokes is not generated from another process')
-                odds_lad = self.get_from_pickle(pkl_name)
+        if (run_id is not None) and (not get_william):  # in main process
+            if not wait_exists(helper_process_pkl):
+                log_and_print('william is not generated from another process')
+            else:
+                odds_william = self.get_from_pickle(helper_process_pkl)
+        if len(odds_william) is not 0:
+            odds_william = self.odds_map_to_id(odds_william, league, 'william')
+            odds_back = self.merge_back_odds(odds_william, odds_back)
 
-            if len(odds_lad) is not 0:
-                if get_ladbrokes and (run_id is not None):  # in worker process
-                    self.save_to(odds_lad, pkl_name, silent=True)
-                odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
-                odds_back = self.merge_back_odds(odds_lad, odds_back)
+        if len(odds_classic) is not 0:
+            odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
+            odds_back = self.merge_back_odds(odds_classic, odds_back)
+
+        if len(odds_lad) is not 0:
+            odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
+            odds_back = self.merge_back_odds(odds_lad, odds_back)
 
         if get_betfair and len(odds_back) is not 0:
             back_urls = url_classic + '\n' + url_lad
@@ -2339,6 +2443,7 @@ class WebWorker:
         time_it.top_log('match scan time')
 
     def compare_multiple_sites(self, loop_minutes=0,
+                               get_classic=False,
                                get_ladbrokes=True,
                                get_betfair=True,
                                get_william=True,
@@ -2346,8 +2451,7 @@ class WebWorker:
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
 
-        get_classic = False
-        use_aws = False
+        use_aws = True
 
         bet_type = lines.pop(0).split(' ')[1]
         target_markets = lines.pop(0).split(':')[1]
@@ -2359,7 +2463,7 @@ class WebWorker:
             self.driver.get('https://www.betfair.com.au/exchange/plus/')
             Betfair.login_static(self.driver, self.wait)
 
-        time_it = TimeIt(top=True, bottom=True)
+        time_it = TimeIt(top=False, bottom=False)
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
             for l, match_info, url_classic, url_lad, url_william, url_lay in \

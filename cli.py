@@ -19,7 +19,7 @@ def process_worker(worker_id, run_id, website_str):
 def multiple_processes():
     run_id = random_string(10)
     p1 = Process(name='p1', target=process_worker, args=(1, run_id, 'betfair'))
-    p2 = Process(name='p2', target=process_worker, args=(2, run_id, 'ladbrokes'))
+    p2 = Process(name='p2', target=process_worker, args=(2, run_id, 'william'))
     p1.start()
     p2.start()
 
