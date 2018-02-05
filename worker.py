@@ -329,13 +329,10 @@ class LeagueInfo:
         self.map['arg'] = {
             'argentinos': 'Argentinos Jrs',
             'arsenal': 'Arsenal de Sarandi',
-            'tucu': 'Atletico Tucuman',
             'banfield': 'Banfield',
             'belgrano': 'Belgrano',
             'boca': 'Boca Juniors',
             'independ': 'CA Independiente',
-            'talleres': 'CA Talleres de Cordoba',
-            'tigre': 'CA Tigre',
             'chacarita': 'Chacarita Juniors',
             'colon': 'Colon',
             'defens': 'Defensa Justicia',
@@ -351,10 +348,13 @@ class LeagueInfo:
             'riverplate': 'River Plate',
             'rosario': 'Rosario Central',
             'lorenzo': 'San Lorenzo',
-            'sanmartin': 'San Martin de San Juan',
-            'temperley': 'Temperley',
+            'sarsfield': 'Velez Sarsfield',
             'santa': 'Union Santa',
-            'rsfield': 'Velez Sarsfield'
+            'sanmartin': 'San Martin de San Juan',
+            'talleres': 'CA Talleres de Cordoba',
+            'temperley': 'Temperley',
+            'tigre': 'CA Tigre',
+            'tucu': 'Atletico Tucuman',
         }
         self.map['bel'] = {
             'anderlecht': 'Anderlecht',
@@ -559,7 +559,7 @@ class LeagueInfo:
             if 'olimpo' in converted_name:
                 converted_name = 'blanca'
             elif 'velez' in converted_name:
-                converted_name = 'rsfield'
+                converted_name = 'sarsfield'
             elif 'lanús' == converted_name:
                 converted_name = 'lanus'
             elif 'colón' == converted_name:
@@ -1547,12 +1547,18 @@ class WebWorker:
 
     def get_website(self, worker_id, run_id, website_str):
         log_and_print('[{}] id: {} - will get {}'.format(worker_id, run_id, website_str))
-        if website_str == 'william':
-            self.compare_multiple_sites(  # Helper process get william only
-                get_william=True, get_ladbrokes=False, get_betfair=False, run_id=run_id)
-        elif website_str == 'betfair':
-            self.compare_multiple_sites(  # Main process get lad and lay
-                get_william=False, get_ladbrokes=True, get_betfair=True, run_id=run_id)
+        if website_str == 'classicbet':  # Helper process get william only
+            self.compare_multiple_sites(get_classic=True,
+                                        get_ladbrokes=False,
+                                        get_william=False,
+                                        get_betfair=False,
+                                        run_id=run_id)
+        elif website_str == 'betfair':  # Main process get lad and lay
+            self.compare_multiple_sites(get_classic=False,
+                                        get_ladbrokes=False,  # TODO focus on classicbet now
+                                        get_william=False,
+                                        get_betfair=True,
+                                        run_id=run_id)
 
     @staticmethod
     def calc_bonus_profit(websites_str, website='pinnacle', stake=100, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
@@ -1835,13 +1841,14 @@ class WebWorker:
         return str_contains_full_name
 
     # Convert team name to id for further matching
-    def odds_map_to_id(self, odds_map, league_name, agent_name):
+    def odds_map_to_id(self, odds_map, league_name, agent_name=None):
         formatted = dict()
         info = LeagueInfo()
         for key, market_map in odds_map.items():
             formatted[key] = dict()
             for name, value in market_map.items():
-                value += ' ' + agent_name
+                if agent_name is not None:
+                    value += ' ' + agent_name
                 if '/' in name:
                     formatted[key][self.full_name_to_id(name, league_name)] = value
                 elif '-' in name:
@@ -1850,7 +1857,7 @@ class WebWorker:
                     score = name[idx:]
                     formatted[key][team_id + score] = value
                 else:
-                    formatted[key][name] = value
+                    formatted[key][info.get_id(name, league_name)] = value
         return formatted
 
     @staticmethod
@@ -2103,14 +2110,14 @@ class WebWorker:
         is_write = True  # False for debug
         if is_write:
             try:
-                # log_and_print('getting classicbet')
-                info_classicbet = dict()  # self.get_classicbet_match_info()
+                log_and_print('getting classicbet')
+                info_classicbet = self.get_classicbet_match_info()
 
-                log_and_print('getting ladbrokes')
-                info_ladbrokes = self.get_ladbrokes_match_info()
+                # log_and_print('getting ladbrokes')
+                info_ladbrokes = dict()  # self.get_ladbrokes_match_info()
 
-                log_and_print('getting william')
-                info_william = self.get_william_match_info()
+                # log_and_print('getting william')
+                info_william = dict()  # self.get_william_match_info()
 
                 log_and_print('getting betfair')
                 info_betfair = self.get_betfair_match_info()
@@ -2174,6 +2181,13 @@ class WebWorker:
             has_additional = False
             market_number = None
 
+        def get_over_under(info):
+            odd = info.pop()
+            goals_ = info.pop()
+            s_ = 'Over/Under ' + goals_ + ' Goals'
+            odds_back[market_names.key(s_)][squash_string(info.pop()+goals_+'goals')] = odd
+            return info
+
         # -------- Get main
         if 'main' in lay_markets:
             # e.g. 1. 'Swansea City 10.25 5.30 +0.5@3.45 Over 2.5 1.61'
@@ -2181,30 +2195,36 @@ class WebWorker:
             #
             #      2. 'Chelsea 10.25 +0.5@3.45 Under 2.5 1.61'
             #   or 2. 'Chelsea 10.25 Under 2.5 1.61'
-            pop_count = 0
-            if 'LINE' in main_lines[0]:
-                pop_count += 1
-            if 'OVER' in main_lines[0]:
-                pop_count += 3
+            #
+            #      3. 'Chelsea 10.25 +0.5@3.45 Under 2.5 1.61'
+            #   or 3. 'Chelsea 10.25 -0.5@3.45 Over 2.5 1.61'
+            has_line = 'LINE' in main_lines[0]  # pop_count += 1
+            has_over = 'OVER' in main_lines[0]  # pop_count += 3
 
-            info = main_lines[1].split(' ')
-            for _ in range(pop_count):
-                info.pop()  # 'Over 2.5 1.61'
+            home_info = main_lines[1].split(' ')
+            if has_over:  # 'Over 2.5 1.61'
+                home_info = get_over_under(home_info)
 
-            draw_odd = info.pop()
+            if has_line:
+                home_info.pop()
+
+            draw_odd = home_info.pop()
             is_odd_ready, _ = self.to_number(draw_odd)
             if not is_odd_ready:
                 return dict()
 
-            home_odd = info.pop()
-            home_name = ' '.join(info)
+            home_odd = home_info.pop()
+            home_name = ' '.join(home_info)
 
-            info = main_lines[2].split(' ')
-            for _ in range(pop_count):
-                info.pop()  # 'Under 2.5 1.61'
+            away_info = main_lines[2].split(' ')
+            if has_over:  # 'Under 2.5 1.61'
+                away_info = get_over_under(away_info)
 
-            away_odd = info.pop()
-            away_name = ' '.join(info)
+            away_odd = away_info.pop()
+            if '@' in away_odd:
+                away_odd = away_info.pop()
+
+            away_name = ' '.join(away_info)
 
             odds_back['main'][home_name] = home_odd
             odds_back['main'][away_name] = away_odd
@@ -2219,7 +2239,7 @@ class WebWorker:
                         a.click()
                         break
                 else:
-                    log_and_print('Looks like no additional markets in: ' + with_url_back)
+                    #TODO add back: log_and_print('Looks like no additional markets in: ' + with_url_back)
                     return False
                 try:
                     Website.wait('Correct Score', self.wait2, type_='partial')
@@ -2383,28 +2403,28 @@ class WebWorker:
                 odds_lad = self.get_ladbrokes_markets_odd(url_lad, target_markets, lay_markets)
                 time_it.log('ladbrokes')
 
+        helper_process_pkl = '{}_classic_{}.pkl'.format(run_id, squash_string(match_info)) \
+            if run_id is not None else None
         # get classicbet
         if get_classic and url_classic != '.':
             time_it.reset()
             odds_classic = self.get_classicbet_markets_odd(url_classic, target_markets, lay_markets)
             time_it.log('classicbet')
+            if run_id is not None:  # multi-process - helper
+                self.save_to(odds_classic, helper_process_pkl, silent=True)
+                return
 
-        helper_process_pkl = '{}_william_{}.pkl'.format(run_id, squash_string(match_info)) \
-            if run_id is not None else None
         # get william
         if get_william and url_william != '.':
             time_it.reset()
             odds_william = self.get_william_markets_odd(url_william, target_markets, lay_markets)
             time_it.log('william')
 
-            if run_id is not None:  # multi-process
-                self.save_to(odds_william, helper_process_pkl, silent=True)
-                return
-
         # get betfair
         if get_betfair:
             time_it.reset()
             odds_lay, home, away = self.get_lay(url_lay, league, target_markets)
+            odds_lay = self.odds_map_to_id(odds_lay, league)
             time_it.log('betfair')
         else:
             odds_lay, home, away = dict(), '', ''
@@ -2419,18 +2439,18 @@ class WebWorker:
         # merge results
         odds_back = dict()
 
-        if (run_id is not None) and (not get_william):  # in main process
+        if (run_id is not None) and (not get_classic):  # in main process
             if not wait_exists(helper_process_pkl):
-                log_and_print('william is not generated from another process')
+                log_and_print('classic is not generated from another process')
             else:
-                odds_william = self.get_from_pickle(helper_process_pkl)
-        if len(odds_william) is not 0:
-            odds_william = self.odds_map_to_id(odds_william, league, 'william')
-            odds_back = self.merge_back_odds(odds_william, odds_back)
-
+                odds_classic = self.get_from_pickle(helper_process_pkl)
         if len(odds_classic) is not 0:
             odds_classic = self.odds_map_to_id(odds_classic, league, 'classicbet')
             odds_back = self.merge_back_odds(odds_classic, odds_back)
+
+        if len(odds_william) is not 0:
+            odds_william = self.odds_map_to_id(odds_william, league, 'william')
+            odds_back = self.merge_back_odds(odds_william, odds_back)
 
         if len(odds_lad) is not 0:
             odds_lad = self.odds_map_to_id(odds_lad, league, 'ladbrokes')
@@ -2443,10 +2463,10 @@ class WebWorker:
         time_it.top_log('match scan time')
 
     def compare_multiple_sites(self, loop_minutes=0,
-                               get_classic=False,
-                               get_ladbrokes=True,
+                               get_classic=True,
+                               get_ladbrokes=False,
+                               get_william=False,
                                get_betfair=True,
-                               get_william=True,
                                run_id=None):
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
@@ -2605,18 +2625,18 @@ class WebWorker:
         away_id = info.get_id(away_name, league)
 
         if self.has_value(odds_lay, 'main'):
-            self.add_item_to_results(home_name, 'main', odds_lay['main'][home_name], results,
+            self.add_item_to_results(home_id, 'main', odds_lay['main'][home_id], results,
                                      odds_back, bet_type, 'Main: ' + home_name + ' win')
-            self.add_item_to_results(away_name, 'main', odds_lay['main'][away_name], results,
+            self.add_item_to_results(away_id, 'main', odds_lay['main'][away_id], results,
                                      odds_back, bet_type, 'Main: ' + away_name + ' win')
             self.add_item_to_results('Draw', 'main', odds_lay['main']['Draw'], results,
                                      odds_back, bet_type, 'Main: Draw')
 
         # get correct score from popular markets
-        correct_score_key = market_names.key('Correct Score')
-        if self.has_value(odds_lay, correct_score_key):
+        cs_key = market_names.key('Correct Score')
+        if self.has_value(odds_lay, cs_key) and self.has_value(odds_back, cs_key):
             win_set, draw_set, lose_set = self.get_correct_score_sets()
-            for b_score, b_value in odds_lay[correct_score_key].items():
+            for b_score, b_value in odds_lay[cs_key].items():
                 # Convert score in lay --> score in back
                 if b_score in win_set:
                     score = home_id + b_score
@@ -2630,22 +2650,22 @@ class WebWorker:
                     display = away_name + ' ' + b_score
                 else:
                     continue
-                self.add_item_to_results(score, correct_score_key, b_value, results,
+                self.add_item_to_results(score, cs_key, b_value, results,
                                          odds_back, bet_type, display)
 
         # get half full from popular markets
-        half_full_key = market_names.key('Half Time / Full Time')
-        if self.has_value(odds_lay, half_full_key):
-            for b_half_full, b_value in odds_lay[half_full_key].items():
-                self.add_item_to_results(b_half_full, half_full_key, b_value,
+        hf_key = market_names.key('Half Time / Full Time')
+        if self.has_value(odds_lay, hf_key) and self.has_value(odds_back, hf_key):
+            for b_half_full, b_value in odds_lay[hf_key].items():
+                self.add_item_to_results(b_half_full, hf_key, b_value,
                                          results, odds_back, bet_type,
                                          self.key_expand_full_name(b_half_full, league))
 
         # get both score from popular markets
-        both_score_key = market_names.key('Both teams to Score')
-        if self.has_value(odds_lay, both_score_key):
-            for b_yes_no, b_value in odds_lay[both_score_key].items():
-                self.add_item_to_results(b_yes_no, both_score_key, b_value, results,
+        bs_key = market_names.key('Both teams to Score')
+        if self.has_value(odds_lay, bs_key) and self.has_value(odds_back, bs_key):
+            for b_yes_no, b_value in odds_lay[bs_key].items():
+                self.add_item_to_results(b_yes_no, bs_key, b_value, results,
                                          odds_back, bet_type, 'Both teams to Score: ' + b_yes_no)
 
         # get over under from popular markets
@@ -2655,16 +2675,16 @@ class WebWorker:
         for goals in '0.5', '1.5', '2.5', '3.5', '4.5':
             titles.append('Over/Under ' + goals + ' Goals')
         for title in titles:
-            over_under_key = market_names.key(title)
-            if self.has_value(odds_lay, over_under_key):
-                for b_over_under, b_value in odds_lay[over_under_key].items():
-                    self.add_item_to_results(b_over_under, over_under_key, b_value,
+            ou_key = market_names.key(title)
+            if self.has_value(odds_lay, ou_key) and self.has_value(odds_back, ou_key):
+                for b_over_under, b_value in odds_lay[ou_key].items():
+                    self.add_item_to_results(b_over_under, ou_key, b_value,
                                              results, odds_back, bet_type,
                                              title + ': ' + b_over_under.split('.')[0][:-1])
 
         # get player
-        first_scorer_key = market_names.key('First Goalscorer')
-        if self.has_value(odds_lay, first_scorer_key):
+        fs_key = market_names.key('First Goalscorer')
+        if self.has_value(odds_lay, fs_key) and self.has_value(odds_back, fs_key):
             tabs = self.get_until_more_than('h4.tab-label', 5)
             for tab in tabs:
                 if tab.text == 'Player':
@@ -2682,10 +2702,10 @@ class WebWorker:
                                 name = line.find_element_by_css_selector('h3.runner-name')
                                 lay_odd = lay_box.find_element_by_css_selector(
                                     'span.bet-button-price')
-                                odds_lay[first_scorer_key][name.text] = lay_odd.text
+                                odds_lay[fs_key][name.text] = lay_odd.text
 
-            for b_player, b_value in odds_lay[first_scorer_key].items():
-                self.add_item_to_results(squash_string(b_player), first_scorer_key,
+            for b_player, b_value in odds_lay[fs_key].items():
+                self.add_item_to_results(squash_string(b_player), fs_key,
                                          b_value, results, odds_back, bet_type, b_player)
 
         count = 0
@@ -2727,7 +2747,7 @@ class WebWorker:
             else:
                 log_and_print(msg)
             count += 1
-            if count > top_results:
+            if count >= top_results:
                 break
 
     @staticmethod
