@@ -297,29 +297,29 @@ class MarketNames:
             'half time': 'Half Time',
             'half full': 'Half Time / Full Time',
             'half time score': 'Half Time Score',
-            '+- 0.5': 'Over/Under 0.5 Goals',
-            '+- 1.5': 'Over/Under 1.5 Goals',
-            '+- 2.5': 'Over/Under 2.5 Goals',
-            '+- 3.5': 'Over/Under 3.5 Goals',
-            '+- 4.5': 'Over/Under 4.5 Goals',
-            '+- 5.5': 'Over/Under 5.5 Goals',
-            '+- 6.5': 'Over/Under 6.5 Goals',
-            '+- 7.5': 'Over/Under 7.5 Goals',
-            '+- 8.5': 'Over/Under 8.5 Goals',
-            'handicap home +1': 'Handicap Home +1',
-            'handicap home +2': 'Handicap Home +2',
-            'handicap home +3': 'Handicap Home +3',
-            'handicap away +1': 'Handicap Away +1',
-            'handicap away +2': 'Handicap Away +2',
-            'handicap away +3': 'Handicap Away +3',
-            'home +1': 'Home +1',
-            'away +1': 'Away +1',
-            'home +- 0.5': 'Home Over/Under 0.5 Goals',
-            'home +- 1.5': 'Home Over/Under 1.5 Goals',
-            'home +- 2.5': 'Home Over/Under 2.5 Goals',
-            'away +- 0.5': 'Away Over/Under 0.5 Goals',
-            'away +- 1.5': 'Away Over/Under 1.5 Goals',
-            'away +- 2.5': 'Away Over/Under 2.5 Goals',
+            'ad 0.5': 'Over/Under 0.5 Goals',
+            'ad 1.5': 'Over/Under 1.5 Goals',
+            'ad 2.5': 'Over/Under 2.5 Goals',
+            'ad 3.5': 'Over/Under 3.5 Goals',
+            'ad 4.5': 'Over/Under 4.5 Goals',
+            'ad 5.5': 'Over/Under 5.5 Goals',
+            'ad 6.5': 'Over/Under 6.5 Goals',
+            'ad 7.5': 'Over/Under 7.5 Goals',
+            'ad 8.5': 'Over/Under 8.5 Goals',
+            'handicap home a1': 'Handicap Home a1',
+            'handicap home a2': 'Handicap Home a2',
+            'handicap home a3': 'Handicap Home a3',
+            'handicap away a1': 'Handicap Away a1',
+            'handicap away a2': 'Handicap Away a2',
+            'handicap away a3': 'Handicap Away a3',
+            'home a1': 'Home a1',
+            'away a1': 'Away a1',
+            'home ad 0.5': 'Home Over/Under 0.5 Goals',
+            'home ad 1.5': 'Home Over/Under 1.5 Goals',
+            'home ad 2.5': 'Home Over/Under 2.5 Goals',
+            'away ad 0.5': 'Away Over/Under 0.5 Goals',
+            'away ad 1.5': 'Away Over/Under 1.5 Goals',
+            'away ad 2.5': 'Away Over/Under 2.5 Goals',
         }
 
     def get_desc(self, key):
@@ -1901,16 +1901,16 @@ class WebWorker:
         except StaleElementReferenceException:
             pass
 
-        # handicap home +1 <- Birmingham +1
-        # handicap away +1 <- Birmingham -1
+        # handicap home a1 <- Birmingham +1
+        # handicap away a1 <- Birmingham -1
         # so:
-        # home +1 <- home team +1
-        # away +1 <- home team -1
+        # home a1 <- home team +1
+        # away a1 <- home team -1
         def prepare_handicap_dict():
             res = dict()
             for i in '1', '2', '3', '4', '5':
-                res['{} +{}'.format(self.home_name, i)] = 'handicap home +{}'.format(i)
-                res['{} -{}'.format(self.home_name, i)] = 'handicap away +{}'.format(i)
+                res['{} +{}'.format(self.home_name, i)] = 'handicap home a{}'.format(i)
+                res['{} -{}'.format(self.home_name, i)] = 'handicap away a{}'.format(i)
             return res
 
         try:
@@ -2374,16 +2374,16 @@ class WebWorker:
                     return False
                 return True
 
-            # handicap home +1 -> Handicap Birmingham +1 - Birmingham vs Huddersfield
-            # handicap away +1 -> Handicap Tottenham -1 - Tottenham vs Newport
+            # handicap home a1 -> Handicap Birmingham +1 - Birmingham vs Huddersfield
+            # handicap away a1 -> Handicap Tottenham -1 - Tottenham vs Newport
             # so:
-            # home +1 -> home team +1
-            # away +1 -> home team -1
+            # home a1 -> home team +1
+            # away a1 -> home team -1
             def prepare_handicap_dict():
                 res = dict()
                 for i in '1', '2', '3', '4', '5':
-                    res['Handicap Home +{}'.format(i)] = 'Handicap {} +{}'.format(s_home_name, i)
-                    res['Handicap Away +{}'.format(i)] = 'Handicap {} -{}'.format(s_home_name, i)
+                    res['Handicap Home a{}'.format(i)] = 'Handicap {} +{}'.format(s_home_name, i)
+                    res['Handicap Away a{}'.format(i)] = 'Handicap {} -{}'.format(s_home_name, i)
                 return res
 
             def get_key(market_str_):
@@ -2797,7 +2797,7 @@ class WebWorker:
 
     #      market    title
     # odds['main'  ]['tottenham'] = '3.0'
-    # odds['+- 0.5']['over0.5goals'] = '1.6'
+    # odds['ad 0.5']['over0.5goals'] = '1.6'
     def compare_with_lay(self, odds_back, url_back, url_lay, match_info, bet_type, odds_lay):
         results = []
         market_names = MarketNames()
