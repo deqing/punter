@@ -393,9 +393,11 @@ class LeagueInfo:
             'gent': 'KAA Gent',
             'kortrijk': 'KV Kortrijk',
             'mechelen': 'KV Mechelen',
+            'mouscron': 'Mouscron',
             'standard': 'Standard Liege',
             'truidense': 'Sint-Truidense',
             'oostende': 'KV Oostende',
+            'liege': 'Standard Liege',
             'lokeren': 'KSC Lokeren',
             'waasland': 'Waasland Beveren',
             'zulte': 'Zulte Waregem',
@@ -1763,6 +1765,13 @@ class WebWorker:
             desc = market.find_element_by_css_selector('div.additional-market-description').text
             if 'Over/Under First Half' in desc:
                 desc = desc.replace('Over/Under First Half', 'First Half Goals')
+            # Over/Under Barcelona Total Goals 1.5 -> Away Over/Under 1.5 Goals
+            for name, name_to in ((self.home_name, 'Home'),
+                                  (self.away_name, 'Away')):
+                first_part = 'Over/Under ' + name + ' Total Goals'
+                if desc.startswith(first_part):
+                    desc = desc.replace(first_part, name_to + ' Over/Under')
+                    desc += ' Goals'
             key = market_names.key(desc)
             if key in lay_markets:
                 market.click()
@@ -1889,6 +1898,8 @@ class WebWorker:
 
         except NoSuchElementException:
             pass
+        except StaleElementReferenceException:
+            pass
 
         # handicap home +1 <- Birmingham +1
         # handicap away +1 <- Birmingham -1
@@ -1922,6 +1933,8 @@ class WebWorker:
                         odds_back[market][squash_string(team)] = odd
 
         except NoSuchElementException:
+            pass
+        except StaleElementReferenceException:
             pass
 
         return odds_back
@@ -1962,7 +1975,8 @@ class WebWorker:
                         elif team_id == away_id:
                             formatted[key][score[::-1]] = odd
                         else:
-                            log_and_print('DEBUG: unexpected ' + name)
+                            log_and_print('DEBUG - unexpected [{}] [{}] [{}] [{}] [{}]'.format(
+                                          name, team, team_id, home_id, away_id))
                     else:
                         formatted[key][info.get_id(name, self.league)] = odd
         except AttributeError:
@@ -2534,9 +2548,9 @@ class WebWorker:
         odds_lay, lay_markets = dict(), []
         if get_betfair:
             time_it.reset()
-            if True:  # if read new lay - set to False when debugging
+            if True:# if read new lay - set to False when debugging
                 odds_lay = self.odds_map_to_id(self.get_lay(url_lay, target_markets), is_back=False)
-                #self.save_to(odds_lay, 'hdq.pkl')
+                # self.save_to(odds_lay, 'hdq.pkl')
             else:
                 odds_lay = self.get_from_pickle('hdq.pkl')
             time_it.log('betfair')
@@ -2598,8 +2612,8 @@ class WebWorker:
 
     def compare_multiple_sites(self, loop_minutes=0,  #TODO turnover
                                get_classic=True,
-                               get_ladbrokes=False,
-                               get_william=False,
+                               get_ladbrokes=True,
+                               get_william=True,
                                get_betfair=True):
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
