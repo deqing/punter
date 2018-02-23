@@ -519,38 +519,62 @@ class LeagueInfo:
             'villarreal': 'Villarreal CF'
         }
         self.map['uefa'] = {
+            'acmilan': 'AC Milan',
             'anderlecht': 'Anderlecht',
+            'arsenal': 'Arsenal',
+            'astana': 'FC Astana',
+            'atalanta': 'Atalanta',
+            'athens': 'AEK Athens',
             'apoel': 'APOEL Nicosia',
             'atleticomadrid': 'Atletico Madrid',
             'barcelona': 'Barcelona',
             'basel': 'FC Basel',
             'bayern': 'Bayern Munich',
+            'belgrade': 'Partizan Belgrade',
             'benfica': 'Benfica',
             'besiktas': 'Besiktas JK',
+            'bilbao': 'Athletic Bilbao',
+            'braga': 'Braga',
             'celtic': 'Celtic',
             'chelsea': 'Chelsea',
             'cska': 'CSKA Moscow',
+            'copenhagen': 'Copenhagen',
             'dortmund': 'Borussia Dortmund',
+            'dynamo': 'Dynamo Kiev',
             'feyenoord': 'Feyenoord',
+            'fcsb': 'FCSB',
             'juventus': 'Juventus',
+            'lazio': 'Lazio',
             'leipzig': 'RB Leipzig',
-            'sporting': 'Sporting Lisbon',
             'liverpool': 'Liverpool',
+            'lokomotiv': 'Lokomotiv Moscow',
+            'ludogorets': 'Ludogorets Razgrad',
+            'lyon': 'Lyon',
             'mancity': 'Manchester City',
             'manutd': 'Manchester United',
+            'marseille': 'Marseille',
             'maribor': 'NK Maribor',
             'monaco': 'AS Monaco',
             'napoli': 'Napoli',
+            'nice': 'Nice',
             'olympia': 'Olympiakos',
+            'ostersund': 'Ostersunds FK',
             'paris': 'Paris Saint Germain',
+            'plzen': 'Viktoria Plzen',
             'porto': 'FC Porto',
             'qarabag': 'FK Qarabag',
             'realmad': 'Real Madrid',
             'roma': 'AS Roma',
+            'salzburg': 'FC Salzburg',
+            'sociedad': 'Real Sociedad',
+            'spartak': 'Spartak Moscow',
+            'lisbon': 'Sporting Lisbon',
+            'sportingcp': 'Sporting CP',
             'sevilla': 'Sevilla',
             'shakhtar': 'Shakhtar Donetsk',
-            'spartak': 'Spartak Moscow',
             'tottenham': 'Tottenham Hotspur',
+            'villarreal': 'Villarreal',
+            'zenit': 'Zenit St Petersburg',
         }
         self.map['w'] = {
             'adelaide': 'Adelaide United Women',
@@ -606,8 +630,6 @@ class LeagueInfo:
         elif league_name == 'uefa':
             if 'manchestercity' == converted_name:
                 converted_name = 'mancity'
-            elif 'lisbon' in converted_name:
-                converted_name = 'sporting'
             elif 'psg' in converted_name:
                 converted_name = 'paris'
             elif 'ticodemadrid' in converted_name or 'atlmadrid' == converted_name \
@@ -619,6 +641,8 @@ class LeagueInfo:
                 converted_name = 'qarabag'
             elif 'beşikta' in converted_name:
                 converted_name = 'besiktas'
+            elif 'bucharest' in converted_name:
+                converted_name = 'fcsb'
         elif league_name == 'gem':
             if 'fcköln' in converted_name or 'koeln' in converted_name or \
                     'cologne' == converted_name:
@@ -2046,6 +2070,7 @@ class WebWorker:
             gem='https://www.classicbet.com.au/Sport/Soccer/German_Bundesliga/Matches',
             ita='https://www.classicbet.com.au/Sport/Soccer/Italian_Serie_A/Matches',
             liga='https://www.classicbet.com.au/Sport/Soccer/Spanish_La_Liga/Matches',
+            # uefa='https://www.classicbet.com.au/Sport/Soccer/UEFA_Europa_League/Matches',
         )
         info = self.init_league_info(**urls)
 
@@ -2093,6 +2118,7 @@ class WebWorker:
             gem='https://www.ladbrokes.com.au/sports/soccer/44769778-football-germany-german-bundesliga/',  # noqa
             ita='https://www.ladbrokes.com.au/sports/soccer/45942404-football-italy-italian-serie-a/',  # noqa
             liga='https://www.ladbrokes.com.au/sports/soccer/45822932-football-spain-spanish-la-liga/',  # noqa
+            # uefa='https://www.ladbrokes.com.au/sports/soccer/47323146-football-uefa-club-competitions-uefa-europa-league/',  # noqa
         )
         info = self.init_league_info(**urls)
         for league, url in urls.items():
@@ -2129,26 +2155,27 @@ class WebWorker:
             gem='https://www.williamhill.com.au/sports/soccer/europe/german-bundesliga-matches',
             ita='https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches',
             liga='https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
+            # uefa='https://www.williamhill.com.au/sports/soccer/european-cups/uefa-europa-league-matches',  # noqa
         )
         info = self.init_league_info(**urls)
         for league, url in urls.items():
             self.driver.get(url)
-            titles = Website.get_blocks_static('div.EventBlock_title_T9p', self.driver, self.wait)
-            times = Website.get_blocks_static('div.EventBlock_eventTime_2fz', self.driver, self.wait)  # noqa
-            if len(times) < len(titles):
-                log_and_print('maybe there is no match in:\n' + url)
-            for i in range(len(times)):
+            titles = Website.get_blocks_static('div.SportEvent_headerContent_3Be',
+                                               self.driver, self.wait)
+            for title in titles:
                 try:
-                    title = titles[i].find_element_by_tag_name('a')
+                    event = title.find_element_by_tag_name('a')
+                    match_url = event.get_attribute('href')
+                    vs = event.text
+                    t = title.find_element_by_css_selector('span.SportEvent_startTime_359').text
                 except NoSuchElementException:
                     continue
-                match_url = title.get_attribute('href')
 
-                home, away = title.text.split(' VS ')
+                home, away = vs.split(' VS ')
                 home.replace('.', '')
                 away.replace('.', '')
 
-                date_, time_ = times[i].text.split(', ')
+                date_, time_ = t.split(', ')
                 date_ = '{dt:%a} {dt.day} {dt:%b} '.format(dt=datetime.strptime(date_, '%d %b'))
                 time_ = time_.split(' ')[0]
 
@@ -2166,6 +2193,7 @@ class WebWorker:
             gem='https://www.betfair.com.au/exchange/plus/football/competition/59',
             ita='https://www.betfair.com.au/exchange/plus/football/competition/81',
             liga='https://www.betfair.com.au/exchange/plus/football/competition/117',
+            # uefa='https://www.betfair.com.au/exchange/plus/football/competition/2005',
         )
         info = self.init_league_info(**urls)
 
