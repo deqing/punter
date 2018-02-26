@@ -1128,6 +1128,7 @@ class Ladbrokes(Website):  # BetStar (and Bookmarker?) are the same
         try:
             load_cookie(path)
         except FileNotFoundError:
+            Website.wait('userauth_username', wait, type_='id')
             account = driver.find_element_by_id('userauth_username')
             password = driver.find_element_by_id('userauth_password')
             login = driver.find_element_by_css_selector('input.logbut')
@@ -1136,7 +1137,8 @@ class Ladbrokes(Website):  # BetStar (and Bookmarker?) are the same
                 account.send_keys(username_file.read().rstrip())
                 password.send_keys(password_file.read().rstrip())
             login.click()
-            Website.wait('div.welcome', wait)
+            time.sleep(2)
+            Website.wait('div.welcome', wait)  # When this failed, set a breakpoint here, then it will work  # noqa
             save_cookie(path)
 
     def fetch(self, matches):
@@ -2640,7 +2642,7 @@ class WebWorker:
 
     def compare_multiple_sites(self, loop_minutes=0,  #TODO turnover
                                get_classic=True,
-                               get_ladbrokes=True,
+                               get_ladbrokes=False,
                                get_william=True,
                                get_betfair=True):
         with open('compare.txt', 'r') as urls_file:
