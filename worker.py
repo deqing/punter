@@ -1621,18 +1621,9 @@ class WebWorker:
         if log_to_file:
             log_init()
 
-    def get_website(self, worker_id, run_id, website_str):
-        log_and_print('[{}] id: {} - will get {}'.format(worker_id, run_id, website_str))
-        if website_str == 'classicbet':  # Helper process get william only
-            self.compare_multiple_sites(get_classic=True,
-                                        get_ladbrokes=False,
-                                        get_william=False,
-                                        get_betfair=False)
-        elif website_str == 'betfair':  # Main process get lad and lay
-            self.compare_multiple_sites(get_classic=False,
-                                        get_ladbrokes=True,
-                                        get_william=False,
-                                        get_betfair=True)
+    def get_website(self, worker_id):
+        log_and_print('Process {} starting...'.format(worker_id))
+        self.compare_multiple_sites(worker_id=worker_id)
 
     @staticmethod
     def calc_bonus_profit(websites_str, website='pinnacle', stake=100, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
@@ -2644,7 +2635,8 @@ class WebWorker:
                                get_classic=True,
                                get_ladbrokes=False,
                                get_william=True,
-                               get_betfair=True):
+                               get_betfair=True,
+                               worker_id=None):
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
 
@@ -2656,6 +2648,16 @@ class WebWorker:
         if get_betfair:
             self.driver.get('https://www.betfair.com.au/exchange/plus/')
             Betfair.login_static(self.driver, self.wait)
+
+        if worker_id is not None:
+            num_of_processes, child_id = worker_id.split('-')
+            num_of_processes, child_id = int(num_of_processes), int(child_id)
+            chunk_size = len(lines) // (6 * num_of_processes) * 6
+            lines_array = [lines[i:i+chunk_size] for i in list(range(len(lines))[::chunk_size])]
+            if len(lines_array[-1]) < chunk_size:
+                lines_array[-2] += lines_array[-1]
+                lines_array.pop(-1)
+            lines = lines_array[child_id]
 
         time_it = TimeIt(top=False, bottom=False)
         while len(lines) > 0:

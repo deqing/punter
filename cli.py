@@ -3,27 +3,23 @@ import sys
 from docopt import docopt
 from worker import WebWorker
 from multiprocessing import Process
-import string
-import random
 import time
 
 
-def random_string(length):
-    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
-
-
-def process_worker(worker_id, run_id, website_str):
+def process_worker(worker_id, dummy):
     worker = WebWorker(is_get_data=True, keep_driver_alive=False)
-    worker.get_website(worker_id, run_id, website_str)
+    worker.get_website(worker_id)
 
 
 def multiple_processes():
-    run_id = random_string(10)
-    p_main = Process(name='p1', target=process_worker, args=(1, run_id, 'betfair'))
-    p_help = Process(name='p2', target=process_worker, args=(2, run_id, 'classicbet'))
-    p_help.start()
-    time.sleep(10)
-    p_main.start()
+    p0 = Process(name='p0', target=process_worker, args=('3-0', None))
+    p1 = Process(name='p1', target=process_worker, args=('3-1', None))
+    p2 = Process(name='p2', target=process_worker, args=('3-2', None))
+    p0.start()
+    time.sleep(2)
+    p1.start()
+    time.sleep(2)
+    p2.start()
 
 
 def main():
