@@ -6,7 +6,7 @@ from multiprocessing import Process
 import time
 
 
-def process_worker(worker_id, dummy):
+def process_worker(worker_id, _):
     worker = WebWorker(is_get_data=True, keep_driver_alive=False)
     worker.get_website(worker_id)
 
@@ -49,6 +49,7 @@ def main():
       --compare-one=<website>   read urls from <website>.txt, compare with betfair and print
       --compare-race            read urls from race.txt and compare
       --compare                 read urls from compare.txt which contains many backs and one lay
+      --compare-multi-process   real urls via multiple process
       --get-lay-markets         get lay markets and store to a temp file
       --get-lay-markets-new     get lay markets and store to a temp file
       --get-urls                get urls and write to compare.txt
@@ -74,7 +75,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     args = docopt(str(main.__doc__))
-    if args['--test']:
+    if args['--compare-multi-process']:
         multiple_processes()
     else:
         worker = WebWorker(is_get_data=not args['--print'] and not args['--print-betfair-only'],
