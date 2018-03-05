@@ -1,19 +1,6 @@
 """
 TODO
 
-output in one line
--9.00 $5 (Tue 6 Feb 11:15 - San Martin de San Juan vs CA Tigre)
--10.00 $560 (Fri 9 Feb 19:50 - Melbourne Victory vs Brisbane Roar)
-
-urls to half for two processes
-
-restarting aws:
-https://aws.amazon.com/premiumsupport/knowledge-center/start-stop-lambda-cloudwatch/
-http://boto3.readthedocs.io/en/latest/reference/services/ec2.html?highlight=start_instances#EC2.Client.reboot_instances
-
-cronjob (when python able to write to file)
-https://www.taniarascia.com/setting-up-a-basic-cron-job-in-linux/
-
 Don't do:
 - live bet - live is Phone only
 - add neds.com.au (not easy to get by css)
@@ -2260,7 +2247,7 @@ class WebWorker:
                 info_classicbet = self.get_classicbet_match_info()
 
                 log_and_print('getting ladbrokes')
-                self.get_ladbrokes_match_info()
+                info_ladbrokes = self.get_ladbrokes_match_info()
 
                 log_and_print('getting william')
                 info_william = self.get_william_match_info()
