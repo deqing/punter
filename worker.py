@@ -2063,7 +2063,7 @@ class WebWorker:
             gem='https://www.classicbet.com.au/Sport/Soccer/German_Bundesliga/Matches',
             ita='https://www.classicbet.com.au/Sport/Soccer/Italian_Serie_A/Matches',
             liga='https://www.classicbet.com.au/Sport/Soccer/Spanish_La_Liga/Matches',
-            # uefa='https://www.classicbet.com.au/Sport/Soccer/UEFA_Europa_League/Matches',
+            uefa='https://www.classicbet.com.au/Sport/Soccer/UEFA_Europa_League/Matches',
         )
         info = self.init_league_info(**urls)
 
@@ -2111,7 +2111,7 @@ class WebWorker:
             gem='https://www.ladbrokes.com.au/sports/soccer/44769778-football-germany-german-bundesliga/',  # noqa
             ita='https://www.ladbrokes.com.au/sports/soccer/45942404-football-italy-italian-serie-a/',  # noqa
             liga='https://www.ladbrokes.com.au/sports/soccer/45822932-football-spain-spanish-la-liga/',  # noqa
-            # uefa='https://www.ladbrokes.com.au/sports/soccer/47323146-football-uefa-club-competitions-uefa-europa-league/',  # noqa
+            uefa='https://www.ladbrokes.com.au/sports/soccer/47323146-football-uefa-club-competitions-uefa-europa-league/',  # noqa
         )
         info = self.init_league_info(**urls)
         for league, url in urls.items():
@@ -2148,7 +2148,7 @@ class WebWorker:
             gem='https://www.williamhill.com.au/sports/soccer/europe/german-bundesliga-matches',
             ita='https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches',
             liga='https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
-            # uefa='https://www.williamhill.com.au/sports/soccer/european-cups/uefa-europa-league-matches',  # noqa
+            uefa='https://www.williamhill.com.au/sports/soccer/european-cups/uefa-europa-league-matches',  # noqa
         )
         info = self.init_league_info(**urls)
         for league, url in urls.items():
@@ -2186,7 +2186,7 @@ class WebWorker:
             gem='https://www.betfair.com.au/exchange/plus/football/competition/59',
             ita='https://www.betfair.com.au/exchange/plus/football/competition/81',
             liga='https://www.betfair.com.au/exchange/plus/football/competition/117',
-            # uefa='https://www.betfair.com.au/exchange/plus/football/competition/2005',
+            uefa='https://www.betfair.com.au/exchange/plus/football/competition/2005',
         )
         info = self.init_league_info(**urls)
 
@@ -2260,7 +2260,7 @@ class WebWorker:
                 info_classicbet = self.get_classicbet_match_info()
 
                 log_and_print('getting ladbrokes')
-                info_ladbrokes = self.get_ladbrokes_match_info()
+                self.get_ladbrokes_match_info()
 
                 log_and_print('getting william')
                 info_william = self.get_william_match_info()
