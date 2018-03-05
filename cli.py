@@ -77,6 +77,8 @@ def main():
     args = docopt(str(main.__doc__))
     if args['--compare-multi-process']:
         multiple_processes()
+    elif args['--test']:
+        WebWorker.test()
     else:
         worker = WebWorker(is_get_data=not args['--print'] and not args['--print-betfair-only'],
                            keep_driver_alive=False)

@@ -37,6 +37,56 @@ g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,madbookie,palmerbet,pinnacle,sportsbet,tab,ubet,unibet,williamhill'  # noqa
 
 
+def three_way_calculate(win_odd, draw_odd, lost_odd):
+    def get_min_pay_back(w, d, l, wp, dp, lp):
+        if w * wp <= d * dp and w * wp <= l * lp:
+            return w * wp
+        elif d * dp <= w * wp and d * dp <= l * lp:
+            return d * dp
+        else:
+            return l * lp
+
+    min_pay_back = 0
+    win_percent = draw_percent = lost_precent = 0
+    win_profit = draw_profit = lost_profit = 0
+    for i in range(1, 99):
+        for j in range(1, 100 - i):
+            pay_back = get_min_pay_back(win_odd, draw_odd, lost_odd, i, j, 100 - i - j)
+            if pay_back > min_pay_back:
+                min_pay_back = pay_back
+                win_percent = i
+                draw_percent = j
+                lost_precent = 100 - i - j
+                win_profit = round(i * win_odd - 100, 2)
+                draw_profit = round(j * draw_odd - 100, 2)
+                lost_profit = round((100-i-j) * lost_odd - 100, 2)
+    return min_pay_back, \
+        win_percent, draw_percent, lost_precent, \
+        win_profit, draw_profit, lost_profit
+
+
+def two_way_caculcate(a_odd, b_odd):
+    def get_min_pay_back(ao, bo, ap, bp):
+        if ao * ap <= bo * bp:
+            return round(ao * ap, 2)
+        else:
+            return round(bo * bp, 2)
+
+    min_pay_back = 0
+    a_pay = b_pay = 0
+    a_profit = b_profit = 0
+    for i in range(1, 999):
+        ipay = float(i/10)
+        pay_back = get_min_pay_back(a_odd, b_odd, ipay, 100 - ipay)
+        if pay_back > min_pay_back:
+            min_pay_back = pay_back
+            a_pay = round(ipay, 2)
+            b_pay = round(100 - ipay, 2)
+            a_profit = round(ipay * a_odd - 100, 2)
+            b_profit = round((100 - ipay) * b_odd - 100, 2)
+    return min_pay_back, a_pay, b_pay, a_profit, b_profit
+
+
 def log_init():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
@@ -1611,6 +1661,11 @@ class WebWorker:
     def get_website(self, worker_id):
         log_and_print('Process {} starting...'.format(worker_id))
         self.compare_multiple_sites(worker_id=worker_id)
+
+    @staticmethod
+    def test():
+        min_pay_back, ip, jp, iget, jget = two_way_caculcate(1.5, 2.88)
+        log_and_print('{} ${}({}) ${}({})'.format(min_pay_back, ip, iget, jp, jget))
 
     @staticmethod
     def calc_bonus_profit(websites_str, website='pinnacle', stake=100, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
