@@ -133,6 +133,10 @@ def squash_string(name):
 
 
 def real_back_odd(odd):
+    if '\n' in odd:
+        odd = float(odd.split('\n')[0])
+    else:
+        odd = float(odd)
     return ((odd - 1) * 95 + 100) / 100
 
 
@@ -331,71 +335,75 @@ class BetfairMatch(Match):
 class MarketNames:
     def __init__(self):
         self.desc = {
-            'main': 'Main Market',
-            'both score': 'Both teams to Score?',
-            'correct score': 'Correct Score',
-            '1st scorer': 'First Goal Scorer',
-            'anytime scorer': 'Anytime Scorer',
-            'first 0.5': 'First Half Over/Under 0.5 Goals',
-            'first 1.5': 'First Half Over/Under 1.5 Goals',
-            'first 2.5': 'First Half Over/Under 2.5 Goals',
-            'first home 0.5': 'First Half Home Team Over/Under 0.5 Goals',
-            'first home 1.5': 'First Half Home Team Over/Under 1.5 Goals',
-            'first away 0.5': 'First Half Away Team Over/Under 0.5 Goals',
-            'first away 1.5': 'First Half Away Team Over/Under 1.5 Goals',
-            'first half odd even goals': 'First Half Odd Even Goals',
-            'first half both team to score': 'First Half Both Team To Score',
-            'first half home team to score': 'First Half Home Team To Score',
-            'first half away team to score': 'First Half Away Team To Score',
-            'first half handicap home a1': 'First Handicap Home a1',
-            'first half handicap home a2': 'First Handicap Home a2',
-            'first half handicap home a3': 'First Handicap Home a3',
-            'first half handicap away a1': 'First Handicap Away a1',
-            'first half handicap away a2': 'First Handicap Away a2',
-            'first half handicap away a3': 'First Handicap Away a3',
-            'half time': 'First Half Straight',
-            'half full': 'Half Time / Full Time',
-            'half time score': 'Half Time Score',
-            'ad 0.5': 'Over/Under 0.5 Goals',
-            'ad 1.5': 'Over/Under 1.5 Goals',
-            'ad 2.5': 'Over/Under 2.5 Goals',
-            'ad 3.5': 'Over/Under 3.5 Goals',
-            'ad 4.5': 'Over/Under 4.5 Goals',
-            'ad 5.5': 'Over/Under 5.5 Goals',
-            'ad 6.5': 'Over/Under 6.5 Goals',
-            'ad 7.5': 'Over/Under 7.5 Goals',
-            'ad 8.5': 'Over/Under 8.5 Goals',
-            'handicap home a1': 'Handicap Home a1',
-            'handicap home a2': 'Handicap Home a2',
-            'handicap home a3': 'Handicap Home a3',
-            'handicap home a4': 'Handicap Home a4',
-            'handicap home a5': 'Handicap Home a5',
-            'handicap away a1': 'Handicap Away a1',
-            'handicap away a2': 'Handicap Away a2',
-            'handicap away a3': 'Handicap Away a3',
-            'handicap away a4': 'Handicap Away a4',
-            'handicap away a5': 'Handicap Away a5',
-            'home a1': 'Home a1',
-            'away a1': 'Away a1',
-            'home ad 0.5': 'Home Over/Under 0.5 Goals',
-            'home ad 1.5': 'Home Over/Under 1.5 Goals',
-            'home ad 2.5': 'Home Over/Under 2.5 Goals',
-            'home ad 3.5': 'Home Over/Under 3.5 Goals',
-            'away ad 0.5': 'Away Over/Under 0.5 Goals',
-            'away ad 1.5': 'Away Over/Under 1.5 Goals',
-            'away ad 2.5': 'Away Over/Under 2.5 Goals',
-            'away ad 3.5': 'Away Over/Under 3.5 Goals',
+            'main': (3, 'Main Market'),
+            'both score': (2, 'Both teams to Score?'),
+            'correct score': (0, 'Correct Score'),
+            '1st scorer': (0, 'First Goal Scorer'),
+            'anytime scorer': (0, 'Anytime Scorer'),
+            'first 0.5': (2, 'First Half Over/Under 0.5 Goals'),
+            'first 1.5': (2, 'First Half Over/Under 1.5 Goals'),
+            'first 2.5': (2, 'First Half Over/Under 2.5 Goals'),
+            'first home 0.5': (2, 'First Half Home Team Over/Under 0.5 Goals'),
+            'first home 1.5': (2, 'First Half Home Team Over/Under 1.5 Goals'),
+            'first home 2.5': (2, 'First Half Home Team Over/Under 2.5 Goals'),
+            'first home 3.5': (2, 'First Half Home Team Over/Under 3.5 Goals'),
+            'first away 0.5': (2, 'First Half Away Team Over/Under 0.5 Goals'),
+            'first away 1.5': (2, 'First Half Away Team Over/Under 1.5 Goals'),
+            'first away 2.5': (2, 'First Half Away Team Over/Under 2.5 Goals'),
+            'first away 3.5': (2, 'First Half Away Team Over/Under 3.5 Goals'),
+            'first half odd even goals': (2, 'First Half Odd Even Goals'),
+            'first half both team to score': (2, 'First Half Both Team To Score'),
+            'first half home team to score': (2, 'First Half Home Team To Score'),
+            'first half away team to score': (2, 'First Half Away Team To Score'),
+            'first half handicap home a1': (3, 'First Handicap Home a1'),
+            'first half handicap home a2': (3, 'First Handicap Home a2'),
+            'first half handicap home a3': (3, 'First Handicap Home a3'),
+            'first half handicap away a1': (3, 'First Handicap Away a1'),
+            'first half handicap away a2': (3, 'First Handicap Away a2'),
+            'first half handicap away a3': (3, 'First Handicap Away a3'),
+            'half time': (3, 'First Half Straight'),
+            'half full': (0, 'Half Time / Full Time'),
+            'half time score': (0, 'Half Time Score'),
+            'ad 0.5': (2, 'Over/Under 0.5 Goals'),
+            'ad 1.5': (2, 'Over/Under 1.5 Goals'),
+            'ad 2.5': (2, 'Over/Under 2.5 Goals'),
+            'ad 3.5': (2, 'Over/Under 3.5 Goals'),
+            'ad 4.5': (2, 'Over/Under 4.5 Goals'),
+            'ad 5.5': (2, 'Over/Under 5.5 Goals'),
+            'ad 6.5': (2, 'Over/Under 6.5 Goals'),
+            'ad 7.5': (2, 'Over/Under 7.5 Goals'),
+            'ad 8.5': (2, 'Over/Under 8.5 Goals'),
+            'handicap home a1': (3, 'Handicap Home a1'),
+            'handicap home a2': (3, 'Handicap Home a2'),
+            'handicap home a3': (3, 'Handicap Home a3'),
+            'handicap home a4': (3, 'Handicap Home a4'),
+            'handicap home a5': (3, 'Handicap Home a5'),
+            'handicap away a1': (3, 'Handicap Away a1'),
+            'handicap away a2': (3, 'Handicap Away a2'),
+            'handicap away a3': (3, 'Handicap Away a3'),
+            'handicap away a4': (3, 'Handicap Away a4'),
+            'handicap away a5': (3, 'Handicap Away a5'),
+            'home a1': (2, 'Home a1'),
+            'away a1': (2, 'Away a1'),
+            'home ad 0.5': (2, 'Home Over/Under 0.5 Goals'),
+            'home ad 1.5': (2, 'Home Over/Under 1.5 Goals'),
+            'home ad 2.5': (2, 'Home Over/Under 2.5 Goals'),
+            'home ad 3.5': (2, 'Home Over/Under 3.5 Goals'),
+            'away ad 0.5': (2, 'Away Over/Under 0.5 Goals'),
+            'away ad 1.5': (2, 'Away Over/Under 1.5 Goals'),
+            'away ad 2.5': (2, 'Away Over/Under 2.5 Goals'),
+            'away ad 3.5': (2, 'Away Over/Under 3.5 Goals'),
         }
 
     def get_desc(self, key):
-        return self.desc[key]
+        return self.desc[key][1]
 
     def key(self, market_str):
         if 'Over/Under Total Goals' in market_str:
             market_str = market_str.replace('Total Goals ', '')
         squashed_market_str = squash_string(market_str)
-        for desc_key, desc_value in self.desc.items():
-            if squashed_market_str in squash_string(desc_value):
+        for desc_key, desc_values in self.desc.items():
+            if squashed_market_str in squash_string(desc_values[1]):
                 return desc_key
         return None
 
@@ -1084,7 +1092,7 @@ class Betfair(Website):
                 if len(odds) < 3:
                     continue
                 if self.get_back_odd:
-                    m.odds[i] = real_back_odd(self.to_float(odds[0]))
+                    m.odds[i] = real_back_odd(odds[0])
                 m.lays[i] = self.to_float(odds[2])
             m.agents = ['Betfair'] * 3
             m.urls = [self.get_href_link()] * 3
@@ -2000,7 +2008,7 @@ class WebWorker:
         return str_contains_full_name
 
     # Convert team name to id for further matching
-    def odds_map_to_id(self, odds_map, agent_name=None, is_back=True):
+    def odds_map_to_id(self, odds_map, agent_name=None, is_betfair=False):
         formatted = dict()
         info = LeagueInfo()
         try:
@@ -2008,26 +2016,30 @@ class WebWorker:
                 formatted[key] = dict()
                 for name, odd in market_map.items():
                     if agent_name is not None:
-                        odd += ' ' + agent_name
+                        odd = str(odd) + ' ' + agent_name
                     if '/' in name:
                         formatted[key][self.full_name_to_id(name)] = odd
-                    elif key in ('correct score', 'half time score') and is_back:
-                        idx = name.rfind('-') - 1
-                        idx = idx - 1 if '10-0' in name else idx
-                        team, score = name[:idx], name[idx:]
-                        win_set, draw_set, _ = self.get_correct_score_sets()
-                        if score not in win_set and score not in draw_set:
-                            continue
-                        team_id = info.get_id(team, self.league)
-                        home_id = info.get_id(self.home_name, self.league)
-                        away_id = info.get_id(self.away_name, self.league)
-                        if team_id == home_id or team == 'draw':
-                            formatted[key][score] = odd
-                        elif team_id == away_id:
-                            formatted[key][score[::-1]] = odd
+                    elif key in ('correct score', 'half time score'):
+                        win_set, draw_set, lose_set = self.get_correct_score_sets()
+                        if is_betfair:
+                            if name in win_set or name in draw_set or name in lose_set:
+                                formatted[key][name] = odd
                         else:
-                            log_and_print('DEBUG - unexpected [{}] [{}] [{}] [{}] [{}]'.format(
-                                          name, team, team_id, home_id, away_id))
+                            idx = name.rfind('-') - 1
+                            idx = idx - 1 if '10-0' in name else idx
+                            team, score = name[:idx], name[idx:]
+                            if score not in win_set and score not in draw_set:
+                                continue
+                            team_id = info.get_id(team, self.league)
+                            home_id = info.get_id(self.home_name, self.league)
+                            away_id = info.get_id(self.away_name, self.league)
+                            if team_id == home_id or team == 'draw':
+                                formatted[key][score] = odd
+                            elif team_id == away_id:
+                                formatted[key][score[::-1]] = odd
+                            else:
+                                log_and_print('DEBUG - unexpected [{}] [{}] [{}] [{}] [{}]'.format(
+                                              name, team, team_id, home_id, away_id))
                     else:
                         name = name.replace('tie', 'draw')
                         formatted[key][info.get_id(name, self.league)] = odd
@@ -2040,8 +2052,10 @@ class WebWorker:
         info = LeagueInfo()
 
         to_full = dict()
-        to_full[info.get_id(self.home_name, self.league)] = self.home_name
-        to_full[info.get_id(self.away_name, self.league)] = self.away_name
+        if self.home_name != '':
+            to_full[info.get_id(self.home_name, self.league)] = self.home_name
+        if self.away_name != '':
+            to_full[info.get_id(self.away_name, self.league)] = self.away_name
         to_full['draw'] = 'Draw'
         to_full['over'] = 'Over '
         to_full['under'] = 'Under '
@@ -2299,10 +2313,10 @@ class WebWorker:
                 info_classicbet = self.get_classicbet_match_info()
 
                 log_and_print('getting ladbrokes')
-                info_ladbrokes = self.get_ladbrokes_match_info()
+                info_ladbrokes = dict() #self.get_ladbrokes_match_info()
 
                 log_and_print('getting william')
-                info_william = self.get_william_match_info()
+                info_william = dict() #self.get_william_match_info()
 
                 log_and_print('getting betfair')
                 info_betfair = self.get_betfair_match_info()
@@ -2434,29 +2448,6 @@ class WebWorker:
                     return False
                 return True
 
-            # handicap home a1 -> Handicap Birmingham +1 - Birmingham vs Huddersfield
-            # handicap away a1 -> Handicap Tottenham -1 - Tottenham vs Newport
-            # so:
-            # home a1 -> home team +1
-            # away a1 -> home team -1
-            def prepare_handicap_dict():
-                res = dict()
-                for i in '1', '2', '3', '4', '5':
-                    res['Handicap Home a{}'.format(i)] = 'Handicap {} +{}'.format(s_home_name, i)
-                    res['Handicap Away a{}'.format(i)] = 'Handicap {} -{}'.format(s_home_name, i)
-                return res
-
-            def get_key(market_str_):
-                if market_str_ == 'HT/FT Double':
-                    return 'Half Time/Full Time'
-                elif 'First Half Over/Under' in market_str_:
-                    key_ = market_str_.replace('Goals', '')
-                    return key_.replace('First Half Over/Under', 'First Half Goals')
-                elif market_str_ == 'First Half Correct Score':
-                    return 'Half Time Score'
-                else:
-                    return market_str_
-
             def get_odds(market_str_, key_):
                 self.driver.find_element_by_link_text(market_str_).click()
                 active = Website.get_element_static('dd.active', self.driver, self.wait2)
@@ -2469,16 +2460,14 @@ class WebWorker:
                     self.driver.find_element_by_link_text(market_str_).click()
                     active = Website.get_element_static('dd.active', self.driver, self.wait2)
                     if active is None:
-                        log_and_print('failed to get ' + market_str_)
                         return
                 lines = active.text.split('\n')
                 self.driver.find_element_by_link_text(market_str_).click()
                 for line in lines:
-                    info_ = line.split(' ')
-                    if 'Straight' not in line:
+                    if line == 'SELECTION WIN':
                         continue
+                    info_ = line.split(' ')
                     odd = info_.pop(-1)
-                    info_.pop()
                     info_ = squash_string(''.join(info_))
                     if info_ == 'tie':
                         info_ = 'draw'
@@ -2495,35 +2484,39 @@ class WebWorker:
                     s_home_name, s_away_name = vs_str.split(' vs ')
                     break
 
-            goals_markets = []
-            for goals in '0.5', '1.5':
-                goals_markets.append('First Half Over/Under ' + goals + ' Goals')
-            for goals in '0.5', '1.5', '2.5', '3.5', '4.5':
-                goals_markets.append('Over/Under ' + goals + ' Goals')
+            hn, an = s_home_name, s_away_name
+            m = {
+                'Anytime Goalscorer': 'anytime scorer',
+                'Both Teams To Score': 'both score',
+                'Correct Score': 'correct score',
+                'First Goalscorer': '1st scorer',
+                'First Half': 'half time',
+                'First Half Both Teams To Score': 'first half both team to score',
+                'First Half Correct Score': 'half time score',
+                'First Half Odd / Even Goals': 'first half odd even goals',
+                hn + ' To Score First Half': 'first half home team to score',
+                an + ' To Score First Half': 'first half away team to score',
+                'HT/FT Double': 'half full',
+            }
+            for i in '1', '2', '3', '4', '5':
+                m['Handicap {} +{}'.format(hn, i)] = 'handicap home a' + i
+                m['Handicap {} -{}'.format(hn, i)] = 'handicap away a' + i
+                m['First Half Handicap {} +{}'.format(hn, i)] = 'first half handicap home a' + i
+                m['First Half Handicap {} -{}'.format(hn, i)] = 'first half handicap away a' + i
+            for i in '0.5', '1.5', '2.5', '3.5', '4.5', '5.5':
+                m['Over/Under {} Goals'.format(i)] = 'ad ' + i
+            for i in '0.5', '1.5', '2.5', '3.5':
+                m['First Half Over/Under {} Goals'.format(i)] = 'first ' + i
+                m['First Half {} Over/Under {} Goals'.format(hn, i)] = 'first home ' + i
+                m['First Half {} Over/Under {} Goals'.format(an, i)] = 'first away ' + i
+                m['{} Over/Under {} Goals'.format(hn, i)] = 'home ad ' + i
+                m['{} Over/Under {} Goals'.format(an, i)] = 'away ad ' + i
 
-            markets = ['Correct Score', 'First Half Correct Score', 'First Goalscorer',
-                       'Both Teams To Score', 'HT/FT Double']
-            for m in goals_markets:
-                markets.append(m)
+            for ms, mk in m.items():
+                market_str = ms + ' - ' + vs_str
+                if market_str in full_text and (g_get_all_markets or mk in lay_markets):
+                    get_odds(market_str, mk)
 
-            for m in markets:
-                market_str = m + ' - ' + vs_str
-                key = market_names.key(get_key(m))
-                if market_str in full_text and (g_get_all_markets or key in lay_markets):
-                    get_odds(market_str, key)
-
-            for m in goals_markets:
-                key = market_names.key(get_key(m))
-                temp = odds_back[key].copy()
-                for k in temp.keys():
-                    odds_back[key][k+'goals'] = odds_back[key].pop(k)
-
-            handicap_markets = prepare_handicap_dict()
-            for h_key, h_text in handicap_markets.items():
-                market_str = h_text + ' - ' + vs_str
-                key = market_names.key(get_key(h_key))
-                if market_str in full_text and (g_get_all_markets or key in lay_markets):
-                    get_odds(market_str, key)
         return odds_back
 
     @staticmethod
@@ -2532,7 +2525,7 @@ class WebWorker:
         for item, map_ in to_merge_dict.items():
             for key, value in map_.items():
                 if key in odds[item]:
-                    odds[item][key] = odds[item][key] + '|' + value
+                    odds[item][key] = odds[item][key] + '|' + str(value)
                 else:
                     odds[item][key] = value
         return odds
@@ -2576,7 +2569,7 @@ class WebWorker:
                     if new or (match_info not in match_to_markets) \
                             or len(match_to_markets[match_info]) is 0:
                         self.league = l.split(' ')[1]
-                        odds_lay, _, _ = self.get_lay(url_lay, target_markets)
+                        odds_lay, _, = self.get_betfair_odd(url_lay, target_markets)
 
                         lay_markets = []
                         for key in odds_lay.keys():
@@ -2610,9 +2603,6 @@ class WebWorker:
                 odds_ = self.get_from_pickle(pickle_name)
             return odds_
 
-        def func_get_lay():
-            return self.odds_map_to_id(self.get_lay(url_lay, target_markets), is_back=False)
-
         def func_get_lad():
             return self.odds_map_to_id(
                 self.get_ladbrokes_markets_odd(url_lad, target_markets, lay_markets), 'ladbrokes')
@@ -2625,28 +2615,38 @@ class WebWorker:
             return self.odds_map_to_id(
                 self.get_william_markets_odd(url_william, target_markets, lay_markets), 'william')
 
-        # Production: 10
+        # Production: 01
         # Debug: 11 (read from net and write pickle) then 00 (read from pickle)
         #
         # - Set net to 0 to read pickle
         # - Set pickle to 0 to avoid writing
         #
-        is_net_betfair = 0
-        is_pickle_betfair = 0
-
-        is_net_lad = 0
         is_pickle_lad = 0
+        is_net_lad = 0
 
-        is_net_classic = 1
-        is_pickle_classic = 1
+        is_pickle_classic = 0
+        is_net_classic = 0
 
-        is_net_william = 0
-        is_pickle_william = 0
+        is_pickle_william = 1
+        is_net_william = 1
+
+        is_pickle_betfair = 0
+        is_net_betfair = 0
 
         # get betfair
-        odds_lay, lay_markets = dict(), []
+        odds_lay, odds_betfair, lay_markets = dict(), dict(), []
         if get_betfair:
-            odds_lay = get(func_get_lay, is_net_betfair, is_pickle_betfair, 'hdq_betfair.pkl')
+            if is_net_betfair:
+                odds_lay, odds_betfair = self.get_betfair_odd(url_lay, target_markets)
+                if is_pickle_betfair:
+                    self.save_to(odds_lay, 'hdq_betfair_lay.pkl')
+                    self.save_to(odds_betfair, 'hdq_betfair.pkl')
+            else:
+                odds_lay = self.get_from_pickle('hdq_betfair_lay.pkl')
+                odds_betfair = self.get_from_pickle('hdq_betfair.pkl')
+
+            odds_lay = self.odds_map_to_id(odds_lay, is_betfair=True)
+            odds_betfair = self.odds_map_to_id(odds_betfair, agent_name='betfair', is_betfair=True)
             for key in odds_lay.keys():
                 if len(odds_lay[key]) != 0:
                     lay_markets.append(key)
@@ -2662,13 +2662,13 @@ class WebWorker:
             else:
                 odds_lad = get(func_get_lad, is_net_lad, is_pickle_lad, 'hdq_lad.pkl')
 
-        # get classicbet
-        if get_classic and url_classic != '.':
-            odds_classic = get(func_get_classic, is_net_classic, is_pickle_classic, 'hdq_c.pkl')
-
         # get william
         if get_william and url_william != '.':
             odds_william = get(func_get_william, is_net_william, is_pickle_william, 'hdq_w.pkl')
+
+        # get classicbet
+        if get_classic and url_classic != '.':
+            odds_classic = get(func_get_classic, is_net_classic, is_pickle_classic, 'hdq_c.pkl')
 
         # wait ladbrokes from thread
         if url_lad != '.' and get_ladbrokes and use_aws:
@@ -2677,15 +2677,9 @@ class WebWorker:
 
         # merge results
         odds_back = dict()
-
-        if len(odds_classic) is not 0:
-            odds_back = self.merge_back_odds(odds_classic, odds_back)
-
-        if len(odds_william) is not 0:
-            odds_back = self.merge_back_odds(odds_william, odds_back)
-
-        if len(odds_lad) is not 0:
-            odds_back = self.merge_back_odds(odds_lad, odds_back)
+        for d in odds_betfair, odds_classic, odds_william, odds_lad:
+            if len(d) is not 0:
+                odds_back = self.merge_back_odds(d, odds_back)
 
         self.generate_max_back_odds(odds_back)
         self.print_back_profits(odds_back, match_info)
@@ -2694,54 +2688,93 @@ class WebWorker:
             back_urls = url_classic + '\n' + url_lad + '\n' + url_william
             self.compare_with_lay(odds_back, back_urls, url_lay, match_info, bet_type, odds_lay)
 
-    # 'both to score': {'yes': '1.15 w|1.12 c', 'no': ...} -> {'yes': '1.12 c@1.15 w|1.12 c' ...}
+    # 'both to score': {'yes': '1.15 w|1.16 c|1.17 b', 'no': ...} ->
+    #    {'yes': '1.16 c|1.17 b@1.15 w|1.16 c|1.17 b', 'no': ...}
+    #  first one is max to see if it's over 100, second is targeting at qualifying
     @staticmethod
     def generate_max_back_odds(odds_back):
         for market, d in odds_back.items():
             for key in d.keys():
                 texts = d[key].split('|')
-                max_odd, max_agent = 0, ''
+                max_odd, max_agent = max_q_odd, max_q_agent = 0, 'N/A'
                 for t in texts:
                     odd, agent = t.split(' ')
                     if float(odd) >= max_odd:
                         max_agent = agent if float(odd) > max_odd else max_agent + '|' + agent
                         max_odd = float(odd)
-                d[key] = '{} {}@{}'.format(max_odd, max_agent, d[key])
+                    if float(odd) >= max_q_odd and agent in ('classicbet', 'ladbrokes', 'william'):
+                        max_q_agent = agent if float(odd) > max_q_odd else max_q_agent + '|' + agent
+                        max_q_odd = float(odd)
+                d[key] = '{} {}|{} {}@{}'.format(max_odd, max_agent, max_q_odd, max_q_agent, d[key])
 
     def print_back_profits(self, odds_back, match_info):
+        def is_odds_valid(odds_):
+            for o in odds_:
+                if float(o) < 1:
+                    return False
+            return True
+
+        market_names = MarketNames()
         results = []
         log_and_print('------- ' + match_info + ' --------')
         for market, d in odds_back.items():
-            odds, keys, agents = [], [], []
+            keys, odds, agents, q_odds, q_agents = [], [], [], [], []
             if len(d) in (2, 3):
                 for key, odd_text in d.items():
-                    best_odd, best_agent = odd_text.split('@')[0].split(' ')
+                    best, best_q = odd_text.split('@')[0].split('|')
+                    best_odd, best_agent = best.split(' ')
+                    q_odd, q_agent = best_q.split(' ')
                     keys.append(key)
                     odds.append(best_odd)
+                    q_odds.append(q_odd)
                     agents.append(self.shorten_agent(best_agent))
-                if len(d) == 2:
+                    q_agents.append(self.shorten_agent(q_agent))
+
+                if len(d) == 2 and market_names.desc[market][0] == 2:
                     min_pay_back, a_pay, b_pay, a_profit, b_profit = calc2(*odds)
+                    if min_pay_back < 100:
+                        if is_odds_valid(q_odds):
+                            odds = q_odds
+                            agents = q_agents
+                            min_pay_back, a_pay, b_pay, a_profit, b_profit = calc2(*odds)
+                        else:
+                            min_pay_back, a_pay, b_pay, a_profit, b_profit = 0, 0, 0, 0, 0
                     results.append([min_pay_back, 2, market,
-                                    keys[0], odds[0], a_pay, a_profit, agents[0],
-                                    keys[1], odds[1], b_pay, b_profit, agents[1]])
+                                    keys[0], float(odds[0]), a_pay, a_profit, agents[0],
+                                    keys[1], float(odds[1]), b_pay, b_profit, agents[1]])
                 elif len(d) == 3:
                     min_pay_back, a_pay, b_pay, c_pay, a_profit, b_profit, c_profit = calc3(*odds)
+                    if min_pay_back < 100:
+                        if is_odds_valid(q_odds):
+                            odds = q_odds
+                            agents = q_agents
+                            min_pay_back, a_pay, b_pay, c_pay, a_profit, b_profit, c_profit = calc3(
+                                *odds)
+                        else:
+                            min_pay_back, a_pay, b_pay, c_pay, a_profit, b_profit, c_profit = \
+                                0, 0, 0, 0, 0, 0, 0
                     results.append([min_pay_back, 3, market,
-                                    keys[0], odds[0], a_pay, a_profit, agents[0],
-                                    keys[1], odds[1], b_pay, b_profit, agents[1],
-                                    keys[2], odds[2], c_pay, c_profit, agents[2]])
+                                    keys[0], float(odds[0]), a_pay, a_profit, agents[0],
+                                    keys[1], float(odds[1]), b_pay, b_profit, agents[1],
+                                    keys[2], float(odds[2]), c_pay, c_profit, agents[2]])
 
-        count = 20
+        count = 200
         results.sort(reverse=True)
         for r in results:
+            profit = r[0]
             n = r.pop(1)
-            if n == 2:
-                log_and_print('{:0.2f}\t[{}]\t{} {} (${})({})[{}]\t{} {} (${})({})[{}]'.format(*r))
-            elif n == 3:
-                log_and_print('{:0.2f}\t[{}]\t{} {} (${})({})[{}]\t'
-                              '{} {} (${})({})[{}]\t{} {} (${})({})[{}]'.format(*r))
-            else:
-                log_and_print('DEBUG: wrong result for odds_back')
+            if profit != 0:
+                if n == 2:
+                    log_and_print('{:0.2f}\t[{}]\t'
+                                  '{} {:0.2f} (${})({}){}\t'
+                                  '{} {:0.2f} (${})({}){}'.format(*r))
+                elif n == 3:
+                    log_and_print('{:0.2f}\t[{}]\t'
+                                  '{} {:0.2f} (${})({}){}\t'
+                                  '{} {:0.2f} (${})({}){}\t'
+                                  '{} {:0.2f} (${})({}){}'.format(*r))
+                else:
+                    log_and_print('DEBUG: wrong result for odds_back')
             count = count - 1
             if count == 0:
                 break
@@ -2818,7 +2851,7 @@ class WebWorker:
             for l, match_info, url_back, url_lay in \
                     zip(lines[::4], lines[1::4], lines[2::4], lines[3::4]):
                 self.league = l.split(' ')[1]
-                odds_lay = self.get_lay(url_lay, target_markets)
+                odds_lay = self.get_betfair_odd(url_lay, target_markets)
                 odds_back = get_func(url_back, target_markets, odds_lay)
                 odds_back = self.odds_map_to_id(odds_back, back_site)
                 self.compare_with_lay(odds_back, url_back, url_lay, match_info, bet_type, odds_lay)
@@ -2838,96 +2871,143 @@ class WebWorker:
 
     @staticmethod
     def shorten_agent(agent):
-        if agent == 'classicbet':
-            return '(C)'
-        elif agent == 'ladbrokes':
-            return '(L)'
-        elif agent == 'william':
-            return '(W)'
+        def shorten(a_):
+            if a_ == 'classicbet':
+                return 'C'
+            elif a_ == 'ladbrokes':
+                return 'L'
+            elif a_ == 'william':
+                return 'W'
+            elif a == 'betfair':
+                return 'B'
+            else:
+                return a_
+
+        agents, res = [], []
+        many = '|' in agent
+        if many:
+            agents = agent.split('|')
         else:
-            return agent
+            agents.append(agent)
+
+        for a in agents:
+            res.append(shorten(a))
+
+        if many:
+            return '(' + '|'.join(res) + ')'
+        else:
+            return '(' + res[0] + ')'
 
     def add_item_to_results(self, title_, market_, lay_odd_, results_, odds_back_, bet_type_,
                             display_):
-        if title_ in odds_back_[market_] and lay_odd_ != '':
-            back_odd, agent = odds_back_[market_][title_].split(' ')
-            agent = self.shorten_agent(agent)
+        def get_profit(bo):
+            if bet_type_ == 'snr':  # SNR
+                return (bo - 1) * 100 - (lay_odd_ - 1) * ((bo - 1) / (lay_odd_ - 0.05) * 100)
+            elif 'boost' in bet_type_ or 'q' in bet_type_:  # qualifying
+                return (bo / (lay_odd_ - 0.05) * 100) * 0.95 - 100
+            else:
+                raise 'DEBUG unexpected bet type: ' + bet_type_
 
+        if title_ in odds_back_[market_] and lay_odd_ != '':
+            best, q_best = odds_back_[market_][title_].split('@')[0].split('|')
+            best_odd, agent = best.split(' ')
+            q_odd, q_agent = q_best.split(' ')
             lay_odd_, lay_amount = lay_odd_.split('\n')
 
-            back_odd = float(back_odd)
+            agent = self.shorten_agent(agent)
+            q_agent = self.shorten_agent(q_agent)
+            back_odd = float(best_odd)
+            q_odd = float(q_odd)
             lay_odd_ = float(lay_odd_)
-            if bet_type_ == 'snr':  # SNR
-                profit = (back_odd - 1) * 100 - (lay_odd_ - 1) * ((back_odd - 1) / (lay_odd_ - 0.05) * 100)  # noqa
-            elif 'boost' in bet_type_ or 'q' in bet_type_:  # qualifying
-                profit = (back_odd / (lay_odd_ - 0.05) * 100) * 0.95 - 100
+            profit = get_profit(back_odd)
+            if profit < 100:
+                profit = get_profit(q_odd)
+                results_.append([profit, q_odd, q_agent, lay_odd_, lay_amount, title_, display_])
             else:
-                log_and_print('unexpected bet type: ' + bet_type_)
-                return
-            results_.append([profit, back_odd, agent, lay_odd_, lay_amount, title_, display_])
+                results_.append([profit, back_odd, agent, lay_odd_, lay_amount, title_, display_])
 
-    def get_lay(self, url_lay, target_markets):
+    def get_betfair_odd(self, url_lay, target_markets):
         self.driver.set_window_size(width=1920, height=1080)
         self.driver.get(url_lay)
 
         market_names = MarketNames()
         odds_lay = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
+        odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
 
         # ------- get main market
         def get_text(b_, css='td.bet-buttons.lay-cell.first-lay-cell'):
             return b_.find_element_by_css_selector(css).text
 
+        def get_back_odd(text):
+            back_css = 'td.bet-buttons.back-cell.last-back-cell'
+            return real_back_odd(get_text(text, back_css).split('\n')[0])
+
         bs = Website.get_blocks_static('tr.runner-line', self.driver, self.wait)
         if len(bs) < 3:
             log_and_print('no match info in:\n' + url_lay)
-            return odds_lay, '', ''
+            return odds_lay, odds_back
 
         self.home_name = get_text(bs[0], 'h3.runner-name')
         self.away_name = get_text(bs[1], 'h3.runner-name')
+
+        odds_back['main'][self.home_name] = get_back_odd(bs[0])
+        odds_back['main'][self.away_name] = get_back_odd(bs[1])
+        odds_back['main']['Draw'] = get_back_odd(bs[2])
+
         if 'main' in odds_lay:
             odds_lay['main'][self.home_name] = get_text(bs[0])
             odds_lay['main'][self.away_name] = get_text(bs[1])
             odds_lay['main']['Draw'] = get_text(bs[2])
-            
-        def betfair_to_market(key_, tab_):
-            if key_ == 'To Score':
-                key_ = 'anytime scorer'
-            else:
-                for team, name in (self.home_name, 'home'), (self.away_name, 'away'):
-                    for goals in '1', '2', '3':
-                        if key_ == team + ' +' + goals:
-                            if tab_ == 'Handicap':
-                                key_ = 'handicap ' + name + ' +' + goals
-                            else:
-                                key_ = name + ' +' + goals
-                    for goals in '0.5', '1.5', '2.5':
-                        if key_ == team + ' Over/Under ' + goals + ' Goals':
-                            key_ = name + ' Over/Under ' + goals + ' Goals'
-            return key_
+
+        m = {
+            'Correct Score': 'correct score',
+            'Both teams to Score?': 'both score',
+            'Half Time/Full Time': 'half full',
+            'Half Time': 'half time',
+            'First Half Odd / Even Goals': 'first half odd even goals',
+            'First Half Correct Score': 'half time score',
+            'First Half Both Teams To Score': 'first half both team to score',
+            'First Goalscorer': '1st scorer',
+            'Anytime Goalscorer': 'anytime scorer',
+        }
+        for i in '0.5', '1.5', '2.5', '3.5':
+            m['First Half Goals ' + i] = 'first ' + i
+            m['{} Over/Under {} Goals'.format(self.home_name, i)] = 'home ad ' + i
+            m['{} Over/Under {} Goals'.format(self.away_name, i)] = 'away ad ' + i
+        for i in range(9):
+            j = str(i) + '.5'
+            m['Over/Under {} Goals'.format(j)] = 'ad ' + j
+        for i in range(6):
+            m['{} +{}'.format(self.home_name, i)] = 'handicap home a' + str(i)
+            m['{} +{}'.format(self.away_name, i)] = 'handicap away a' + str(i)
         
         def get_odds(tab=''):
+            def get_(css, is_lay, key):
+                odds_ = odds_lay if is_lay else odds_back
+                btn_ = tr.find_element_by_css_selector(css)
+                if btn_.text == '':
+                    return
+                try:
+                    odd = float(btn_.text.split('\n')[0])
+                except ValueError:
+                    log_and_print('invalid odd in ' + btn_.text)
+                    return
+                if btn_.text != '' and odd < 100:
+                    title = squash_string(self.full_name_to_id(div.text))
+                    title = title.replace('thedraw', 'draw')
+                    title = title.replace('draw(ht)', 'draw')
+                    odds_[key][title] = btn_.text if is_lay else real_back_odd(btn_.text)
+
             blocks = Website.get_blocks_static('div.mini-mv', self.driver, self.wait, check=False)
             for b in blocks:
-                t_ = b.find_element_by_css_selector('span.market-name-label').text
-                key = market_names.key(betfair_to_market(t_, tab))
-
-                if key is not None and key is not 'main' and key in odds_lay:
+                m_str = b.find_element_by_css_selector('span.market-name-label').text
+                if m_str in m and m[m_str] is not 'main':
                     trs = b.find_elements_by_css_selector('tr.runner-line')
                     for tr in trs:
                         div = tr.find_element_by_css_selector('h3.runner-name')
-                        btn = tr.find_element_by_css_selector('button.lay-button')
-                        if btn.text == '':
-                            continue
-                        try:
-                            odd = float(btn.text.split('\n')[0])
-                        except ValueError:
-                            log_and_print('invalid odd in ' + btn.text)
-                            continue
-                        if btn.text != '' and odd < 100:
-                            title = squash_string(self.full_name_to_id(div.text))
-                            title = title.replace('thedraw', 'draw')
-                            title = title.replace('draw(ht)', 'draw')
-                            odds_lay[key][title] = btn.text
+                        get_('button.back-button', is_lay=False, key=m[m_str])
+                        if m[m_str] in odds_lay:
+                            get_('button.lay-button', is_lay=True, key=m[m_str])
 
         # ------- get popular markets
         Website.wait('section.mod-tabs', self.wait)
@@ -2941,7 +3021,7 @@ class WebWorker:
                 time.sleep(0.5)
                 get_odds(t.text)
 
-        return odds_lay
+        return odds_lay, odds_back
 
     #      market    title
     # odds['main'  ]['tottenham'] = '3.0'
