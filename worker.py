@@ -1905,14 +1905,20 @@ class WebWorker:
         odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
         self.driver.set_window_size(width=1920, height=1080)
         self.driver.get(url_back)
-        blocks = Website.get_blocks_static('div.table.teams', self.driver, self.wait)
-        if len(blocks) < 3:
+        sections = Website.get_blocks_static('section.block.flat', self.driver, self.wait)
+        for section in sections:
+            titles = section.text.split('\n')
+            if titles[0] == 'Straight':
+                self.home_name = titles[1]
+                self.away_name = titles[5]
+                home_odd = titles[2]
+                draw_odd = titles[4]
+                away_odd = titles[6]
+                break
+        else:
             log_and_print('Looks like no info in:\n' + url_back)
             return odds_back
 
-        self.home_name, home_odd = blocks[0].text.split('\n')
-        self.away_name, away_odd = blocks[2].text.split('\n')
-        _, draw_odd = blocks[1].text.split('\n')
         if g_get_all_markets or 'main' in lay_markets:
             odds_back['main'][self.home_name] = home_odd
             odds_back['main'][self.away_name] = away_odd
@@ -2627,8 +2633,8 @@ class WebWorker:
         is_pickle_classic = 0
         is_net_classic = 0
 
-        is_pickle_william = 1
-        is_net_william = 1
+        is_pickle_william = 0
+        is_net_william = 0
 
         is_pickle_betfair = 0
         is_net_betfair = 0
@@ -2688,11 +2694,17 @@ class WebWorker:
             back_urls = url_classic + '\n' + url_lad + '\n' + url_william
             self.compare_with_lay(odds_back, back_urls, url_lay, match_info, bet_type, odds_lay)
 
-    # 'both to score': {'yes': '1.15 w|1.16 c|1.17 b', 'no': ...} ->
-    #    {'yes': '1.16 c|1.17 b@1.15 w|1.16 c|1.17 b', 'no': ...}
-    #  first one is max to see if it's over 100, second is targeting at qualifying
     @staticmethod
-    def generate_max_back_odds(odds_back):
+    def is_qualifying(agent):
+        if '(' in agent:
+            return agent in ('(C)', '(L)', '(W)')
+        else:
+            return agent in ('classicbet', 'ladbrokes', 'william')
+
+    # 'both to score':            {'yes': '1.15 w|1.15 c|1.13 b', 'no': ...} ->
+    #            {'yes': '1.13 b|1.15 c,w@|1.15 w|1.15 c|1.13 b', 'no': ...}
+    #  first one is max to see if it's over 100, second is targeting at qualifying
+    def generate_max_back_odds(self, odds_back):
         for market, d in odds_back.items():
             for key in d.keys():
                 texts = d[key].split('|')
@@ -2700,17 +2712,20 @@ class WebWorker:
                 for t in texts:
                     odd, agent = t.split(' ')
                     if float(odd) >= max_odd:
-                        max_agent = agent if float(odd) > max_odd else max_agent + '|' + agent
+                        max_agent = agent if float(odd) > max_odd else max_agent + ',' + agent
                         max_odd = float(odd)
-                    if float(odd) >= max_q_odd and agent in ('classicbet', 'ladbrokes', 'william'):
-                        max_q_agent = agent if float(odd) > max_q_odd else max_q_agent + '|' + agent
+                    if float(odd) >= max_q_odd and self.is_qualifying(agent):
+                        max_q_agent = agent if float(odd) > max_q_odd else max_q_agent + ',' + agent
                         max_q_odd = float(odd)
                 d[key] = '{} {}|{} {}@{}'.format(max_odd, max_agent, max_q_odd, max_q_agent, d[key])
 
     def print_back_profits(self, odds_back, match_info):
-        def is_odds_valid(odds_):
-            for o in odds_:
-                if float(o) < 1:
+        def is_odds_valid(odd):
+            return float(odd) > 1
+
+        def all_not_qualifying_agents(agents_):
+            for a in agents_:
+                if self.is_qualifying(a):
                     return False
             return True
 
@@ -2730,22 +2745,43 @@ class WebWorker:
                     agents.append(self.shorten_agent(best_agent))
                     q_agents.append(self.shorten_agent(q_agent))
 
+                p = []
+                for _ in range(3):
+                    p.append(dict())
+                
                 if len(d) == 2 and market_names.desc[market][0] == 2:
-                    min_pay_back, a_pay, b_pay, a_profit, b_profit = calc2(*odds)
-                    if min_pay_back < 100:
-                        if is_odds_valid(q_odds):
-                            odds = q_odds
-                            agents = q_agents
-                            min_pay_back, a_pay, b_pay, a_profit, b_profit = calc2(*odds)
+                    p[0]['mp'], p[0]['apay'], p[0]['bpay'], p[0]['ap'], p[0]['bp'] = calc2(*odds)
+                    p[0]['odd0'], p[0]['odd1'] = odds[0], odds[1]
+                    p[0]['agent0'], p[0]['agent1'] = agents[0], agents[1]
+                    if p[0]['mp'] < 100 and all_not_qualifying_agents(agents):
+                        p[0]['mp'] = 0
+                        if is_odds_valid(q_odds[0]):
+                            p[1]['mp'], p[1]['apay'], p[1]['bpay'], p[1]['ap'], p[1]['bp'] = \
+                                calc2(q_odds[0], odds[1])
+                            p[1]['odd0'], p[1]['odd1'] = q_odds[0], odds[1]
+                            p[1]['agent0'], p[1]['agent1'] = q_agents[0], agents[0]
                         else:
-                            min_pay_back, a_pay, b_pay, a_profit, b_profit = 0, 0, 0, 0, 0
-                    results.append([min_pay_back, 2, market,
-                                    keys[0], float(odds[0]), a_pay, a_profit, agents[0],
-                                    keys[1], float(odds[1]), b_pay, b_profit, agents[1]])
+                            p[1]['mp'] = 0
+                        if is_odds_valid(q_odds[1]):
+                            p[2]['mp'], p[2]['apay'], p[2]['bpay'], p[2]['ap'], p[2]['bp'] = \
+                                calc2(odds[0], q_odds[1])
+                            p[2]['odd0'], p[2]['odd1'] = odds[0], q_odds[1]
+                            p[2]['agent0'], p[2]['agent1'] = agents[1], q_agents[1]
+                        else:
+                            p[2]['mp'] = 0
+
+                    m = p[0]
+                    for i in range(2):
+                        if 'mp' in p[i+1] and p[i+1]['mp'] > m['mp']:
+                            m = p[i+1]
+                            
+                    results.append([m['mp'], 2, market,
+                                    keys[0], float(m['odd0']), m['apay'], m['ap'], m['agent0'],
+                                    keys[1], float(m['odd1']), m['bpay'], m['bp'], m['agent1']])
                 elif len(d) == 3:
                     min_pay_back, a_pay, b_pay, c_pay, a_profit, b_profit, c_profit = calc3(*odds)
-                    if min_pay_back < 100:
-                        if is_odds_valid(q_odds):
+                    if min_pay_back < 100: # TODO
+                        if is_odds_valid(q_odds[0]):  #TODO
                             odds = q_odds
                             agents = q_agents
                             min_pay_back, a_pay, b_pay, c_pay, a_profit, b_profit, c_profit = calc3(
@@ -2783,7 +2819,7 @@ class WebWorker:
                                get_classic=False,
                                get_ladbrokes=False,
                                get_william=True,
-                               get_betfair=False,
+                               get_betfair=True,
                                worker_id=None):
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
