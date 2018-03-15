@@ -1971,17 +1971,17 @@ class WebWorker:
                         time.sleep(1)
 
             def get_texts(_=None):
-                sections = Website.get_blocks_static('section.block.flat', self.driver, self.wait)
-                for section in sections:
-                    header = section.find_elements_by_css_selector('header.drop-header')
+                sections_ = Website.get_blocks_static('section.block.flat', self.driver, self.wait)
+                for section_ in sections_:
+                    header = section_.find_elements_by_css_selector('header.drop-header')
                     if len(header) == 0:
                         continue
                     header = header[0].text.strip()
                     if header in headers:
-                        if len(section.find_elements_by_css_selector(
+                        if len(section_.find_elements_by_css_selector(
                                 'h3.event-header.is-open')) is 0:
                             safe_click(header)
-                        odd_blocks = section.find_elements_by_css_selector('div.table.teams')
+                        odd_blocks = section_.find_elements_by_css_selector('div.table.teams')
                         for odd_block in odd_blocks:
                             t = odd_block.text
                             if t != '':
@@ -2109,17 +2109,17 @@ class WebWorker:
     # return a dict: id by time and team -> url with seq
     def get_classicbet_match_info(self):
         urls = dict(
-            arg='https://www.classicbet.com.au/Sport/Soccer/Argentinian_Primera_A/Matches',
-            a='https://www.classicbet.com.au/Sport/Soccer/Australian_A-League/Matches',
-            bel='https://www.classicbet.com.au/Sport/Soccer/Belgian_Jupiler_League/Matches',
+            # arg='https://www.classicbet.com.au/Sport/Soccer/Argentinian_Primera_A/Matches',
+            # a='https://www.classicbet.com.au/Sport/Soccer/Australian_A-League/Matches',
+            # bel='https://www.classicbet.com.au/Sport/Soccer/Belgian_Jupiler_League/Matches',
             # eng='https://www.classicbet.com.au/Sport/Soccer/English_FA_Cup/Matches',
-            eng='https://www.classicbet.com.au/Sport/Soccer/English_Premier_League/Matches',
+            # eng='https://www.classicbet.com.au/Sport/Soccer/English_Premier_League/Matches',
             fra='https://www.classicbet.com.au/Sport/Soccer/French_Ligue_1/Matches',
             gem='https://www.classicbet.com.au/Sport/Soccer/German_Bundesliga/Matches',
-            ita='https://www.classicbet.com.au/Sport/Soccer/Italian_Serie_A/Matches',
-            liga='https://www.classicbet.com.au/Sport/Soccer/Spanish_La_Liga/Matches',
+            # ita='https://www.classicbet.com.au/Sport/Soccer/Italian_Serie_A/Matches',
+            # liga='https://www.classicbet.com.au/Sport/Soccer/Spanish_La_Liga/Matches',
             # uefa='https://www.classicbet.com.au/Sport/Soccer/UEFA_Europa_League/Matches',
-            uefa='https://www.classicbet.com.au/Sport/Soccer/UEFA_Champions_League/Matches',
+            # uefa='https://www.classicbet.com.au/Sport/Soccer/UEFA_Champions_League/Matches',
         )
         info = self.init_league_info(**urls)
 
@@ -2158,17 +2158,17 @@ class WebWorker:
 
     def get_ladbrokes_match_info(self):
         urls = dict(
-            arg='https://www.ladbrokes.com.au/sports/soccer/45568353-football-argentina-argentinian-primera-division/',  # noqa
-            a='https://www.ladbrokes.com.au/sports/soccer/44649922-football-australia-australian-a-league/',  # noqa
-            bel='https://www.ladbrokes.com.au/sports/soccer/45568434-football-belgium-belgian-first-division-a/',  # noqa
+            # arg='https://www.ladbrokes.com.au/sports/soccer/45568353-football-argentina-argentinian-primera-division/',  # noqa
+            # a='https://www.ladbrokes.com.au/sports/soccer/44649922-football-australia-australian-a-league/',  # noqa
+            # bel='https://www.ladbrokes.com.au/sports/soccer/45568434-football-belgium-belgian-first-division-a/',  # noqa
             # eng='https://www.ladbrokes.com.au/sports/soccer/46666149-football-england-fa-cup/',  # noqa
-            eng='https://www.ladbrokes.com.au/sports/soccer/44936933-football-england-premier-league/',  # noqa
-            fra='https://www.ladbrokes.com.au/sports/soccer/45472697-football-france-french-ligue-1/',  # noqa
-            gem='https://www.ladbrokes.com.au/sports/soccer/44769778-football-germany-german-bundesliga/',  # noqa
-            ita='https://www.ladbrokes.com.au/sports/soccer/45942404-football-italy-italian-serie-a/',  # noqa
-            liga='https://www.ladbrokes.com.au/sports/soccer/45822932-football-spain-spanish-la-liga/',  # noqa
+            # eng='https://www.ladbrokes.com.au/sports/soccer/44936933-football-england-premier-league/',  # noqa
+            # fra='https://www.ladbrokes.com.au/sports/soccer/45472697-football-france-french-ligue-1/',  # noqa
+            # gem='https://www.ladbrokes.com.au/sports/soccer/44769778-football-germany-german-bundesliga/',  # noqa
+            # ita='https://www.ladbrokes.com.au/sports/soccer/45942404-football-italy-italian-serie-a/',  # noqa
+            # liga='https://www.ladbrokes.com.au/sports/soccer/45822932-football-spain-spanish-la-liga/',  # noqa
             # uefa='https://www.ladbrokes.com.au/sports/soccer/47323146-football-uefa-club-competitions-uefa-europa-league/',  # noqa
-            uefa='https://www.ladbrokes.com.au/sports/soccer/48526915-football-uefa-club-competitions-uefa-champions-league/',  # noqa
+            # uefa='https://www.ladbrokes.com.au/sports/soccer/48526915-football-uefa-club-competitions-uefa-champions-league/',  # noqa
         )
         info = self.init_league_info(**urls)
         for league, url in urls.items():
@@ -2197,16 +2197,16 @@ class WebWorker:
 
     def get_william_match_info(self):
         urls = dict(
-            a='https://www.williamhill.com.au/sports/soccer/australia/a-league-matches',
-            arg='https://www.williamhill.com.au/sports/soccer/americas/argentine-primera-division-matches',  # noqa
-            bel='https://www.williamhill.com.au/sports/soccer/europe/belgian-first-division-a-matches',  # noqa
-            eng='https://www.williamhill.com.au/sports/soccer/british-irish/english-premier-league-matches',  # noqa
+            # a='https://www.williamhill.com.au/sports/soccer/australia/a-league-matches',
+            # arg='https://www.williamhill.com.au/sports/soccer/americas/argentine-primera-division-matches',  # noqa
+            # bel='https://www.williamhill.com.au/sports/soccer/europe/belgian-first-division-a-matches',  # noqa
+            # eng='https://www.williamhill.com.au/sports/soccer/british-irish/english-premier-league-matches',  # noqa
             fra='https://www.williamhill.com.au/sports/soccer/europe/french-ligue-1-matches',
             gem='https://www.williamhill.com.au/sports/soccer/europe/german-bundesliga-matches',
-            ita='https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches',
-            liga='https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
+            # ita='https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches',
+            # liga='https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
             # uefa='https://www.williamhill.com.au/sports/soccer/european-cups/uefa-europa-league-matches',  # noqa
-            uefa='https://www.williamhill.com.au/sports/soccer/european-cups/uefa-champions-league-matches',  # noqa
+            # uefa='https://www.williamhill.com.au/sports/soccer/european-cups/uefa-champions-league-matches',  # noqa
         )
         info = self.init_league_info(**urls)
         for league, url in urls.items():
@@ -2235,26 +2235,31 @@ class WebWorker:
 
     def get_betfair_match_info(self):
         urls = dict(
-            arg='https://www.betfair.com.au/exchange/plus/football/competition/67387',
-            a='https://www.betfair.com.au/exchange/plus/football/competition/11418298',
-            bel='https://www.betfair.com.au/exchange/plus/football/competition/89979',
+            # arg='https://www.betfair.com.au/exchange/plus/football/competition/67387',
+            # a='https://www.betfair.com.au/exchange/plus/football/competition/11418298',
+            # bel='https://www.betfair.com.au/exchange/plus/football/competition/89979',
             # eng='https://www.betfair.com.au/exchange/plus/football/competition/30558',  # FA Cup
-            eng='https://www.betfair.com.au/exchange/plus/football/competition/10932509',
+            # eng='https://www.betfair.com.au/exchange/plus/football/competition/10932509',
             fra='https://www.betfair.com.au/exchange/plus/football/competition/55',
             gem='https://www.betfair.com.au/exchange/plus/football/competition/59',
-            ita='https://www.betfair.com.au/exchange/plus/football/competition/81',
-            liga='https://www.betfair.com.au/exchange/plus/football/competition/117',
+            # ita='https://www.betfair.com.au/exchange/plus/football/competition/81',
+            # liga='https://www.betfair.com.au/exchange/plus/football/competition/117',
             # uefa='https://www.betfair.com.au/exchange/plus/football/competition/2005',
-            uefa='https://www.betfair.com.au/exchange/plus/football/competition/228',
+            # uefa='https://www.betfair.com.au/exchange/plus/football/competition/228',
         )
         info = self.init_league_info(**urls)
 
-        for key in urls.keys():
-            self.driver.set_window_size(width=1920, height=1080)
-            self.driver.get(urls[key])
-            Betfair.login_static(self.driver, self.wait)
-            self.driver.get(urls[key])
-            break
+        for _ in range(3):
+            try:
+                url = list(urls.values())[0]
+                self.driver.set_window_size(width=1920, height=1080)
+                self.driver.get(url)
+                Betfair.login_static(self.driver, self.wait)
+                time.sleep(1)
+                break
+            except Exception as e:
+                log_and_print('DEBUG {}'.format(str(e)))
+                continue
 
         def get_date(i_):
             return Website.get_blocks_static('span.card-header-title',
@@ -2311,32 +2316,42 @@ class WebWorker:
             else:
                 write_file('.')
 
-        file = os.path.join(gettempdir(), 'punter-test.pkl')
+        def write_pkl(obj, file):
+            with open(file, 'wb') as pkl:
+                pickle.dump(obj, pkl)
+
+        def read_pkl(file):
+            with open(file, 'rb') as pkl:
+                return pickle.load(pkl)
+
+        file_c = os.path.join(gettempdir(), 'c_info.pkl')
+        file_w = os.path.join(gettempdir(), 'w_info.pkl')
+        file_b = os.path.join(gettempdir(), 'b_info.pkl')
+
         is_write = True  # False for debug
         if is_write:
             try:
                 log_and_print('getting classicbet')
                 info_classicbet = self.get_classicbet_match_info()
+                write_pkl(info_classicbet, file_c)
 
                 log_and_print('getting ladbrokes')
-                info_ladbrokes = dict() #self.get_ladbrokes_match_info()
+                info_ladbrokes = dict()  # self.get_ladbrokes_match_info()
 
                 log_and_print('getting william')
-                info_william = dict() #self.get_william_match_info()
+                info_william = self.get_william_match_info()
+                write_pkl(info_william, file_w)
 
                 log_and_print('getting betfair')
                 info_betfair = self.get_betfair_match_info()
+                write_pkl(info_betfair, file_b)
             finally:
                 self.driver.quit()
-
-            with open(file, 'wb') as pkl:
-                pickle.dump((info_classicbet,
-                             info_ladbrokes,
-                             info_william,
-                             info_betfair), pkl)
         else:
-            with open(file, 'rb') as pkl:
-                info_classicbet, info_ladbrokes, info_william, info_betfair = pickle.load(pkl)
+            info_classicbet = read_pkl(file_c)
+            info_ladbrokes = dict()
+            info_william = read_pkl(file_w)
+            info_betfair = read_pkl(file_b)
 
         with open('compare.txt', 'w') as urls_file:
             write_file('==bet_type== q')
