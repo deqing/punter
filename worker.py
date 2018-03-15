@@ -343,6 +343,7 @@ class MarketNames:
             'first 0.5': (2, 'First Half Over/Under 0.5 Goals'),
             'first 1.5': (2, 'First Half Over/Under 1.5 Goals'),
             'first 2.5': (2, 'First Half Over/Under 2.5 Goals'),
+            'first 3.5': (2, 'First Half Over/Under 3.5 Goals'),
             'first home 0.5': (2, 'First Half Home Team Over/Under 0.5 Goals'),
             'first home 1.5': (2, 'First Half Home Team Over/Under 1.5 Goals'),
             'first home 2.5': (2, 'First Half Home Team Over/Under 2.5 Goals'),
@@ -1896,6 +1897,7 @@ class WebWorker:
             'First Half Over/Under 0.5 Goals': 'first 0.5',
             'First Half Over/Under 1.5 Goals': 'first 1.5',
             'First Half Over/Under 2.5 Goals': 'first 2.5',
+            'First Half Over/Under 3.5 Goals': 'first 3.5',
             'First Half Both Teams To Score': 'first half both team to score',
             'First Goalscorer': '1st scorer',
             'Anytime Goalscorer': 'anytime scorer',
@@ -1967,7 +1969,7 @@ class WebWorker:
                         break
                     except Exception as e:
                         log_and_print(
-                            'DEBUG: will try again as running into exception {}'.format(e))
+                            'DEBUG: will try again as having {}'.format(type(e).__name__))
                         time.sleep(1)
 
             def get_texts(_=None):
@@ -2484,15 +2486,19 @@ class WebWorker:
                         return
                 lines = active.text.split('\n')
                 self.driver.find_element_by_link_text(market_str_).click()
-                for line in lines:
-                    if line == 'SELECTION WIN':
-                        continue
-                    info_ = line.split(' ')
-                    odd = info_.pop(-1)
-                    info_ = squash_string(''.join(info_))
-                    if info_ == 'tie':
-                        info_ = 'draw'
-                    odds_back[key_][info_] = odd
+                try:
+                    for line in lines:
+                        if line == 'SELECTION WIN':
+                            continue
+                        info_ = line.split(' ')
+                        odd = info_.pop(-1)
+                        info_ = squash_string(''.join(info_))
+                        if info_ == 'tie':
+                            info_ = 'draw'
+                        odds_back[key_][info_] = odd
+                except Exception as e:
+                    log_and_print('DEBUG: {}'.format(str(e)))
+                    raise
 
             if not click_additional_market(market_number):
                 return odds_back
@@ -2646,13 +2652,13 @@ class WebWorker:
         is_net_lad = 0
 
         is_pickle_classic = 0
-        is_net_classic = 0
+        is_net_classic = 1
 
         is_pickle_william = 0
-        is_net_william = 0
+        is_net_william = 1
 
         is_pickle_betfair = 0
-        is_net_betfair = 0
+        is_net_betfair = 1
 
         # get betfair
         odds_lay, odds_betfair, lay_markets = dict(), dict(), []
@@ -2746,84 +2752,98 @@ class WebWorker:
 
         market_names = MarketNames()
         results = []
-        log_and_print('------- ' + match_info + ' --------')
+        log_and_print('\n')  # ------- ' + match_info + ' --------')
+        
+        def set_profit_map(p_, o1, o2, agent1, agent2):
+            if is_odds_valid(o1):
+                p_['mp'], p_['apay'], p_['bpay'], p_['ap'], p_['bp'] = calc2(o1, o2)
+                p_['odd0'], p_['odd1'] = o1, o2
+                p_['agent0'], p_['agent1'] = agent1, agent2
+            else:
+                p_['mp'] = 0
+
+        def set_profit_map3(p_, o1, o2, o3, agent1, agent2, agent3):
+            if is_odds_valid(o1):
+                p_['mp'], p_['apay'], p_['bpay'], p_['cpay'], p_['ap'], p_['bp'], p_['cp'] = \
+                    calc3(o1, o2, o3)
+                p_['odd0'], p_['odd1'], p_['odd2'] = o1, o2, o3
+                p_['agent0'], p_['agent1'], p_['agent2'] = agent1, agent2, agent3
+            else:
+                p_['mp'] = 0
+
+        def get_max(size_of_odds):
+            m_ = p[0]
+            for i_ in range(size_of_odds):
+                if 'mp' in p[i_ + 1] and p[i_ + 1]['mp'] > m_['mp']:
+                    m_ = p[i_ + 1]
+            return m_
+
         for market, d in odds_back.items():
             keys, odds, agents, q_odds, q_agents = [], [], [], [], []
             if len(d) in (2, 3):
                 for key, odd_text in d.items():
-                    best, best_q = odd_text.split('@')[0].split('|')
-                    best_odd, best_agent = best.split(' ')
-                    q_odd, q_agent = best_q.split(' ')
                     keys.append(key)
+
+                    best, best_q = odd_text.split('@')[0].split('|')
+
+                    best_odd, best_agent = best.split(' ')
                     odds.append(best_odd)
-                    q_odds.append(q_odd)
                     agents.append(self.shorten_agent(best_agent))
+
+                    q_odd, q_agent = best_q.split(' ')
+                    q_odds.append(q_odd)
                     q_agents.append(self.shorten_agent(q_agent))
 
                 p = []
-                for _ in range(3):
+                for _ in range(4):
                     p.append(dict())
                 
                 if len(d) == 2 and market_names.desc[market][0] == 2:
-                    p[0]['mp'], p[0]['apay'], p[0]['bpay'], p[0]['ap'], p[0]['bp'] = calc2(*odds)
-                    p[0]['odd0'], p[0]['odd1'] = odds[0], odds[1]
-                    p[0]['agent0'], p[0]['agent1'] = agents[0], agents[1]
+                    set_profit_map(p[0], *odds, *agents)
                     if p[0]['mp'] < 100 and all_not_qualifying_agents(agents):
                         p[0]['mp'] = 0
-                        if is_odds_valid(q_odds[0]):
-                            p[1]['mp'], p[1]['apay'], p[1]['bpay'], p[1]['ap'], p[1]['bp'] = \
-                                calc2(q_odds[0], odds[1])
-                            p[1]['odd0'], p[1]['odd1'] = q_odds[0], odds[1]
-                            p[1]['agent0'], p[1]['agent1'] = q_agents[0], agents[0]
-                        else:
-                            p[1]['mp'] = 0
-                        if is_odds_valid(q_odds[1]):
-                            p[2]['mp'], p[2]['apay'], p[2]['bpay'], p[2]['ap'], p[2]['bp'] = \
-                                calc2(odds[0], q_odds[1])
-                            p[2]['odd0'], p[2]['odd1'] = odds[0], q_odds[1]
-                            p[2]['agent0'], p[2]['agent1'] = agents[1], q_agents[1]
-                        else:
-                            p[2]['mp'] = 0
+                        set_profit_map(p[1], q_odds[0], odds[1], q_agents[0], agents[0])
+                        set_profit_map(p[2], q_odds[1], odds[0], q_agents[1], agents[1])
 
-                    m = p[0]
-                    for i in range(2):
-                        if 'mp' in p[i+1] and p[i+1]['mp'] > m['mp']:
-                            m = p[i+1]
-                            
+                    m = get_max(2)
                     results.append([m['mp'], 2, market,
                                     keys[0], float(m['odd0']), m['apay'], m['ap'], m['agent0'],
                                     keys[1], float(m['odd1']), m['bpay'], m['bp'], m['agent1']])
-                elif len(d) == 3:
-                    min_pay_back, a_pay, b_pay, c_pay, a_profit, b_profit, c_profit = calc3(*odds)
-                    if min_pay_back < 100: # TODO
-                        if is_odds_valid(q_odds[0]):  #TODO
-                            odds = q_odds
-                            agents = q_agents
-                            min_pay_back, a_pay, b_pay, c_pay, a_profit, b_profit, c_profit = calc3(
-                                *odds)
-                        else:
-                            min_pay_back, a_pay, b_pay, c_pay, a_profit, b_profit, c_profit = \
-                                0, 0, 0, 0, 0, 0, 0
-                    results.append([min_pay_back, 3, market,
-                                    keys[0], float(odds[0]), a_pay, a_profit, agents[0],
-                                    keys[1], float(odds[1]), b_pay, b_profit, agents[1],
-                                    keys[2], float(odds[2]), c_pay, c_profit, agents[2]])
 
-        count = 200
+                elif len(d) == 3:
+                    set_profit_map3(p[0], *odds, *agents)
+                    if p[0]['mp'] < 100 and all_not_qualifying_agents(agents):
+                        p[0]['mp'] = 0
+                        set_profit_map3(p[1], q_odds[0], odds[1], odds[2], q_agents[0], agents[1], agents[2])  # noqa
+                        set_profit_map3(p[2], odds[0], q_odds[1], odds[2], agents[0], q_agents[1], agents[2])  # noqa
+                        set_profit_map3(p[3], odds[0], odds[1], q_odds[2], agents[0], agents[1], q_agents[2])  # noqa
+
+                    m = get_max(3)
+                    results.append([m['mp'], 3, market,
+                                    keys[0], float(m['odd0']), m['apay'], m['ap'], m['agent0'],
+                                    keys[1], float(m['odd1']), m['bpay'], m['bp'], m['agent1'],
+                                    keys[2], float(m['odd2']), m['cpay'], m['cp'], m['agent2']])
+
+        count = 2
         results.sort(reverse=True)
         for r in results:
             profit = r[0]
             n = r.pop(1)
             if profit != 0:
                 if n == 2:
-                    log_and_print('{:0.2f}\t[{}]\t'
+                    log_and_print('{:0.2f} {:0.2f}\t'
+                                  '{:0.2f}\t[{}]\t'
                                   '{} {:0.2f} (${})({}){}\t'
-                                  '{} {:0.2f} (${})({}){}'.format(*r))
+                                  '{} {:0.2f} (${})({}){}'.format(r[5]/r[4],
+                                                                  r[10]/r[9], *r))
                 elif n == 3:
-                    log_and_print('{:0.2f}\t[{}]\t'
+                    log_and_print('{:0.2f} {:0.2f} {:0.2f}\t'
+                                  '{:0.2f}\t[{}]\t'
                                   '{} {:0.2f} (${})({}){}\t'
                                   '{} {:0.2f} (${})({}){}\t'
-                                  '{} {:0.2f} (${})({}){}'.format(*r))
+                                  '{} {:0.2f} (${})({}){}'.format(r[5]/r[4],
+                                                                  r[10]/r[9],
+                                                                  r[15]/r[14], *r))
                 else:
                     log_and_print('DEBUG: wrong result for odds_back')
             count = count - 1
@@ -2831,7 +2851,7 @@ class WebWorker:
                 break
 
     def compare_multiple_sites(self, loop_minutes=0,
-                               get_classic=False,
+                               get_classic=True,
                                get_ladbrokes=False,
                                get_william=True,
                                get_betfair=True,
@@ -2935,9 +2955,9 @@ class WebWorker:
                 return a_
 
         agents, res = [], []
-        many = '|' in agent
+        many = ',' in agent
         if many:
-            agents = agent.split('|')
+            agents = agent.split(',')
         else:
             agents.append(agent)
 
@@ -2945,7 +2965,7 @@ class WebWorker:
             res.append(shorten(a))
 
         if many:
-            return '(' + '|'.join(res) + ')'
+            return '(' + ','.join(res) + ')'
         else:
             return '(' + res[0] + ')'
 
@@ -3032,7 +3052,7 @@ class WebWorker:
             m['{} +{}'.format(self.home_name, i)] = 'handicap home a' + str(i)
             m['{} +{}'.format(self.away_name, i)] = 'handicap away a' + str(i)
         
-        def get_odds(tab=''):
+        def get_odds():
             def get_(css, is_lay, key):
                 odds_ = odds_lay if is_lay else odds_back
                 btn_ = tr.find_element_by_css_selector(css)
@@ -3070,7 +3090,7 @@ class WebWorker:
             if t.text in ('Goals', 'Handicap', 'Half Time', 'Team', 'Player'):
                 t.click()
                 time.sleep(0.5)
-                get_odds(t.text)
+                get_odds()
 
         return odds_lay, odds_back
 
@@ -3117,7 +3137,7 @@ class WebWorker:
             log_and_print(url_back + '\n' + url_lay)
 
         for res in results:
-            if res[1] >= biggest_back:
+            if res[1] >= biggest_back or res[0] < 0 and res[1] < 1.5:
                 continue
             # 0 profit, 1 back, 2 agent, 3 lay, 4 lay amount, 5 original item text, 6 pretty display
             msg = '{:0.2f}\t{:0.2f} {}\t{:0.2f} ({})\t{}'.format(
