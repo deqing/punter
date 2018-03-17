@@ -1,6 +1,5 @@
 """
 TODO
-
 Don't do:
 - live bet - live is Phone only
 - add neds.com.au (not easy to get by css)
@@ -36,6 +35,7 @@ log_to_file = False
 g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,madbookie,palmerbet,pinnacle,sportsbet,tab,ubet,unibet,williamhill'  # noqa
 g_get_all_markets = True
+g_print_urls = False
 
 
 def calc3(win_odd, draw_odd, lost_odd):
@@ -2472,8 +2472,11 @@ class WebWorker:
                 return True
 
             def get_odds(market_str_, key_):
-                self.driver.find_element_by_link_text(market_str_).click()
-                active = Website.get_element_static('dd.active', self.driver, self.wait2)
+                try:
+                    self.driver.find_element_by_link_text(market_str_).click()
+                    active = Website.get_element_static('dd.active', self.driver, self.wait2)
+                except StaleElementReferenceException:
+                    active = None
                 if active is None:
                     self.driver.get(url_back)
                     Website.wait('additional markets', self.wait2, type_='partial')
@@ -2752,6 +2755,8 @@ class WebWorker:
 
         market_names = MarketNames()
         results = []
+
+        match_info += ''
         log_and_print('\n')  # ------- ' + match_info + ' --------')
         
         def set_profit_map(p_, o1, o2, agent1, agent2):
@@ -2824,26 +2829,36 @@ class WebWorker:
                                     keys[1], float(m['odd1']), m['bpay'], m['bp'], m['agent1'],
                                     keys[2], float(m['odd2']), m['cpay'], m['cp'], m['agent2']])
 
+        def to100(profit_, spent):
+            return (profit_ / spent) * 100
+
         count = 2
         results.sort(reverse=True)
         for r in results:
             profit = r[0]
             n = r.pop(1)
             if profit != 0:
+                global g_print_urls
                 if n == 2:
-                    log_and_print('{:0.2f} {:0.2f}\t'
+                    profit1 = to100(r[5], r[4])
+                    profit2 = to100(r[10], r[9])
+                    if profit1 > -5 and r[3] > 1.5 or profit2 > -5 and r[8] > 1.5:
+                        g_print_urls = True
+                    log_and_print('{:0.2f} {:0.2f} >\t'
                                   '{:0.2f}\t[{}]\t'
                                   '{} {:0.2f} (${})({}){}\t'
-                                  '{} {:0.2f} (${})({}){}'.format(r[5]/r[4],
-                                                                  r[10]/r[9], *r))
+                                  '{} {:0.2f} (${})({}){}'.format(profit1, profit2, *r))
                 elif n == 3:
-                    log_and_print('{:0.2f} {:0.2f} {:0.2f}\t'
+                    profit1 = to100(r[5], r[4])
+                    profit2 = to100(r[10], r[9])
+                    profit3 = to100(r[15], r[14])
+                    if profit1 > -5 and r[3] > 1.5 or profit2 > -5 and r[8] > 1.5 or profit3 > -5 and r[13] > 1.5:  # noqa
+                        g_print_urls = True
+                    log_and_print('{:0.2f} {:0.2f} {:0.2f} >\t'
                                   '{:0.2f}\t[{}]\t'
                                   '{} {:0.2f} (${})({}){}\t'
                                   '{} {:0.2f} (${})({}){}\t'
-                                  '{} {:0.2f} (${})({}){}'.format(r[5]/r[4],
-                                                                  r[10]/r[9],
-                                                                  r[15]/r[14], *r))
+                                  '{} {:0.2f} (${})({}){}'.format(profit1, profit2, profit3, *r))
                 else:
                     log_and_print('DEBUG: wrong result for odds_back')
             count = count - 1
@@ -3133,8 +3148,10 @@ class WebWorker:
         biggest_back = 17.9  # if back odd is too big, we might not have enough money to lay it
         top_results = 2
 
-        if results[0][0] >= yellow_profit and results[0][1] < biggest_back:
+        global g_print_urls
+        if g_print_urls or results[0][0] >= yellow_profit and results[0][1] < biggest_back:
             log_and_print(url_back + '\n' + url_lay)
+            g_print_urls = False
 
         for res in results:
             if res[1] >= biggest_back or res[0] < 0 and res[1] < 1.5:
