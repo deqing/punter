@@ -54,6 +54,7 @@ def main():
       --get-lay-markets-new     get lay markets and store to a temp file
       --get-urls                get urls and write to compare.txt
       --test                    test functionality which underdevelopment
+      --snr=<odds>              calculate SNR profits
 
     Example:
       cli.py luxbet,crownbet a
@@ -64,6 +65,7 @@ def main():
       cli.py bet365 gem "Adelaide Utd,Central Coast,,3.55,1.0"   # draw > 3.55 or lost > 1.0
       cli.py bet365 eng --betfair-limits=1,2,0.05,-5  # 1 < lay odd < 2, diff <= 0.05, profit > -5
       cli.py a a --compare-one=ladbrokes  # or: classicbet, william
+      cli.py a a --snr=1,1.1,5,6.5
     """
     worker = False
 
@@ -79,9 +81,15 @@ def main():
         multiple_processes()
     elif args['--test']:
         WebWorker.test()
+    elif args['--snr'] is not None:
+        odds = args['--snr'].split(',')
+        for back_odd, lay_odd in zip(odds[::2], odds[1::2]):
+            profit = WebWorker.get_snr_profit(float(back_odd), float(lay_odd))
+            print('{:0.2f} back {} lay {}'.format(profit, back_odd, lay_odd))
     else:
-        worker = WebWorker(is_get_data=not args['--print'] and not args['--print-betfair-only'],
-                           keep_driver_alive=False)
+        worker = WebWorker(
+            is_get_data=not args['--print'] and not args['--print-betfair-only'],
+            keep_driver_alive = False)
 
         if args['--bonus']:
             worker.calc_bonus_profit(args['<websites>'])
