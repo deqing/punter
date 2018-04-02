@@ -1924,16 +1924,6 @@ class WebWorker:
                 for t, odd in zip(odds[::2], odds[1::2]):
                     name1, name2 = t.split(' - ')
                     odds_back['half full'][name1 + '/' + name2] = odd
-                if False:  # TODO remove if above works
-                    odds_back['half full'][self.home_name + '/' + self.home_name] = odds[1]
-                    odds_back['half full'][self.home_name + '/Draw'] = odds[3]
-                    odds_back['half full'][self.home_name + '/' + self.away_name] = odds[5]
-                    odds_back['half full']['Draw/' + self.home_name] = odds[7]
-                    odds_back['half full']['Draw/Draw'] = odds[9]
-                    odds_back['half full']['Draw/' + self.away_name] = odds[11]
-                    odds_back['half full'][self.away_name + '/' + self.home_name] = odds[13]
-                    odds_back['half full'][self.away_name + '/Draw'] = odds[15]
-                    odds_back['half full'][self.away_name + '/' + self.away_name] = odds[17]
             elif title == 'Correct Score':
                 for t, odd in zip(odds[::2], odds[1::2]):
                     if t == 'Any Other Score':
@@ -1942,6 +1932,108 @@ class WebWorker:
         return odds_back
 
     def get_william_markets_odd(self, url_back, target_markets, lay_markets):
+        market_names = MarketNames()
+        odds_back = self.prepare_map_with_target_markets_as_key(market_names, target_markets)
+        self.driver.get(url_back)
+        sections = Website.get_blocks_static('div.Market_market_2m7', self.driver, self.wait)
+        
+        def loop_check():
+            for goals in 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5:
+                title_ = 'Over/Under {} Goals'.format(goals)
+                if header == title_:
+                    odds_back['ad {}'.format(goals)]['over'] = odds[1]
+                    odds_back['ad {}'.format(goals)]['under'] = odds[3]
+                    return
+
+            for goals in 0.5, 1.5, 2.5, 3.5:
+                if header == '{} Over/Under {} goals'.format(self.home_name, goals):
+                    odds_back['home ad {}'.format(goals)]['over'] = odds[2]
+                    odds_back['home ad {}'.format(goals)]['under'] = odds[5]
+                elif header == '{} Over/Under {} goals'.format(self.away_name, goals):
+                    odds_back['away ad {}'.format(goals)]['over'] = odds[2]
+                    odds_back['away ad {}'.format(goals)]['under'] = odds[5]
+                elif header == 'First Half Over/Under {} goals'.format(goals):
+                    odds_back['first {}'.format(goals)]['over'] = odds[1]
+                    odds_back['first {}'.format(goals)]['under'] = odds[3]
+                elif header == 'First Half {} Over/Under {} goals'.format(self.home_name, goals):
+                    odds_back['first home {}'.format(goals)]['over'] = odds[2]
+                    odds_back['first home {}'.format(goals)]['under'] = odds[5]
+                elif header == 'First Half {} Over/Under {} goals'.format(self.away_name, goals):
+                    odds_back['first away {}'.format(goals)]['over'] = odds[2]
+                    odds_back['first away {}'.format(goals)]['under'] = odds[5]
+                else:
+                    continue
+                return
+            
+            for goals in 0.5, 1.5, 2.5, 3.5:
+                if header == 'First Half Over/Under {} Goals'.format(goals):
+                    odds_back['first {}'.format(goals)]['over'] = odds[1]
+                    odds_back['first {}'.format(goals)]['under'] = odds[3]
+
+                if header == '{} Over/Under {} Goals'.format(self.home_name, goals):
+                    odds_back['home ad {}'.format(goals)]['over'] = odds[2]
+                    odds_back['home ad {}'.format(goals)]['under'] = odds[5]
+                elif header == '{} Over/Under {} Goals'.format(self.away_name, goals):
+                    odds_back['away ad {}'.format(goals)]['over'] = odds[2]
+                    odds_back['away ad {}'.format(goals)]['under'] = odds[5]
+                elif header == 'First Half {} Over/Under {} Goals'.format(self.home_name, goals):
+                    odds_back['first home {}'.format(goals)]['over'] = odds[2]
+                    odds_back['first home {}'.format(goals)]['under'] = odds[5]
+                elif header == 'First Half {} Over/Under {} Goals'.format(self.away_name, goals):
+                    odds_back['first away {}'.format(goals)]['over'] = odds[2]
+                    odds_back['first away {}'.format(goals)]['under'] = odds[5]
+                else:
+                    continue
+                return
+
+            for goals in 1, 2, 3, 4, 5:
+                if header == 'Handicap {} +{}'.format(self.home_name, goals):
+                    title = 'handicap home a{}'.format(goals)
+                elif header == 'Handicap {} -{}'.format(self.home_name, goals):
+                    title = 'handicap away a{}'.format(goals)
+                elif header == 'First Half Handicap {} +{}'.format(self.home_name, goals):
+                    title = 'first half handicap home a{}'.format(goals)
+                elif header == 'First Half Handicap {} -{}'.format(self.home_name, goals):
+                    title = 'first half handicap away a{}'.format(goals)
+                else:
+                    continue
+                odds_back[title][self.home_name] = odds[1] if 'SUS' not in odds[1] else '0'
+                odds_back[title]['draw'] = odds[3] if 'SUS' not in odds[3] else '0'
+                odds_back[title][self.away_name] = odds[5] if 'SUS' not in odds[5] else '0'
+                return
+        
+        for section in sections:
+            header = section.find_element_by_css_selector('div.Market_header_2Wc').text
+            odds = section.find_element_by_css_selector('div.Outcomes_outcomes_2uk').text.split('\n')  # noqa
+            if header == 'Match Result':
+                self.home_name = odds[0]
+                self.away_name = odds[4]
+                odds_back['main'][self.home_name] = odds[1]
+                odds_back['main']['Draw'] = odds[3]
+                odds_back['main'][self.away_name] = odds[5]
+            elif header == 'Both Teams To Score':
+                odds_back['both score']['yes'] = odds[1]
+                odds_back['both score']['no'] = odds[3]
+            elif header == 'First Half Odd / Even Goals':
+                odds_back['first half odd even goals']['odd'] = odds[1]
+                odds_back['first half odd even goals']['even'] = odds[3]
+            elif header == 'HT/FT Double':
+                for t, odd in zip(odds[::2], odds[1::2]):
+                    odds_back['half full'][t] = odd
+            elif header == 'Correct Score':
+                for t, odd in zip(odds[::2], odds[1::2]):
+                    odds_back['correct score'][''.join(t.split(' '))] = odd
+            elif header == 'First Half Correct Score':
+                for t, odd in zip(odds[::2], odds[1::2]):
+                    odds_back['half time score'][''.join(t.split(' '))] = odd
+            elif header == 'First Goalscorer':
+                for t, odd in zip(odds[::2], odds[1::2]):
+                    odds_back['1st scorer'][t] = odd
+            else:
+                loop_check()
+        return odds_back
+
+    def get_william_markets_odd_old(self, url_back, target_markets, lay_markets):
         market_names = MarketNames()
         map_headers = {
             'Correct Score': 'correct score',
@@ -2813,12 +2905,15 @@ class WebWorker:
                 for t in texts:
                     odds = t.split(' ')
                     odd, agent = odds[-2], odds[-1]
-                    if float(odd) >= max_odd:
-                        max_agent = agent if float(odd) > max_odd else max_agent + ',' + agent
-                        max_odd = float(odd)
-                    if float(odd) >= max_q_odd and self.is_qualifying(agent):
-                        max_q_agent = agent if float(odd) > max_q_odd else max_q_agent + ',' + agent
-                        max_q_odd = float(odd)
+                    try:
+                        if float(odd) >= max_odd:
+                            max_agent = agent if float(odd) > max_odd else max_agent + ',' + agent
+                            max_odd = float(odd)
+                        if float(odd) >= max_q_odd and self.is_qualifying(agent):
+                            max_q_agent = agent if float(odd) > max_q_odd else max_q_agent + ',' + agent
+                            max_q_odd = float(odd)
+                    except:
+                        raise
                 d[key] = '{} {}|{} {}@{}'.format(max_odd, max_agent, max_q_odd, max_q_agent, d[key])
 
     def print_back_profits(self, odds_back, match_info):
