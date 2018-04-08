@@ -34,7 +34,7 @@ HEAD = '<html lang="en">\n'
 log_to_file = False
 g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,madbookie,palmerbet,pinnacle,sportsbet,tab,ubet,unibet,williamhill'  # noqa
-g_get_all_markets = False  # TODO if do lay only: change to False
+g_get_all_markets = True  # TODO if do lay only: change to False
 g_print_urls = True
 
 
@@ -2343,7 +2343,7 @@ class WebWorker:
                     continue
                 try:
                     home, away = t.split(' v ')
-                except:
+                except Exception as _:
                     log_and_print('DEBUG: failed to split ' + t)
                     raise
                 info[l][self.get_vs(home, away, l)] = (date_, match_url)
@@ -2903,7 +2903,7 @@ class WebWorker:
                 odds_back = self.merge_back_odds(d, odds_back)
 
         self.generate_max_back_odds(odds_back)
-        if False:  # Compare back together?  TODO make it usable
+        if True:  # Compare back together?  TODO make it usable
             self.print_back_profits(odds_back, match_info)
 
         if get_betfair and len(odds_back) is not 0:
@@ -2943,7 +2943,7 @@ class WebWorker:
 
     def print_back_profits(self, odds_back, match_info):
         def is_odds_valid(odd):
-            return float(odd) > 1 and float(odd) > 1.4
+            return 1.4 < float(odd) < 18
 
         def all_not_qualifying_agents(agents_):
             for a in agents_:
@@ -2990,11 +2990,11 @@ class WebWorker:
                     best, best_q = odd_text.split('@')[0].split('|')
 
                     best_odd, best_agent = best.split(' ')
-                    odds.append(best_odd)
+                    odds.append(best_odd if is_odds_valid(best_odd) else 0.01)
                     agents.append(self.shorten_agent(best_agent))
 
                     q_odd, q_agent = best_q.split(' ')
-                    q_odds.append(q_odd)
+                    q_odds.append(q_odd if is_odds_valid(q_odd) else 0.01)
                     q_agents.append(self.shorten_agent(q_agent))
 
                 p = []
@@ -3042,23 +3042,21 @@ class WebWorker:
                 if n == 2:
                     profit1 = to100(r[5], r[4])
                     profit2 = to100(r[10], r[9])
-                    #if profit1 > -5 and r[3] > 1.5 or profit2 > -5 and r[8] > 1.5:
-                    #    g_print_urls = True
-                    log_and_print('{:0.2f} {:0.2f} >\t'
-                                  '{:0.2f}\t[{}]\t'
+                    if profit1 > -5 and r[3] > 1.5 or profit2 > -5 and r[8] > 1.5:
+                        g_print_urls = True
+                    log_and_print('{:0.2f}\t[{}]\t'
                                   '{} {:0.2f} (${})({}){}\t'
-                                  '{} {:0.2f} (${})({}){}'.format(profit1, profit2, *r))
+                                  '{} {:0.2f} (${})({}){}'.format(*r))
                 elif n == 3:
                     profit1 = to100(r[5], r[4])
                     profit2 = to100(r[10], r[9])
                     profit3 = to100(r[15], r[14])
-                    #if profit1 > -5 and r[3] > 1.5 or profit2 > -5 and r[8] > 1.5 or profit3 > -5 and r[13] > 1.5:  # noqa
-                    #    g_print_urls = True
-                    log_and_print('{:0.2f} {:0.2f} {:0.2f} >\t'
-                                  '{:0.2f}\t[{}]\t'
+                    if profit1 > -5 and r[3] > 1.5 or profit2 > -5 and r[8] > 1.5 or profit3 > -5 and r[13] > 1.5:  # noqa
+                        g_print_urls = True
+                    log_and_print('{:0.2f}\t[{}]\t'
                                   '{} {:0.2f} (${})({}){}\t'
                                   '{} {:0.2f} (${})({}){}\t'
-                                  '{} {:0.2f} (${})({}){}'.format(profit1, profit2, profit3, *r))
+                                  '{} {:0.2f} (${})({}){}'.format(*r))
                 else:
                     log_and_print('DEBUG: wrong result for odds_back')
             count = count - 1
@@ -3066,8 +3064,8 @@ class WebWorker:
                 break
 
     def compare_multiple_sites(self, loop_minutes=0,
-                               get_crown=False,  # TODO choose agents to get
-                               get_ladbrokes=False,
+                               get_crown=True,  # TODO choose agents to get
+                               get_ladbrokes=True,
                                get_william=True,
                                get_betfair=True,
                                worker_id=None):
@@ -3341,12 +3339,12 @@ class WebWorker:
             yellow_profit = 76
             red_profit = 80
 
-        biggest_back = 17.9  # if back odd is too big, we might not have enough money to lay it
+        biggest_back = 18  # if back odd is too big, we might not have enough money to lay it
         top_results = 2
 
         global g_print_urls
         if g_print_urls or results[0][0] >= yellow_profit and results[0][1] < biggest_back:
-            #log_and_print(url_back + '\n' + url_lay)
+            log_and_print(url_back + '\n' + url_lay)
             g_print_urls = False
 
         for res in results:
