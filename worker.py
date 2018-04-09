@@ -1996,7 +1996,7 @@ class WebWorker:
                     else:
                         continue
                     return
-                except:
+                except Exception as _:
                     raise
 
             for goals in 1, 2, 3, 4, 5:
@@ -2941,7 +2941,7 @@ class WebWorker:
                         raise
                 d[key] = '{} {}|{} {}@{}'.format(max_odd, max_agent, maxq_odd, maxq_agent, d[key])
 
-    def print_back_profits(self, odds_back, match_info):
+    def print_back_profits(self, odds_back, _):
         def is_odds_valid(odd):
             return 1.4 < float(odd) < 18
 
@@ -2954,9 +2954,6 @@ class WebWorker:
         market_names = MarketNames()
         results = []
 
-        match_info += ''
-        log_and_print('\n')  # ------- ' + match_info + ' --------')
-        
         def set_profit_map(p_, o1, o2, agent1, agent2):
             if is_odds_valid(o1):
                 p_['mp'], p_['apay'], p_['bpay'], p_['ap'], p_['bp'] = calc2(o1, o2)
