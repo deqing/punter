@@ -16,7 +16,7 @@ import threading
 import time
 import traceback
 from colorama import Fore, Back, Style
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from logging.handlers import RotatingFileHandler
 from selenium import webdriver
@@ -1702,9 +1702,63 @@ class WebWorker:
         return (back_odd - 1) * 100 - (lay_odd - 1) * ((back_odd - 1) / (lay_odd - 0.05) * 100)
 
     @staticmethod
-    def test():
-        min_pay_back, ip, jp, iget, jget = calc2(1.5, 2.88)
-        log_and_print('{} ${}({}) ${}({})'.format(min_pay_back, ip, iget, jp, jget))
+    def get_q_profit(back_odd, lay_odd):
+        return (back_odd / (lay_odd - 0.05) * 100) * 0.95 - 100
+
+    @staticmethod
+    def test(self):
+        pass
+
+    @staticmethod
+    def calc_4_round_1_back(b1, b2, b3, b4, l1, l2, l3, l4):
+        back_stake1 = 50
+        for lay_stake1 in range(10, back_stake1 + 50):
+            for lay_stake2 in range(20, back_stake1 + 50):
+                for lay_stake3 in range(30, back_stake1 + 50):
+                    for lay_stake4 in range(40, back_stake1 + 50):
+                        # back_stake2 = back_stake1 * b1
+                        # back_stake3 = back_stake2 * b2
+                        # back_stake4 = back_stake3 * b3
+                        back_win4 = 50 * (3.8 - 1)
+
+                        lay_ly1 = lay_stake1 * (l1 - 1)
+                        lay_ly2 = lay_stake2 * (l2 - 1)
+                        lay_ly3 = lay_stake3 * (l3 - 1)
+                        lay_ly4 = lay_stake4 * (l4 - 1)
+
+                        lay_win1 = lay_stake1 * 0.95
+                        lay_win2 = lay_stake2 * 0.95
+                        lay_win3 = lay_stake3 * 0.95
+                        lay_win4 = lay_stake4 * 0.95
+
+                        a = [1000 for _ in range(11)]
+                        a[0] = lay_win1 + lay_win2 - back_stake1                      # 01 01
+                        a[1] = lay_win1 + lay_win3 - lay_ly2 - back_stake1            # 01 10 01
+                        a[2] = lay_win1 + lay_win4 - lay_ly2 - lay_ly3 - back_stake1  # 01 10 10 01
+                        a[3] = lay_win1 - lay_ly2 - lay_ly3 - lay_ly4 + 35            # 01 10 10 10
+                        a[4] = lay_win2 + lay_win3 - lay_ly1 - back_stake1            # 10 01 01
+                        a[5] = lay_win2 + lay_win4 - lay_ly1 - lay_ly3 - back_stake1  # 10 01 10 01
+                        a[6] = lay_win2 - lay_ly1 - lay_ly3 - lay_ly4 + 35            # 10 01 10 10
+                        a[7] = lay_win3 + lay_win4 - back_stake1 - lay_ly1 - lay_ly2  # 10 10 01 01
+                        a[8] = lay_win3 - lay_ly1 - lay_ly2 - lay_ly4 + 35            # 10 10 01 10
+                        a[9] = lay_win4 - lay_ly1 - lay_ly2 - lay_ly3 + 35            # 10 10 10 01
+                        a[10] = back_win4 - lay_ly1 - lay_ly2 - lay_ly3 - lay_ly4     # 10 10 10 10
+
+                        all_positive = True
+                        for i in range(len(a)):
+                            if a[i] < 10:
+                                all_positive = False
+                                break
+                            if i > 5 and a[i] < 18:
+                                all_positive = False
+                                break
+
+                        if all_positive:
+                            s_print = '{:0.2f} {:0.2f} {:0.2f} {:0.2f}: '.format(
+                                lay_stake1, lay_stake2, lay_stake3, lay_stake4)
+                            for o in a:
+                                s_print += '{:0.2f} '.format(o)
+                            log_and_print(s_print)
 
     @staticmethod
     def calc_bonus_profit(websites_str, website='pinnacle', stake=100, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
@@ -2361,7 +2415,7 @@ class WebWorker:
             ita='https://www.ladbrokes.com.au/sports/soccer/45942404-football-italy-italian-serie-a/',  # noqa
             liga='https://www.ladbrokes.com.au/sports/soccer/45822932-football-spain-spanish-la-liga/',  # noqa
             # uefa='https://www.ladbrokes.com.au/sports/soccer/47323146-football-uefa-club-competitions-uefa-europa-league/',  # noqa
-            # uefa='https://www.ladbrokes.com.au/sports/soccer/48526915-football-uefa-club-competitions-uefa-champions-league/',  # noqa
+            uefa='https://www.ladbrokes.com.au/sports/soccer/48526915-football-uefa-club-competitions-uefa-champions-league/',  # noqa
         )
         info = self.init_league_info(**urls)
         for league, url in urls.items():
@@ -2399,7 +2453,7 @@ class WebWorker:
             ita='https://www.williamhill.com.au/sports/soccer/europe/italian-serie-a-matches',
             liga='https://www.williamhill.com.au/sports/soccer/europe/spanish-primera-division-matches',  # noqa
             # uefa='https://www.williamhill.com.au/sports/soccer/european-cups/uefa-europa-league-matches',  # noqa
-            # uefa='https://www.williamhill.com.au/sports/soccer/european-cups/uefa-champions-league-matches',  # noqa
+            uefa='https://www.williamhill.com.au/sports/soccer/european-cups/uefa-champions-league-matches',  # noqa
         )
         info = self.init_league_info(**urls)
         for league, url in urls.items():
@@ -2424,6 +2478,44 @@ class WebWorker:
                 time_ = time_.split(' ')[0]
 
                 info[league][self.get_vs(home, away, league)] = (date_ + time_, match_url)
+        return info
+
+    def get_unibet_match_info(self):
+        urls = dict(
+            a='https://www.unibet.com.au/betting#filter/football/australia/a-league',
+            arg='https://www.unibet.com.au/betting#filter/football/argentina/primera_division',
+            eng='https://www.unibet.com.au/betting#filter/football/england/premier_league',
+            fra='https://www.unibet.com.au/betting#filter/football/france/ligue_1',
+            gem='https://www.unibet.com.au/betting#filter/football/germany/bundesliga',
+            ita='https://www.unibet.com.au/betting#filter/football/italy/serie_a',
+            liga='https://www.unibet.com.au/betting#filter/football/spain/laliga',
+            uefa='https://www.unibet.com.au/betting#filter/football/champions_league',
+        )
+
+        info = self.init_league_info(**urls)
+        for league, url in urls.items():
+            self.driver.get(url)
+            date_blocks = Website.get_blocks_static('div.KambiBC-collapsible-container.KambiBC-mod-event-group-container', self.driver, self.wait)  # noqa
+            for b in date_blocks:
+                if 'KambiBC-expanded' not in b.get_attribute('class'):
+                    b.click()
+                    time.sleep(0.5)
+                dates_ = b.find_element_by_css_selector('div.KambiBC-mod-event-group-header__title-inner').text.split('\n')  # noqa
+                date_ = dates_[1] if 'day' in dates_[0] or ':' in dates_[0] else dates_[0]
+                try:
+                    if date_.strip() == 'Tomorrow':
+                        d_ = '{dt:%a} {dt.day} {dt:%b} '.format(dt=datetime.now() + timedelta(days=1))
+                    else:
+                        d_ = '{dt:%a} {dt.day} {dt:%b} '.format(dt=datetime.strptime(date_.strip(), '%d %B'))
+                except Exception as _:
+                    continue
+                titles = b.find_elements_by_css_selector('li.KambiBC-event-item')
+                for t in titles:
+                    match_url = t.find_element_by_tag_name('a').get_attribute('href')
+                    event = t.find_element_by_css_selector('div.KambiBC-event-participants').text
+                    home, away = event.split('\n')
+                    time_ = t.find_element_by_css_selector('span.KambiBC-event-item__start-time--time').text  # noqa
+                    info[league][self.get_vs(home, away, league)] = (d_ + time_, match_url)
         return info
 
     def get_betfair_match_info(self):
@@ -2525,15 +2617,18 @@ class WebWorker:
         if is_write:
             try:
                 log_and_print('getting crownbet')
-                info_crownbet = self.get_crownbet_match_info()
+                info_crownbet = dict()#self.get_crownbet_match_info()
                 write_pkl(info_crownbet, file_w)
 
                 log_and_print('getting ladbrokes')
-                info_ladbrokes = self.get_ladbrokes_match_info()
+                info_ladbrokes = dict()#self.get_ladbrokes_match_info()
 
                 log_and_print('getting william')
-                info_william = self.get_william_match_info()
+                info_william = dict()#self.get_william_match_info()
                 # write_pkl(info_william, file_w)
+
+                log_and_print('getting unibet')
+                info_unibet = self.get_unibet_match_info()
 
                 log_and_print('getting betfair')
                 info_betfair = self.get_betfair_match_info()
@@ -2545,6 +2640,7 @@ class WebWorker:
             info_ladbrokes = dict()
             info_william = read_pkl(file_w)
             info_betfair = read_pkl(file_b)
+            info_unibet = dict()
 
         with open('compare.txt', 'w') as urls_file:
             write_file('==bet_type== q')
@@ -2558,6 +2654,7 @@ class WebWorker:
                         write_url(info_crownbet)
                         write_url(info_ladbrokes)
                         write_url(info_william)
+                        write_url(info_unibet)
                         write_file(betfair_url)
 
     @staticmethod
@@ -2812,8 +2909,8 @@ class WebWorker:
         self.save_to(match_to_markets, pkl_name)
         time_it.top_log('get lay markets')
 
-    def scan_match(self, get_ladbrokes, get_crown, get_william, get_betfair,
-                   match_info, url_crown, url_lad, url_william, url_lay,
+    def scan_match(self, get_ladbrokes, get_crown, get_william, get_unibet, get_betfair,
+                   match_info, url_crown, url_lad, url_william, url_unibet, url_lay,
                    use_aws, bet_type, target_markets):
         def get(func, is_get_from_net, is_pickle_it, pickle_name):
             if is_get_from_net == 1:
@@ -2836,6 +2933,10 @@ class WebWorker:
             return self.odds_map_to_id(
                 self.get_william_markets_odd(url_william, target_markets, lay_markets), 'william')
 
+        def func_get_unibet():
+            return self.odds_map_to_id(
+                self.get_unibet_markets_odd(url_unibet, target_markets, lay_markets), 'unibet')
+
         # Production: 01
         # Debug: 11 (read from net and write pickle) then 00 (read from pickle)
         #
@@ -2850,6 +2951,9 @@ class WebWorker:
 
         is_pickle_william = 0
         is_net_william = 1
+
+        is_pickle_unibet = 1
+        is_net_unibet = 1
 
         is_pickle_betfair = 0
         is_net_betfair = 1
@@ -2951,6 +3055,8 @@ class WebWorker:
                     return False
             return True
 
+        log_and_print(' ')
+
         market_names = MarketNames()
         results = []
 
@@ -3007,7 +3113,7 @@ class WebWorker:
 
                     m = get_max(2)
                     if m['mp'] != 0:
-                        results.append([m['mp'], 2, market,
+                        results.append([100-m['mp'], 2, market,
                                         keys[0], float(m['odd0']), m['apay'], m['ap'], m['agent0'],
                                         keys[1], float(m['odd1']), m['bpay'], m['bp'], m['agent1']])
 
@@ -3021,7 +3127,7 @@ class WebWorker:
 
                     m = get_max(3)
                     if m['mp'] != 0:
-                        results.append([m['mp'], 3, market,
+                        results.append([100-m['mp'], 3, market,
                                         keys[0], float(m['odd0']), m['apay'], m['ap'], m['agent0'],
                                         keys[1], float(m['odd1']), m['bpay'], m['bp'], m['agent1'],
                                         keys[2], float(m['odd2']), m['cpay'], m['cp'], m['agent2']])
@@ -3065,6 +3171,7 @@ class WebWorker:
                                get_ladbrokes=True,
                                get_william=True,
                                get_betfair=True,
+                               get_unibet=True,
                                worker_id=None):
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
@@ -3090,15 +3197,15 @@ class WebWorker:
 
         while len(lines) > 0:
             log_and_print('_'*100 + ' bet type: ' + bet_type)
-            for l, match_info, url_crown, url_lad, url_william, url_lay in \
-                    zip(lines[::6], lines[1::6], lines[2::6],
-                        lines[3::6], lines[4::6], lines[5::6]):
+            for l, match_info, url_crown, url_lad, url_william, url_unibet, url_lay in \
+                    zip(lines[::7], lines[1::7], lines[2::7], lines[3::7],
+                        lines[4::7], lines[5::7], lines[6::7]):
 
                 self.league = l.split(' ')[1]
 
                 try:
-                    self.scan_match(get_ladbrokes, get_crown, get_william, get_betfair,
-                                    match_info, url_crown, url_lad, url_william,
+                    self.scan_match(get_ladbrokes, get_crown, get_william, get_unibet, get_betfair,
+                                    match_info, url_crown, url_lad, url_william, url_unibet,
                                     url_lay, use_aws, bet_type, target_markets)
                 except Exception as e:
                     log_and_print('Exception: [' + str(e) + ']')
@@ -3185,7 +3292,7 @@ class WebWorker:
             if bet_type_ == 'snr':  # SNR
                 return self.get_snr_profit(bo, lay_odd_)
             elif 'boost' in bet_type_ or 'q' in bet_type_:  # qualifying
-                return (bo / (lay_odd_ - 0.05) * 100) * 0.95 - 100
+                return self.get_q_profit(bo, lay_odd_)
             else:
                 raise 'DEBUG unexpected bet type: ' + bet_type_
 

@@ -80,7 +80,15 @@ def main():
     if args['--compare-multi-process']:
         multiple_processes()
     elif args['--test']:
-        WebWorker.test()
+        WebWorker.calc_4_round_1_back(1.18, 1.18, 1.48, 1.68,
+                                      1.21, 1.22, 1.58, 1.80)
+
+        if False:  # get q profits
+            for a in range(30, 40):
+                print('--- ' + str(a))
+                for back_odd, lay_odd in zip([a/10]*8, [x * 0.1 for x in range(a-7, a+2)]):
+                    profit = WebWorker.get_q_profit(float(back_odd), float(lay_odd))
+                    print('{:0.1f} {:0.2f} {:0.2f}'.format(float(lay_odd), profit/2, (float(back_odd) / (float(lay_odd) - 0.05) * 50)))
     elif args['--snr'] is not None:
         odds = args['--snr'].split(',')
         for back_odd, lay_odd in zip(odds[::2], odds[1::2]):
