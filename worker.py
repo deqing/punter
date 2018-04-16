@@ -1070,6 +1070,7 @@ class Betfair(Website):
                 account.send_keys(username_file.read().rstrip())
                 password.send_keys(password_file.read().rstrip())
             login.click()
+            #TODO following try change to wait (the elemenent is not there)
             Website.wait('form.ssc-lof', wait)
             save_cookie(path)
 
@@ -2617,18 +2618,18 @@ class WebWorker:
         if is_write:
             try:
                 log_and_print('getting crownbet')
-                info_crownbet = dict()#self.get_crownbet_match_info()
+                info_crownbet = self.get_crownbet_match_info()
                 write_pkl(info_crownbet, file_w)
 
                 log_and_print('getting ladbrokes')
-                info_ladbrokes = dict()#self.get_ladbrokes_match_info()
+                info_ladbrokes = self.get_ladbrokes_match_info()
 
                 log_and_print('getting william')
-                info_william = dict()#self.get_william_match_info()
+                info_william = self.get_william_match_info()
                 # write_pkl(info_william, file_w)
 
-                log_and_print('getting unibet')
-                info_unibet = self.get_unibet_match_info()
+                #log_and_print('getting unibet')
+                info_unibet = dict()#self.get_unibet_match_info()
 
                 log_and_print('getting betfair')
                 info_betfair = self.get_betfair_match_info()
@@ -2933,9 +2934,9 @@ class WebWorker:
             return self.odds_map_to_id(
                 self.get_william_markets_odd(url_william, target_markets, lay_markets), 'william')
 
-        def func_get_unibet():
-            return self.odds_map_to_id(
-                self.get_unibet_markets_odd(url_unibet, target_markets, lay_markets), 'unibet')
+        #def func_get_unibet():
+        #    return self.odds_map_to_id(
+        #        self.get_unibet_markets_odd(url_unibet, target_markets, lay_markets), 'unibet')
 
         # Production: 01
         # Debug: 11 (read from net and write pickle) then 00 (read from pickle)
@@ -2952,7 +2953,7 @@ class WebWorker:
         is_pickle_william = 0
         is_net_william = 1
 
-        is_pickle_unibet = 1
+        is_pickle_unibet = 0
         is_net_unibet = 1
 
         is_pickle_betfair = 0
@@ -3061,7 +3062,7 @@ class WebWorker:
         results = []
 
         def set_profit_map(p_, o1, o2, agent1, agent2):
-            if is_odds_valid(o1):
+            if is_odds_valid(o1) and is_odds_valid(o2):
                 p_['mp'], p_['apay'], p_['bpay'], p_['ap'], p_['bp'] = calc2(o1, o2)
                 p_['odd0'], p_['odd1'] = o1, o2
                 p_['agent0'], p_['agent1'] = agent1, agent2
@@ -3069,7 +3070,7 @@ class WebWorker:
                 p_['mp'] = 0
 
         def set_profit_map3(p_, o1, o2, o3, agent1, agent2, agent3):
-            if is_odds_valid(o1):
+            if is_odds_valid(o1) and is_odds_valid(o2) and is_odds_valid(o3):
                 p_['mp'], p_['apay'], p_['bpay'], p_['cpay'], p_['ap'], p_['bp'], p_['cp'] = \
                     calc3(o1, o2, o3)
                 p_['odd0'], p_['odd1'], p_['odd2'] = o1, o2, o3
@@ -3113,7 +3114,7 @@ class WebWorker:
 
                     m = get_max(2)
                     if m['mp'] != 0:
-                        results.append([100-m['mp'], 2, market,
+                        results.append([m['mp'], 2, market,
                                         keys[0], float(m['odd0']), m['apay'], m['ap'], m['agent0'],
                                         keys[1], float(m['odd1']), m['bpay'], m['bp'], m['agent1']])
 
@@ -3127,7 +3128,7 @@ class WebWorker:
 
                     m = get_max(3)
                     if m['mp'] != 0:
-                        results.append([100-m['mp'], 3, market,
+                        results.append([m['mp'], 3, market,
                                         keys[0], float(m['odd0']), m['apay'], m['ap'], m['agent0'],
                                         keys[1], float(m['odd1']), m['bpay'], m['bp'], m['agent1'],
                                         keys[2], float(m['odd2']), m['cpay'], m['cp'], m['agent2']])
@@ -3171,7 +3172,7 @@ class WebWorker:
                                get_ladbrokes=True,
                                get_william=True,
                                get_betfair=True,
-                               get_unibet=True,
+                               get_unibet=False,
                                worker_id=None):
         with open('compare.txt', 'r') as urls_file:
             lines = urls_file.read().splitlines()
