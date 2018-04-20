@@ -9,16 +9,18 @@ import logging
 import os
 import pickle
 import re
-import requests
 import smtplib
 import sys
 import threading
 import time
 import traceback
-from colorama import Fore, Back, Style
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from logging.handlers import RotatingFileHandler
+from tempfile import gettempdir
+
+import requests
+from colorama import Fore, Back, Style
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import StaleElementReferenceException
@@ -27,8 +29,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
-from tempfile import gettempdir
-
 
 HEAD = '<html lang="en">\n'
 log_to_file = False
@@ -1714,13 +1714,14 @@ class WebWorker:
     def calc_4_round_1_back(b1, b2, b3, b4, l1, l2, l3, l4):
         back_stake1 = 50
         for lay_stake1 in range(10, back_stake1 + 50):
-            for lay_stake2 in range(20, back_stake1 + 50):
+            for lay_stake2 in range(20, back_stake1 + 60):
                 for lay_stake3 in range(30, back_stake1 + 50):
                     for lay_stake4 in range(40, back_stake1 + 50):
-                        # back_stake2 = back_stake1 * b1
-                        # back_stake3 = back_stake2 * b2
-                        # back_stake4 = back_stake3 * b3
-                        back_win4 = 50 * (3.8 - 1)
+                        back_stake2 = back_stake1 * b1
+                        back_stake3 = back_stake2 * b2
+                        back_stake4 = back_stake3 * b3
+                        #back_win4 = 50 * (back_stake4 - 1)
+                        back_win4 = 50 * (3.86 - 1)
 
                         lay_ly1 = lay_stake1 * (l1 - 1)
                         lay_ly2 = lay_stake2 * (l2 - 1)
@@ -1746,11 +1747,19 @@ class WebWorker:
                         a[10] = back_win4 - lay_ly1 - lay_ly2 - lay_ly3 - lay_ly4     # 10 10 10 10
 
                         all_positive = True
+                        small_count = 0
                         for i in range(len(a)):
                             if a[i] < 10:
+                                small_count += 1
+                                if small_count > 2:
+                                    all_positive = False
+                                    break
+
+                            if a[i] < 5:
                                 all_positive = False
                                 break
-                            if i > 5 and a[i] < 18:
+
+                            if i > 6 and a[i] < 25:
                                 all_positive = False
                                 break
 

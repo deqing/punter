@@ -80,8 +80,8 @@ def main():
     if args['--compare-multi-process']:
         multiple_processes()
     elif args['--test']:
-        WebWorker.calc_4_round_1_back(1.18, 1.18, 1.48, 1.68,
-                                      1.21, 1.22, 1.58, 1.80)
+        WebWorker.calc_4_round_1_back(1.25, 1.18, 1.61, 1.48,
+                                      1.29, 1.21, 1.66, 1.55,)
 
         if False:  # get q profits
             for a in range(30, 40):
