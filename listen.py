@@ -73,7 +73,7 @@ def save_to_file():
     if request.method == 'POST':
         filename = request.form['filename']
         if filename:
-            with open(filename, 'a') as f:
+            with open(os.path.join(app.config['UPLOAD_FOLDER'], filename), 'a') as f:
                 f.write(request.form['content'])
 
     return """
