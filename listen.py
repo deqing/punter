@@ -71,18 +71,49 @@ def index():
 @app.route("/abc", methods=['GET', 'POST'])
 def save_to_file():
     if request.method == 'POST':
-        filename = request.form['filename']
-        if filename:
-            with open(os.path.join(app.config['UPLOAD_FOLDER'], filename), 'a') as f:
-                f.write(request.form['content'])
+        for n in range(15):
+            fn = 'f' + str(n+1)
+            cn = 'content' + str(n+1)
+            filename = request.form[fn]
+            if filename:
+                with open(os.path.join(app.config['UPLOAD_FOLDER'], filename), 'a') as f:
+                    f.write(request.form[cn])
 
     return """
     <!doctype html>
     <form action="" method=post>
-        <textarea name="content" rows="10" cols="50" autofocus /></textarea><br>
-        filename: <input type="text" name="filename"><br>
+        <textarea name="content1" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f1"><br>
+        <textarea name="content2" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f2"><br>
+        <textarea name="content3" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f3"><br>
+        <textarea name="content4" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f4"><br>
+        <textarea name="content5" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f5"><br>
+        <textarea name="content6" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f6"><br>
+        <textarea name="content7" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f7"><br>
+        <textarea name="content8" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f8"><br>
+        <textarea name="content9" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f9"><br>
+        <textarea name="content10" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f10"><br>
+        <textarea name="content11" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f11"><br>
+        <textarea name="content12" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f12"><br>
+        <textarea name="content13" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f13"><br>
+        <textarea name="content14" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f14"><br>
+        <textarea name="content15" rows="10" cols="50" /></textarea><br>
+        filename: <input type="text" name="f15"><br>        
         <input type=submit value=Save>
-    </form>
+    </form>     
     <br>Current files:
     <ul><li>%s</li></ul>
     """ % "</li><li>".join(os.listdir(app.config['UPLOAD_FOLDER'],))
