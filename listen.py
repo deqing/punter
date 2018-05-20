@@ -7,7 +7,8 @@ from flask import request, redirect, url_for
 from worker import WebWorker
 from werkzeug.utils import secure_filename
 
-
+# python -u C:\Users\devin.huang\OneDrive\Documents\sty\punter\listen.py
+#UPLOAD_FOLDER = 'C:\\hdq\\tmp'
 UPLOAD_FOLDER = '/home/ubuntu/snj/'  # FIXME: should be an better path like: gettempdir()
 
 app = Flask(__name__)
@@ -65,6 +66,24 @@ def index():
     </form>
     <p>%s</p>
     """ % "<br>".join(os.listdir(app.config['UPLOAD_FOLDER'],))
+
+
+@app.route("/abc", methods=['GET', 'POST'])
+def save_to_file():
+    if request.method == 'POST':
+        filename = request.form['filename']
+        if filename:
+            with open(filename, 'a') as f:
+                f.write(request.form['content'])
+
+    return """
+    <!doctype html>
+    <form action="" method=post>
+        <textarea name="content" rows="10" cols="50" autofocus /></textarea><br>
+        filename: <input type="text" name="filename"><br>
+        <input type=submit value=Save>
+    </form>
+    """
 
 
 if __name__ == '__main__':

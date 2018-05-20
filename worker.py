@@ -34,7 +34,7 @@ HEAD = '<html lang="en">\n'
 log_to_file = False
 g_leagues = ('a', 'arg', 'eng', 'fra', 'gem', 'ita', 'liga', 'uefa', 'w')
 g_websites_str = 'bet365,bluebet,crownbet,ladbrokes,madbookie,palmerbet,pinnacle,sportsbet,tab,ubet,unibet,williamhill'  # noqa
-g_get_all_markets = True  # TODO if do lay only: change to False
+g_get_all_markets = False  # TODO if do lay only: change to False
 g_print_urls = True
 
 
@@ -1070,8 +1070,9 @@ class Betfair(Website):
                 account.send_keys(username_file.read().rstrip())
                 password.send_keys(password_file.read().rstrip())
             login.click()
-            #TODO following try change to wait (the elemenent is not there)
-            Website.wait('form.ssc-lof', wait)
+            # TODO following try change to wait (the elemenent is not there)
+            # Website.wait('form.ssc-lof', wait)
+            time.sleep(1)
             save_cookie(path)
 
     def login(self):
@@ -1711,64 +1712,56 @@ class WebWorker:
         pass
 
     @staticmethod
-    def calc_4_round_1_back(b1, b2, b3, b4, l1, l2, l3, l4):
+    def calc_4_round_1_back(b1, b2, b3, _, l1, l2, l3, l4):
+        def calc(ls1, ls2, ls3, ls4):
+            back_stake2 = back_stake1 * b1
+            back_stake3 = back_stake2 * b2
+            back_stake4 = back_stake3 * b3
+            back_win4 = 50 * (back_stake4 - 1)
+            # back_win4 = 50 * (3.86 - 1)
+
+            lay_ly1 = ls1 * (l1 - 1)
+            lay_ly2 = ls2 * (l2 - 1)
+            lay_ly3 = ls3 * (l3 - 1)
+            lay_ly4 = ls4 * (l4 - 1)
+
+            lay_win1 = ls1 * 0.95
+            lay_win2 = ls2 * 0.95
+            lay_win3 = ls3 * 0.95
+            lay_win4 = ls4 * 0.95
+
+            a = [1000 for _ in range(4)]  # 11)]
+            a[0] = lay_win1 + lay_win2 - back_stake1  # 01 01
+            a[1] = lay_win1 + lay_win3 - lay_ly2 - back_stake1  # 01 10 01
+            a[2] = lay_win1 + lay_win4 - lay_ly2 - lay_ly3 - back_stake1  # 01 10 10 01
+            a[3] = lay_win1 - lay_ly2 - lay_ly3 - lay_ly4 - 15  # 01 10 10 10
+            a[4] = lay_win2 + lay_win3 - lay_ly1 - back_stake1            # 10 01 01
+            a[5] = lay_win2 + lay_win4 - lay_ly1 - lay_ly3 - back_stake1  # 10 01 10 01
+            a[6] = lay_win2 - lay_ly1 - lay_ly3 - lay_ly4 + 35            # 10 01 10 10
+            a[7] = lay_win3 + lay_win4 - back_stake1 - lay_ly1 - lay_ly2  # 10 10 01 01
+            a[8] = lay_win3 - lay_ly1 - lay_ly2 - lay_ly4 + 35            # 10 10 01 10
+            a[9] = lay_win4 - lay_ly1 - lay_ly2 - lay_ly3 + 35            # 10 10 10 01
+            a[10] = back_win4 - lay_ly1 - lay_ly2 - lay_ly3 - lay_ly4     # 10 10 10 10
+
+            all_positive = True
+            for i in range(len(a)):
+                if a[i] < -20:
+                    all_positive = False
+                    break
+
+            if all_positive:
+                s_print = '{:0.2f} {:0.2f} {:0.2f} {:0.2f}: '.format(
+                    ls1, ls2, ls3, ls4)
+                for o in a:
+                    s_print += '{:0.2f} '.format(o)
+                log_and_print(s_print)
+
         back_stake1 = 50
         for lay_stake1 in range(10, back_stake1 + 50):
-            for lay_stake2 in range(20, back_stake1 + 60):
+            for lay_stake2 in range(0, back_stake1 + 60):
                 for lay_stake3 in range(30, back_stake1 + 50):
                     for lay_stake4 in range(40, back_stake1 + 50):
-                        back_stake2 = back_stake1 * b1
-                        back_stake3 = back_stake2 * b2
-                        back_stake4 = back_stake3 * b3
-                        #back_win4 = 50 * (back_stake4 - 1)
-                        back_win4 = 50 * (3.86 - 1)
-
-                        lay_ly1 = lay_stake1 * (l1 - 1)
-                        lay_ly2 = lay_stake2 * (l2 - 1)
-                        lay_ly3 = lay_stake3 * (l3 - 1)
-                        lay_ly4 = lay_stake4 * (l4 - 1)
-
-                        lay_win1 = lay_stake1 * 0.95
-                        lay_win2 = lay_stake2 * 0.95
-                        lay_win3 = lay_stake3 * 0.95
-                        lay_win4 = lay_stake4 * 0.95
-
-                        a = [1000 for _ in range(11)]
-                        a[0] = lay_win1 + lay_win2 - back_stake1                      # 01 01
-                        a[1] = lay_win1 + lay_win3 - lay_ly2 - back_stake1            # 01 10 01
-                        a[2] = lay_win1 + lay_win4 - lay_ly2 - lay_ly3 - back_stake1  # 01 10 10 01
-                        a[3] = lay_win1 - lay_ly2 - lay_ly3 - lay_ly4 + 35            # 01 10 10 10
-                        a[4] = lay_win2 + lay_win3 - lay_ly1 - back_stake1            # 10 01 01
-                        a[5] = lay_win2 + lay_win4 - lay_ly1 - lay_ly3 - back_stake1  # 10 01 10 01
-                        a[6] = lay_win2 - lay_ly1 - lay_ly3 - lay_ly4 + 35            # 10 01 10 10
-                        a[7] = lay_win3 + lay_win4 - back_stake1 - lay_ly1 - lay_ly2  # 10 10 01 01
-                        a[8] = lay_win3 - lay_ly1 - lay_ly2 - lay_ly4 + 35            # 10 10 01 10
-                        a[9] = lay_win4 - lay_ly1 - lay_ly2 - lay_ly3 + 35            # 10 10 10 01
-                        a[10] = back_win4 - lay_ly1 - lay_ly2 - lay_ly3 - lay_ly4     # 10 10 10 10
-
-                        all_positive = True
-                        small_count = 0
-                        for i in range(len(a)):
-                            if a[i] < 10:
-                                small_count += 1
-                                if small_count > 2:
-                                    all_positive = False
-                                    break
-
-                            if a[i] < 5:
-                                all_positive = False
-                                break
-
-                            if i > 6 and a[i] < 25:
-                                all_positive = False
-                                break
-
-                        if all_positive:
-                            s_print = '{:0.2f} {:0.2f} {:0.2f} {:0.2f}: '.format(
-                                lay_stake1, lay_stake2, lay_stake3, lay_stake4)
-                            for o in a:
-                                s_print += '{:0.2f} '.format(o)
-                            log_and_print(s_print)
+                        calc(lay_stake1, lay_stake2, lay_stake3, lay_stake4)
 
     @staticmethod
     def calc_bonus_profit(websites_str, website='pinnacle', stake=100, with_stake=True, min_odd=2.0):  # Do they only returns winning?  # noqa
@@ -2049,11 +2042,13 @@ class WebWorker:
                     elif header == '{} Over/Under {} Goals'.format(self.away_name, goals):
                         odds_back['away ad {}'.format(goals)]['over'] = odds[o]
                         odds_back['away ad {}'.format(goals)]['under'] = odds[u]
-                    elif header == 'First Half {} Over/Under {} Goals'.format(self.home_name, goals) or\
+                    elif header == 'First Half {} Over/Under {} Goals'.format(
+                            self.home_name, goals) or \
                             header == 'First Half {} {} Goals'.format(self.home_name, goals):
                         odds_back['first home {}'.format(goals)]['over'] = odds[o]
                         odds_back['first home {}'.format(goals)]['under'] = odds[u]
-                    elif header == 'First Half {} Over/Under {} Goals'.format(self.away_name, goals) or\
+                    elif header == 'First Half {} Over/Under {} Goals'.format(
+                            self.away_name, goals) or \
                             header == 'First Half {} {} Goals'.format(self.away_name, goals):
                         odds_back['first away {}'.format(goals)]['over'] = odds[o]
                         odds_back['first away {}'.format(goals)]['under'] = odds[u]
@@ -2514,10 +2509,12 @@ class WebWorker:
                 date_ = dates_[1] if 'day' in dates_[0] or ':' in dates_[0] else dates_[0]
                 try:
                     if date_.strip() == 'Tomorrow':
-                        d_ = '{dt:%a} {dt.day} {dt:%b} '.format(dt=datetime.now() + timedelta(days=1))
+                        d_ = '{dt:%a} {dt.day} {dt:%b} '.format(
+                            dt=datetime.now() + timedelta(days=1))
                     else:
-                        d_ = '{dt:%a} {dt.day} {dt:%b} '.format(dt=datetime.strptime(date_.strip(), '%d %B'))
-                except Exception as _:
+                        d_ = '{dt:%a} {dt.day} {dt:%b} '.format(
+                            dt=datetime.strptime(date_.strip(), '%d %B'))
+                except:
                     continue
                 titles = b.find_elements_by_css_selector('li.KambiBC-event-item')
                 for t in titles:
@@ -2630,8 +2627,8 @@ class WebWorker:
                 info_crownbet = self.get_crownbet_match_info()
                 write_pkl(info_crownbet, file_w)
 
-                log_and_print('getting ladbrokes')
-                info_ladbrokes = self.get_ladbrokes_match_info()
+                #log_and_print('getting ladbrokes')
+                info_ladbrokes = dict() #self.get_ladbrokes_match_info()
 
                 log_and_print('getting william')
                 info_william = self.get_william_match_info()
@@ -3017,7 +3014,7 @@ class WebWorker:
                 odds_back = self.merge_back_odds(d, odds_back)
 
         self.generate_max_back_odds(odds_back)
-        if True:  # Compare back together?  TODO make it usable
+        if False:  # Indicates if to compare back together
             self.print_back_profits(odds_back, match_info)
 
         if get_betfair and len(odds_back) is not 0:
@@ -3178,7 +3175,7 @@ class WebWorker:
 
     def compare_multiple_sites(self, loop_minutes=0,
                                get_crown=True,  # TODO choose agents to get
-                               get_ladbrokes=True,
+                               get_ladbrokes=False,
                                get_william=True,
                                get_betfair=True,
                                get_unibet=False,
