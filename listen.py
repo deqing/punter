@@ -83,7 +83,7 @@ def save_to_file():
         filename: <input type="text" name="filename"><br>
         <input type=submit value=Save>
     </form>
-    <br>目前已有以下文件或目录：
+    <br>Current files:
     <ul><li>%s</li></ul>
     """ % "</li><li>".join(os.listdir(app.config['UPLOAD_FOLDER'],))
 
