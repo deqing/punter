@@ -70,18 +70,13 @@ def html_template(s):
 @app.route("/dqfile", methods=['GET', 'POST'])
 def dqfile():
     if request.method == 'POST':
-        for n in range(15):
-            fn = 'f' + str(n)
-            file = request.files[fn]
-            if file:
-                filename = secure_filename(file.filename)
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        uploaded_files = request.files.getlist("files")
+        for file in uploaded_files:
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         return redirect(url_for('dqfile'))
 
-    s = ''
-    for i in range(15):
-        s += '<input type=file name="f{}"><br>'.format(i)
-    return html_template(s)
+    return html_template('<input type=file name="files" multiple><br>')
 
 
 @app.route("/dqtext", methods=['GET', 'POST'])
