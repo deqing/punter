@@ -68,8 +68,15 @@ def index():
     """ % "<br>".join(os.listdir(app.config['UPLOAD_FOLDER'],))
 
 
+@app.route("/ifttt", methods=['GET', 'POST'])
+def ifttt():
+    with open('ifttt.log', 'a') as f:
+        f.write('I will post a url later')
+    return 'ok'
+
+
 @app.route("/abc", methods=['GET', 'POST'])
-def save_to_file():
+def abc():
     if request.method == 'POST':
         for n in range(15):
             fn = 'f' + str(n+1)
