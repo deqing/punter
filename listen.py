@@ -142,10 +142,12 @@ def timer_habit_update_credit():
     url = 'https://habitica.com/api/v3/tasks/28068b64-0105-4ddb-bd78-6651bce8a241/score/'
     if cmd == 'timer_success':
         url += 'up'
-    elif cmd == 'timer_failed':
+    elif cmd == 'timer_fail':
         url += 'down'
     elif cmd == 'pomodoro_done':
         url = 'https://habitica.com/api/v3/tasks/69924582-fdef-470d-a511-18bead518e23/score/up'
+    elif cmd == 'do_it':
+        url = 'https://habitica.com/api/v3/tasks/64080190-8d47-4c1e-bb07-e1fc6732aeed/score/up'
     else:
         return 'Invalid request'
 
