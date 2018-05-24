@@ -144,7 +144,7 @@ def timer_habit_update_credit():
         url += 'up'
     elif cmd == 'timer_fail':
         url += 'down'
-    elif cmd == 'pomodoro_done':
+    elif cmd == 'pomodoro':
         url = 'https://habitica.com/api/v3/tasks/69924582-fdef-470d-a511-18bead518e23/score/up'
     elif cmd == 'do_it':
         url = 'https://habitica.com/api/v3/tasks/64080190-8d47-4c1e-bb07-e1fc6732aeed/score/up'
