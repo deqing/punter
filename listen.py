@@ -69,6 +69,18 @@ def html_template(s):
     """.format(s, "</li><li>".join(os.listdir(app.config['UPLOAD_FOLDER'],)))
 
 
+@app.route("/abc", methods=['GET', 'POST'])
+def abc():
+    if request.method == 'POST':
+        uploaded_files = request.files.getlist("files")
+        for file in uploaded_files:
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return redirect(url_for('abc'))
+
+    return html_template('<input type=file name="files" webkitdirectory directory><br>')
+
+
 @app.route("/dqfile", methods=['GET', 'POST'])
 def dqfile():
     if request.method == 'POST':
